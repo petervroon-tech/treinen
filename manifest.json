@@ -1,0 +1,16 @@
+{
+  "name": "treinen - WebAssembly Spoorwegsimulatie",
+  "short_name": "treinen",
+  "description": "Cross platform WebAssembly treinsimulatie voor het Nederlandse spoornetwerk",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#ffc917",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ffc917'/><path d='M25 35h50v35H25z' fill='%23003082'/><circle cx='38' cy='55' r='6' fill='%23ffffff'/><circle cx='62' cy='55' r='6' fill='%23ffffff'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

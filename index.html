@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>treinen - Cross Platform WebAssembly Spoorwegsimulatie</title>
+  <meta name="description" content="Cross platform WebAssembly treinsimulatie van het Nederlandse spoornetwerk met automatische versieherkenning.">
+  <meta name="theme-color" content="#ffc917">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ffc917'/><path d='M25 35h50v35H25z' fill='%23003082'/><circle cx='38' cy='55' r='6' fill='%23ffffff'/><circle cx='62' cy='55' r='6' fill='%23ffffff'/></svg>">
+</head>
+<body>
+
+  <!-- Automatische Versie Update Melding Banner -->
+  <aside id="updateBanner" class="update-banner" role="alert" aria-live="assertive">
+    <div class="update-content">
+      <div class="update-info">
+        <span class="update-icon" aria-hidden="true">🔔</span>
+        <span id="updateBannerText">
+          <strong>Nieuwe versie beschikbaar!</strong> Er is zojuist een update gepubliceerd.
+        </span>
+      </div>
+      <div class="update-actions">
+        <button id="btnReloadUpdate" class="btn btn-primary" type="button">🚀 Direct Bijwerken &amp; Herladen</button>
+        <button id="btnDismissUpdate" class="btn btn-secondary" type="button" aria-label="Sluit melding">Later</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <div class="brand-wrapper">
+        <div class="logo-badge" aria-hidden="true">NS / WASM</div>
+        <div>
+          <h1 class="brand-title">&lt;treinen&gt;</h1>
+          <p class="brand-subtitle">Cross-Platform WebAssembly Spoorwegnetwerk</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div class="meta-pill" title="Simulatietijd">
+          <span>🕒</span>
+          <strong id="simClock">08:15:00</strong>
+        </div>
+        <div class="meta-pill" title="Actieve treinen in het netwerk">
+          <span>🚆</span>
+          <span>Actieve treinen: <strong id="activeTrainsCount">4</strong></span>
+        </div>
+        <div id="versionBadge" class="version-pill" title="Huidige versie">
+          v1.0.0 (laden...)
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Bedieningsbalk (Toolbar) -->
+  <nav class="toolbar" aria-label="Simulatiebediening">
+    <div class="toolbar-container">
+      <div class="tool-group">
+        <span class="group-label">Simulatie:</span>
+        <button id="btnPause" class="btn" type="button">⏸️ Pauze</button>
+        <button id="btnSpeed1" class="btn active" type="button">1x</button>
+        <button id="btnSpeed2" class="btn" type="button">2x</button>
+        <button id="btnSpeed5" class="btn" type="button">5x</button>
+      </div>
+
+      <div class="tool-group">
+        <span class="group-label">Weergave &amp; Geluid:</span>
+        <button id="btnNightMode" class="btn" type="button">🌙 Dag / Nacht</button>
+        <button id="btnSound" class="btn" type="button">🔊 Geluid: Aan</button>
+        <button id="btnHorn" class="btn" type="button">📢 Tyfoon</button>
+      </div>
+
+      <div class="tool-group">
+        <span class="group-label">Trein toevoegen:</span>
+        <button id="btnAddVIRM" class="btn" type="button" title="Voeg NS Dubbeldekker VIRM toe">+ VIRM</button>
+        <button id="btnAddSprinter" class="btn" type="button" title="Voeg NS Sprinter SLT toe">+ Sprinter</button>
+        <button id="btnAddEurostar" class="btn" type="button" title="Voeg Eurostar HSL toe">+ Eurostar</button>
+        <button id="btnAddCargo" class="btn" type="button" title="Voeg Goederentrein toe">+ Goederen</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hoofdvenster -->
+  <main>
+    <!-- Interactief Canvas -->
+    <div class="canvas-wrapper">
+      <canvas id="railwayCanvas" width="1200" height="700"></canvas>
+
+      <!-- Laadscherm -->
+      <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p><strong>WebAssembly simulatie wordt geïnitialiseerd...</strong></p>
+      </div>
+
+      <!-- Kaart Legenda -->
+      <div class="map-legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffc917;"></div>
+          <span>Intercity VIRM</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #f0f2f5; border: 1px solid #94a3b8;"></div>
+          <span>Sprinter SLT</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #990022;"></div>
+          <span>Eurostar / Thalys</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #e2001a;"></div>
+          <span>DB Cargo Traxx</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #10b981; border-radius: 50%;"></div>
+          <span>Wissel (Klik om om te leggen)</span>
+        </div>
+      </div>
+
+      <!-- Trein Inspectie Drawer -->
+      <aside id="trainInspector" class="train-inspector" aria-label="Trein details">
+        <div class="inspector-header">
+          <span id="inspTrainId" class="inspector-title">Trein #101</span>
+          <button class="btn btn-secondary" style="padding: 2px 8px;" onclick="window.selectTrainById(null)" type="button">✕</button>
+        </div>
+        <div class="inspector-grid">
+          <div class="grid-cell">
+            <label>Snelheid</label>
+            <span id="inspSpeed">130 km/u</span>
+          </div>
+          <div class="grid-cell">
+            <label>Maximum</label>
+            <span id="inspTargetSpeed">140 km/u</span>
+          </div>
+          <div class="grid-cell">
+            <label>Status</label>
+            <span id="inspStatus">Rijdend</span>
+          </div>
+          <div class="grid-cell">
+            <label>Reizigers</label>
+            <span id="inspPassengers">312</span>
+          </div>
+          <div class="grid-cell" style="grid-column: span 2;">
+            <label>Traject</label>
+            <span id="inspRoute">Amsterdam Centraal ➔ Utrecht Centraal</span>
+          </div>
+          <div class="grid-cell">
+            <label>Punctualiteit</label>
+            <span id="inspDelay">Op tijd</span>
+          </div>
+        </div>
+        <button id="btnEmergencyBrake" class="btn btn-danger" style="width: 100%; justify-content: center;" type="button">
+          ⚠️ Noodrem Activeren
+        </button>
+      </aside>
+    </div>
+
+    <!-- Live Vertrektijden (NS Digitale Schermen) -->
+    <section class="departure-board" aria-label="Live Vertrektijden">
+      <div class="board-header">
+        <h2 class="board-title">🚆 Live Vertrektijden Nederland</h2>
+        <span style="font-size: 0.8rem; opacity: 0.9;">Automatisch ververst via WebAssembly</span>
+      </div>
+      <div class="board-table-wrapper">
+        <table class="departure-table">
+          <thead>
+            <tr>
+              <th>Trein</th>
+              <th>Materieel</th>
+              <th>Bestemming</th>
+              <th>Spoor</th>
+              <th>Snelheid</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="departureTableBody">
+            <!-- Dynamisch gevuld vanuit WASM -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-container">
+      <div>
+        <strong>&lt;treinen&gt;</strong> &bull; Cross-Platform WebAssembly Programma
+        <span style="margin-left: 12px; color: #10b981;">● WebAssembly Engine Actief (Shared Linear Memory)</span>
+      </div>
+      <div>
+        GitHub Pages Ready &bull; Automatische Git Push &amp; Versiedetectie Actief
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
