@@ -33,50 +33,49 @@
     </div>
   </aside>
 
-  <!-- Hoofdbalk: Titel, Lijnkiezer & Geluid -->
+  <!-- Hoofdbalk: Titel, Categorieën, Lijnkiezer & Geluid -->
   <header class="app-header">
     <div class="header-main-row">
       <div class="brand-box">
-        <div class="ns-badge">NS / SPOOR</div>
+        <div class="ns-badge">PRO-RAIL &bull; NL</div>
         <div>
           <h1 class="brand-heading">&lt;treinen&gt;</h1>
-          <p class="brand-subheading">Actueel Lijnoverzicht &bull; Echte Satellietbeelden</p>
+          <p class="brand-subheading">Alle Spoorwegmaatschappijen &bull; Goederen &bull; Internationaal &bull; Live Snelheden</p>
         </div>
       </div>
 
-      <!-- Lijnkeuze Knoppen -->
-      <nav class="line-selector-nav" aria-label="Kies spoorlijn">
-        <button class="line-nav-btn active" data-line="enschede-denhaag" type="button">
-          <span class="line-badge yellow">IC</span>
-          <span>Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag</span>
-        </button>
-        <button class="line-nav-btn" data-line="enschede-zwolle" type="button">
-          <span class="line-badge blue">Blauwnet</span>
-          <span>Enschede ➔ Hengelo ➔ Almelo ➔ Zwolle</span>
-        </button>
-        <button class="line-nav-btn" data-line="amsterdam-maastricht" type="button">
-          <span class="line-badge yellow">IC</span>
-          <span>Amsterdam ➔ Utrecht ➔ Eindhoven ➔ Maastricht</span>
-        </button>
-        <button class="line-nav-btn" data-line="rotterdam-amsterdam" type="button">
-          <span class="line-badge yellow">IC</span>
-          <span>Rotterdam ➔ Den Haag ➔ Schiphol ➔ Amsterdam</span>
-        </button>
-        <button class="line-nav-btn" data-line="groningen-utrecht" type="button">
-          <span class="line-badge yellow">IC</span>
-          <span>Groningen / Leeuwarden ➔ Zwolle ➔ Utrecht</span>
-        </button>
-        <button class="line-nav-btn" data-line="all" type="button">
-          <span class="line-badge gray">NL</span>
-          <span>Heel Nederland (Satelliet Radar)</span>
-        </button>
-      </nav>
+      <!-- Navigatie: Categorieën en Lijnkiezer -->
+      <div class="header-nav-container">
+        <!-- Categorie Tabs -->
+        <div class="category-tabs" role="tablist" aria-label="Spoorwegcategorieën">
+          <button class="cat-tab-btn active" data-category="ns" type="button" role="tab">
+            <span>🚆 NS Reizigers</span>
+          </button>
+          <button class="cat-tab-btn" data-category="regional" type="button" role="tab">
+            <span>🚊 Regionaal (Arriva &bull; Blauwnet &bull; Qbuzz)</span>
+          </button>
+          <button class="cat-tab-btn" data-category="international" type="button" role="tab">
+            <span>⚡ Internationaal (Eurostar &bull; ICE &bull; Berlijn)</span>
+          </button>
+          <button class="cat-tab-btn" data-category="freight" type="button" role="tab">
+            <span>🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; RFO)</span>
+          </button>
+          <button class="cat-tab-btn" data-category="all" type="button" role="tab">
+            <span>🇳🇱 Heel Nederland (Satelliet Radar)</span>
+          </button>
+        </div>
+
+        <!-- Lijnkeuze Knoppen (dynamisch gefilterd of direct aanklikbaar) -->
+        <nav id="lineSelectorNav" class="line-selector-nav" aria-label="Kies spoorlijn">
+          <!-- Dynamisch opgebouwd in app.js -->
+        </nav>
+      </div>
 
       <!-- Authentieke NS Audio Knoppen -->
       <div class="header-audio-controls">
         <button id="btnPlayChime" class="btn-chime" type="button" title="Speel de authentieke 3-tonige NS stationsgong af">
           <span class="chime-icon">🔔</span>
-          <span>NS Stationsgong</span>
+          <span>NS Gong</span>
         </button>
         <button id="btnAudioToggle" class="btn-audio-toggle active" type="button" title="Geluidssignalen aan/uit">
           <span id="audioStatusText">🔊 Geluid: Aan</span>
@@ -110,10 +109,17 @@
       <!-- De Schematische Lijnstrip (Station naar Station met rijdende treinen) -->
       <div class="line-diagram-container">
         <div class="diagram-legend">
-          <span>🟢 Op tijd (&gt;60 km/u)</span>
-          <span>🟡 Vertraagd (1-5 min)</span>
-          <span>🔴 Stilstaand (&gt;5 min)</span>
-          <span>➔ Rijrichting</span>
+          <span>⚡ &gt;100 km/u</span>
+          <span>🟢 60-100 km/u</span>
+          <span>🟡 15-60 km/u</span>
+          <span>🔴 Stilstand</span>
+          <span style="opacity: 0.6;">|</span>
+          <span title="NS Reizigers">🟡 NS</span>
+          <span title="Arriva">🔵 Arriva</span>
+          <span title="Blauwnet / Keolis">🔷 Blauwnet</span>
+          <span title="Eurostar">🔴 Eurostar</span>
+          <span title="ICE International">⚪ ICE</span>
+          <span title="DB Cargo / Rail Force One">🟠 Goederen</span>
         </div>
         <div id="lineDiagram" class="line-diagram">
           <!-- Dynamisch gegenereerd vanuit actuele GPS data -->
@@ -123,13 +129,18 @@
       <!-- Trein Inspectie Kaart (indien aangeklikt) -->
       <div id="inspectorBox" class="inspector-box" style="display: none;">
         <div class="inspector-head">
-          <strong id="inspTitle">Trein #1762</strong>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="inspOpBadge" class="op-badge op-ns">NS</span>
+            <strong id="inspTitle">Trein #1762</strong>
+          </div>
           <button class="btn-close-sm" onclick="document.getElementById('inspectorBox').style.display='none'">✕</button>
         </div>
         <div class="inspector-content">
-          <div><label>Snelheid:</label> <strong id="inspSpeed">132 km/u</strong></div>
-          <div><label>Materieel:</label> <strong id="inspMat">VIRM-IV</strong></div>
+          <div><label>Vervoerder:</label> <strong id="inspOperator">NS Reizigers</strong></div>
+          <div><label>Actuele Snelheid:</label> <strong id="inspSpeed">132 km/u</strong></div>
+          <div><label>Trein / Materieel:</label> <strong id="inspMat">VIRM-IV</strong></div>
           <div><label>Punctualiteit:</label> <span id="inspPunc" class="status-pill green">Op tijd</span></div>
+          <div><label>Status Baanvak:</label> <span id="inspStatus">Rijdend op schema</span></div>
           <div><label>Laatste GPS:</label> <span id="inspGps">Zojuist</span></div>
         </div>
       </div>
