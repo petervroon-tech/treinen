@@ -41,51 +41,24 @@ De simulatie-engine draait in WebAssembly met lineair gedeeld geheugen voor 60 F
 
 ## 🚀 Snel Starten (Lokaal Uitvoeren)
 
-### 1. Start de Lokale Webserver
-Je kunt de webapplicatie direct openen met Python's ingebouwde webserver:
-
+### 1. Start de Lokale Webserver (optioneel)
 ```bash
-# Start de server in de public map
-python3 -m http.server 8000 --directory public
+python3 -m http.server 8000
 ```
-
-Open vervolgens je browser op:
-👉 **[http://localhost:8000](http://localhost:8000)**
+Open vervolgens: **http://localhost:8000**
 
 ---
 
 ## 🖥️ WASM Uitvoeren via de Terminal (CLI)
-
-Omdat de WebAssembly module cross-platform en stand-alone is, kun je deze ook buiten de browser testen en inspecteren via de meegeleverde CLI runner:
-
 ```bash
-python3 tools/run_cli.py
-```
-
-Voorbeeld output:
-```text
-🚂 Treinen WebAssembly CLI Runner
-   WASM bestand: public/treinen.wasm (2076 bytes)
-
-=== Treinen Simulatie Geïnitialiseerd ===
-Actieve treinen: 4
-- Trein #101: NS VIRM Intercity op spoor 0, snelheid: 130 km/u, reizigers: 312
-- Trein #102: NS Sprinter SLT op spoor 2, snelheid: 110 km/u, reizigers: 145
-- Trein #103: Eurostar / Thalys op spoor 10, snelheid: 150 km/u, reizigers: 280
-- Trein #104: DB Cargo Traxx op spoor 16, snelheid: 90 km/u, reizigers: 0
-
->>> Simulatiestap van 2.0 seconden uitvoeren in WebAssembly...
-Simulatietijd na stap: 2 seconden
-Trein 101 nieuwe snelheid: 140 km/u, voortgang: 0.2400
+python3 run_cli.py
 ```
 
 ---
 
 ## 📦 WebAssembly Herbouwen
-
-### Via de Standalone Builder (zonder externe dependencies)
 ```bash
-python3 tools/build_wasm.py
+python3 build.py
 ```
 
 ### Via Rust (optioneel, indien Rust/wasm-pack geïnstalleerd is)

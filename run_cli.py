@@ -8,7 +8,7 @@ import os
 import subprocess
 
 def run_wasm_cli():
-    wasm_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "public", "treinen.wasm"))
+    wasm_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "treinen.wasm"))
     print(f"🚂 Treinen WebAssembly CLI Runner")
     print(f"   WASM bestand: {wasm_path} ({os.path.getsize(wasm_path)} bytes)\n")
 

@@ -1,45 +1,50 @@
 #!/bin/sh
-# Treinen auto-push hook
-# Wordt automatisch geactiveerd na elke 'git commit'.
+# ==============================================================================
+# Treinen - Automatische Git Push na Commit Hook
+# ==============================================================================
+# Dit script wordt automatisch uitgevoerd zodra er een 'git commit' plaatsvindt.
+# Het pusht de gecommitte wijzigingen direct naar de externe remote repository.
+# ==============================================================================
 
-# Voorkom oneindige recursie of uitvoeren tijdens rebase/amend indien gewenst
+# Voorkom recursie of push tijdens rebase indien gevraagd
 if [ "$TREINEN_NO_AUTOPUSH" = "1" ]; then
-  exit 0
+    exit 0
 fi
 
-BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-if [ -z "$BRANCH" ] || [ "$BRANCH" = "HEAD" ]; then
-  exit 0
+# Haal de huidige branch op
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+if [ -z "$CURRENT_BRANCH" ]; then
+    CURRENT_BRANCH="main"
 fi
 
-# Controleer of remote 'origin' of een andere remote bestaat
-if git remote | grep -q "^origin$"; then
-  echo ""
-  echo "🚂 [treinen] Automatisch pushen naar origin/$BRANCH..."
-  if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
-    git push origin "$BRANCH"
-  else
-    git push -u origin "$BRANCH"
-  fi
-  if [ $? -eq 0 ]; then
-    echo "✅ [treinen] Automatische push succesvol voltooid!"
-  else
-    echo "⚠️  [treinen] Automatische push is mislukt. Controleer je internetverbinding of remote permissies."
-  fi
-  echo ""
+echo ""
+echo "🚀 [Treinen Hook] Automatische push geactiveerd na commit!"
+echo "📍 Huidige branch: $CURRENT_BRANCH"
+
+# Controleer of remote 'origin' is geconfigureerd
+if ! git remote | grep -q "^origin$"; then
+    echo "⚠️  [Treinen Hook] Geen remote 'origin' gevonden."
+    echo "💡 Configureer uw repository met: git remote add origin <url>"
+    exit 0
+fi
+
+REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+echo "🌐 Externe remote: $REMOTE_URL"
+echo "📦 Bezig met pushen naar origin/$CURRENT_BRANCH..."
+
+# Voer git push uit
+git push origin "$CURRENT_BRANCH" 2>&1
+PUSH_STATUS=$?
+
+if [ $PUSH_STATUS -eq 0 ]; then
+    echo "✅ [Treinen Hook] Automatische push succesvol voltooid!"
+    echo "🌍 Uw wijzigingen staan online en worden automatisch uitgerold via GitHub Actions."
 else
-  FIRST_REMOTE=$(git remote 2>/dev/null | head -n 1)
-  if [ -n "$FIRST_REMOTE" ]; then
-    echo ""
-    echo "🚂 [treinen] Automatisch pushen naar $FIRST_REMOTE/$BRANCH..."
-    git push "$FIRST_REMOTE" "$BRANCH"
-    echo ""
-  else
-    echo ""
-    echo "ℹ️  [treinen] Geen Git remote gevonden om naar te pushen."
-    echo "   Koppel je GitHub repository met:"
-    echo "   git remote add origin https://github.com/<jouw-gebruikersnaam>/treinen.git"
-    echo "   Vanaf dat moment pusht elke commit automatisch!"
-    echo ""
-  fi
+    echo "⚠️  [Treinen Hook] Push kon niet direct worden voltooid (status: $PUSH_STATUS)."
+    echo "💡 Mogelijk bent u offline of is er authenticatie nodig."
+    echo "👉 U kunt altijd handmatig pushen met: git push origin $CURRENT_BRANCH"
 fi
+
+echo ""
+exit 0
