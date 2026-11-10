@@ -51,6 +51,7 @@
           <option value="all">🌐 Heel Nederland — Alle treinen van alle maatschappijen</option>
           <optgroup label="🚆 NS Reizigers Hoofdlijnen">
             <option value="enschede-denhaag" selected>NS &bull; Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag C</option>
+            <option value="eindhoven-maastricht">NS &bull; Eindhoven C ➔ Weert ➔ Roermond ➔ Sittard ➔ Maastricht (Rustig)</option>
             <option value="amsterdam-maastricht">NS &bull; Amsterdam C ➔ Utrecht ➔ Eindhoven ➔ Maastricht</option>
             <option value="rotterdam-amsterdam">NS &bull; Rotterdam C ➔ Schiphol ➔ Amsterdam C</option>
             <option value="groningen-utrecht">NS &bull; Groningen / Leeuwarden ➔ Zwolle ➔ Utrecht C</option>
@@ -240,8 +241,16 @@
           <!-- Label Weergave Dropdown (Anti-Chaos) -->
           <select id="labelDensitySelect" class="map-header-dropdown" aria-label="Kies labelweergave">
             <option value="smart" selected>🏷️ Labels: Slim</option>
+            <option value="minimal">🤫 Alleen Iconen (Rustig)</option>
             <option value="compact">🏷️ Labels: Compact</option>
             <option value="full">🏷️ Labels: Alles</option>
+          </select>
+
+          <!-- Bewegingsfilter (Rijdend / Stilstaand) -->
+          <select id="motionFilterSelect" class="map-header-dropdown" aria-label="Filter op beweging">
+            <option value="all" selected>⚡ Alle treinen</option>
+            <option value="moving">🚄 Alleen rijdend</option>
+            <option value="standing">🅿️ Alleen stilstaand</option>
           </select>
         </div>
 

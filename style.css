@@ -1269,6 +1269,8 @@ body {
   z-index: 400;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   background: rgba(9, 14, 26, 0.92);
   backdrop-filter: blur(10px);
@@ -1282,6 +1284,7 @@ body {
 .map-dropdown-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -1454,6 +1457,18 @@ body {
   left: auto;
   right: 32px;
   transform: none;
+}
+
+/* Minimalistische / Alleen Iconen Modus (Rustig - Voorkomt tekstchaos bij knooppunten) */
+.clean-train-tag.minimal {
+  display: none !important;
+}
+
+.clean-train-marker:hover .clean-train-tag.minimal,
+.clean-train-marker:active .clean-train-tag.minimal,
+.clean-train-marker.selected .clean-train-tag.minimal {
+  display: inline-flex !important;
+  z-index: 999 !important;
 }
 
 /* Compacte Anti-Chaos Modus (voor Landelijke Radar & overzicht) */

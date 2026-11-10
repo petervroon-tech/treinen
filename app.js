@@ -153,6 +153,24 @@ export const CORRIDORS = {
     ]
   },
 
+  'eindhoven-maastricht': {
+    id: 'eindhoven-maastricht',
+    category: 'ns',
+    name: 'Eindhoven Centraal ➔ Weert ➔ Roermond ➔ Sittard ➔ Maastricht',
+    shortName: 'Eindhoven ➔ Maastricht (Limburglijn)',
+    badge: 'IC',
+    operator: 'NS Reizigers',
+    primaryOpKey: 'ns',
+    seriesPattern: /^(8|39|29|35)\d{2}$/,
+    stations: [
+      { code: 'EHV', name: 'Eindhoven Centraal', lat: 51.4433, lon: 5.4814, terminal: true,  sporen: '1-8'  },
+      { code: 'WT',  name: 'Weert',              lat: 51.2489, lon: 5.7064, terminal: false, sporen: '1-3'  },
+      { code: 'RM',  name: 'Roermond',           lat: 51.1931, lon: 5.9928, terminal: false, sporen: '1-3'  },
+      { code: 'STD', name: 'Sittard',            lat: 50.9986, lon: 5.8589, terminal: false, sporen: '1-3'  },
+      { code: 'MT',  name: 'Maastricht',         lat: 50.8500, lon: 5.7056, terminal: true,  sporen: '1-6'  }
+    ]
+  },
+
   'amsterdam-maastricht': {
     id: 'amsterdam-maastricht',
     category: 'ns',
@@ -483,7 +501,8 @@ const appState = {
   activeCategory: 'ns',
   activeCorridorKey: 'enschede-denhaag',
   activeStatusFilter: 'all', // 'all' | 'ontime' | 'delayed' | 'pech'
-  labelMode: 'smart', // 'smart' (anti-chaos) | 'compact' | 'full'
+  labelMode: 'smart', // 'smart' (anti-chaos) | 'minimal' | 'compact' | 'full'
+  motionFilter: 'all', // 'all' | 'moving' | 'standing'
   commSoundEnabled: true,
   commMessages: [],
   commUnreadCount: 0,
@@ -812,6 +831,14 @@ function initMap() {
     }
   });
 
+  document.getElementById('motionFilterSelect')?.addEventListener('change', (e) => {
+    appState.motionFilter = e.target.value;
+    if (appState.lastRenderedTrains && appState.lastRenderedTrains.length > 0) {
+      renderMapTrains(appState.lastRenderedTrains);
+    }
+    updateLineOverview();
+  });
+
   document.getElementById('btnSatEsri')?.addEventListener('click', () => switchLayer('esri'));
   document.getElementById('btnSatPdok')?.addEventListener('click', () => switchLayer('pdok'));
   document.getElementById('btnMapDark')?.addEventListener('click', () => switchLayer('dark'));
@@ -1020,10 +1047,7 @@ function distanceKm(lat1, lon1, lat2, lon2) {
 function matchTrainToCorridor(train, corridor) {
   if (!corridor) return true;
 
-  if (corridor.seriesPattern && corridor.seriesPattern.test(train.trainNum)) {
-    return true;
-  }
-
+  // 1. Controleer of de trein fysiek op een baanvaksegment van de corridor rijdt
   for (let i = 0; i < corridor.stations.length - 1; i++) {
     const s1 = corridor.stations[i];
     const s2 = corridor.stations[i + 1];
@@ -1034,6 +1058,14 @@ function matchTrainToCorridor(train, corridor) {
 
     if (d1 + d2 <= segLen + 7.5 && d1 <= segLen + 5.0 && d2 <= segLen + 5.0) {
       return { segmentIndex: i, fromStation: s1, toStation: s2, distFromS1: d1 };
+    }
+  }
+
+  // 2. Als treinnummer bij de serie hoort, eis dat de trein daadwerkelijk in de buurt is van de corridor (binnen 18 km van enig baanvakstation)
+  if (corridor.seriesPattern && corridor.seriesPattern.test(train.trainNum)) {
+    const isNearStation = corridor.stations.some(s => distanceKm(train.lat, train.lon, s.lat, s.lon) <= 18);
+    if (isNearStation) {
+      return { segmentIndex: findNearestSegment(train, corridor) };
     }
   }
 
@@ -1152,7 +1184,10 @@ function updateLineOverview() {
       diagramEl.innerHTML = overviewHtml;
     }
 
-    renderMapTrains(allParsed);
+    let overviewTrains = allParsed;
+    if (appState.motionFilter === 'moving') overviewTrains = overviewTrains.filter(t => t.speed > 5);
+    else if (appState.motionFilter === 'standing') overviewTrains = overviewTrains.filter(t => t.speed <= 5);
+    renderMapTrains(overviewTrains);
     return;
   }
 
@@ -1162,11 +1197,14 @@ function updateLineOverview() {
   if (metaEl) metaEl.textContent = `Vervoerder: ${corridor.operator} &bull; ${corridor.stations.length} Baanvakstations`;
   if (statusFooterEl) statusFooterEl.textContent = `Lijn: ${corridor.shortName} &bull; Vervoerder: ${corridor.operator}`;
 
-  // Filter treinen die op deze corridor rijden
+  // Filter treinen die op deze corridor rijden (en eventueel op beweging)
   const matchedTrains = [];
   const segmentTrainsMap = new Map();
 
   allParsed.forEach(t => {
+    if (appState.motionFilter === 'moving' && t.speed <= 5) return;
+    if (appState.motionFilter === 'standing' && t.speed > 5) return;
+
     const match = matchTrainToCorridor(t, corridor);
     if (match) {
       const segIdx = typeof match === 'object' ? match.segmentIndex : findNearestSegment(t, corridor);
@@ -1380,19 +1418,28 @@ function renderMapTrains(trainList) {
   if (!map) return;
   appState.lastRenderedTrains = trainList;
 
+  // Filter treinen op beweging (rijdend vs. stilstaand op emplacement/perron)
+  let trainsToRender = trainList;
+  if (appState.motionFilter === 'moving') {
+    trainsToRender = trainsToRender.filter(t => t.speed > 5);
+  } else if (appState.motionFilter === 'standing') {
+    trainsToRender = trainsToRender.filter(t => t.speed <= 5);
+  }
+
   const currentIds = new Set();
   const zoom = map.getZoom();
   const isAllMode = appState.activeCorridorKey === 'all' || appState.activeCategory === 'all';
   const densityMode = appState.labelMode || 'smart';
 
-  // Bepaal of compacte tags gebruikt moeten worden om overlappende teksten te voorkomen
+  // Bepaal modus: minimal (alleen iconen), compact of full
+  const isMinimal = densityMode === 'minimal';
   const useCompact = densityMode === 'compact' || (densityMode === 'smart' && (isAllMode || zoom < 11));
-  const compactClass = useCompact ? 'compact' : '';
+  const baseCompactClass = isMinimal ? 'minimal' : (useCompact ? 'compact' : '');
 
   // Houd bij waar tags op het scherm worden geplaatst voor slimme botsingdetectie
   const placedTagBoxes = [];
 
-  trainList.forEach(t => {
+  trainsToRender.forEach(t => {
     currentIds.add(t.id);
     const op = t.operator;
     const spdInfo = getSpeedBadgeInfo(t.speed);
@@ -1409,12 +1456,15 @@ function renderMapTrains(trainList) {
 
     // Bepaal tag positie (boven, onder, rechts of links) zodat treinnummers nooit over elkaar vallen
     let posClass = 'tag-pos-top';
+    let trainCompactClass = baseCompactClass;
+
     if (pt) {
       const boxW = useCompact ? 48 : 100;
       const boxH = 24;
       let collidesTop = false;
       let collidesBottom = false;
       let collidesRight = false;
+      let collidesLeft = false;
 
       for (const p of placedTagBoxes) {
         if (Math.abs(pt.x - p.x) < boxW && Math.abs((pt.y - 20) - p.y) < boxH) {
@@ -1444,7 +1494,20 @@ function renderMapTrains(trainList) {
           if (!collidesRight) {
             posClass = 'tag-pos-right';
           } else {
-            posClass = 'tag-pos-left';
+            // Probeer links
+            for (const p of placedTagBoxes) {
+              if (Math.abs((pt.x - 36) - p.x) < boxW && Math.abs(pt.y - p.y) < boxH) {
+                collidesLeft = true;
+                break;
+              }
+            }
+            if (!collidesLeft) {
+              posClass = 'tag-pos-left';
+            } else {
+              // Alle 4 posities overlappen (dicht cluster bij perron/emplacement zoals Maastricht)
+              // -> schakel over naar minimal stand om overlap te elimineren
+              trainCompactClass = 'minimal';
+            }
           }
         }
       }
@@ -1461,7 +1524,7 @@ function renderMapTrains(trainList) {
       if (el) {
         const tag = el.querySelector('.clean-train-tag');
         if (tag) {
-          tag.className = `clean-train-tag ${compactClass} ${posClass}`;
+          tag.className = `clean-train-tag ${trainCompactClass} ${posClass}`;
           tag.style.borderColor = op.border;
           tag.innerHTML = `
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
@@ -1473,7 +1536,7 @@ function renderMapTrains(trainList) {
     } else {
       const html = `
         <div class="clean-train-marker" title="[${op.code}] Trein ${t.trainNum} - ${t.speed} km/u (${t.statusType})">
-          <div class="clean-train-tag ${compactClass} ${posClass}" style="border-color: ${op.border};">
+          <div class="clean-train-tag ${trainCompactClass} ${posClass}" style="border-color: ${op.border};">
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
             <span class="tag-num">${t.trainNum}</span>
             <span class="tag-spd ${spdInfo.cssClass}">${spdInfo.label}</span>
@@ -1634,13 +1697,13 @@ window.selectStation = (stationCode) => {
     subEl.innerHTML = `Code: <strong>${station.code}</strong> &bull; Perrons: <strong>Spoor ${station.sporen}</strong> &bull; ${station.operator || 'NS & Regionaal'}`;
   }
 
-  // Zoek alle naderende en vertrekkende live treinen binnen een straal van 40 km
+  // Zoek alle naderende en vertrekkende live treinen binnen een gerichte straal van 14 km (overzichtelijk zonder ruis)
   const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
   const nearbyTrains = [];
 
   allParsed.forEach(t => {
     const dist = distanceKm(station.lat, station.lon, t.lat, t.lon);
-    if (dist <= 40) {
+    if (dist <= 14) {
       const spd = t.speed > 5 ? t.speed : 80;
       const etaMin = Math.max(1, Math.round((dist / spd) * 60));
       nearbyTrains.push({
@@ -1654,7 +1717,7 @@ window.selectStation = (stationCode) => {
   // Sorteer op nadering (dichtstbijzijnde eerst)
   nearbyTrains.sort((a, b) => a.dist - b.dist);
 
-  if (countEl) countEl.textContent = `${nearbyTrains.length} treinen in nadering / op het baanvak`;
+  if (countEl) countEl.textContent = `${nearbyTrains.length} treinen in nadering (binnen 14 km rond ${station.name})`;
 
   // Status van baanvak bepalen
   const hasPech = nearbyTrains.some(t => t.statusType === 'pech' || t.delayMin >= 15);
@@ -1678,7 +1741,7 @@ window.selectStation = (stationCode) => {
       listEl.innerHTML = `
         <div style="padding: 28px 16px; text-align: center; color: var(--text-sub);">
           <div style="font-size: 2rem; margin-bottom: 8px;">🚉</div>
-          <strong style="color: var(--text-main); font-size: 0.95rem;">Geen actieve treinen binnen 40 km van dit station.</strong><br>
+          <strong style="color: var(--text-main); font-size: 0.95rem;">Geen actieve treinen binnen 14 km van dit station.</strong><br>
           <span style="font-size: 0.8rem;">Kijk op de landelijke satellietradar of schakel naar een andere hoofdlijn.</span>
         </div>
       `;
@@ -2236,7 +2299,7 @@ function switchCorridor(corridorId) {
 }
 
 function toggleLabelDensity() {
-  const modes = ['smart', 'compact', 'full'];
+  const modes = ['smart', 'minimal', 'compact', 'full'];
   const curIdx = modes.indexOf(appState.labelMode || 'smart');
   const nextMode = modes[(curIdx + 1) % modes.length];
   appState.labelMode = nextMode;
@@ -2246,6 +2309,9 @@ function toggleLabelDensity() {
     if (nextMode === 'smart') {
       btn.textContent = '🏷️ Labels: Slim (Anti-Chaos)';
       btn.classList.remove('active');
+    } else if (nextMode === 'minimal') {
+      btn.textContent = '🤫 Labels: Alleen Iconen (Rustig)';
+      btn.classList.add('active');
     } else if (nextMode === 'compact') {
       btn.textContent = '🏷️ Labels: Compact (Alleen Nr)';
       btn.classList.add('active');
