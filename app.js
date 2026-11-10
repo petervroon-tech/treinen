@@ -484,6 +484,10 @@ const appState = {
   activeCorridorKey: 'enschede-denhaag',
   activeStatusFilter: 'all', // 'all' | 'ontime' | 'delayed' | 'pech'
   labelMode: 'smart', // 'smart' (anti-chaos) | 'compact' | 'full'
+  commSoundEnabled: true,
+  commMessages: [],
+  commUnreadCount: 0,
+  commActiveFilter: 'all',
   baseLayer: 'esri',
   layers: {},
   routePolyline: null,
@@ -552,6 +556,51 @@ export function playAuthenticNSChime() {
     osc1.stop(now + time + 0.92);
     osc2.stop(now + time + 0.50);
   });
+}
+
+// Subtiele Authentieke GSM-R Spoorweg Mobilofoon Squelch / Chirp (Geen spraakrobot!)
+export function playAuthenticRadioBeep() {
+  if (!appState.soundEnabled || !appState.commSoundEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+
+  // 1. Korte realistische GSM-R radio squelch chirp (1780Hz -> 1350Hz)
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1780, now);
+  osc.frequency.exponentialRampToValueAtTime(1350, now + 0.038);
+
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.linearRampToValueAtTime(0.05, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.042);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.045);
+
+  // 2. Korte subtiele squelch click (mic key-up)
+  try {
+    const bufferSize = Math.floor(ctx.sampleRate * 0.015);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.02, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
+    noise.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start(now);
+  } catch (e) {
+    // Fallback
+  }
 }
 
 // =============================================================
@@ -1675,6 +1724,309 @@ window.selectTrainAndCloseStation = (trainId) => {
 };
 
 // =============================================================
+// 9c. Spoorweg Communicatie & Live Mededelingen Engine (GSM-R)
+// =============================================================
+
+function addCommMessage(msg) {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const timeStr = `${hh}:${mm}:${ss}`;
+
+  const message = {
+    id: `comm_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    time: timeStr,
+    type: msg.type || 'trdl', // 'trdl' | 'baanvak' | 'omroep' | 'alarm'
+    chan: msg.chan || 'CH 18 TRDL',
+    chanName: msg.chanName || 'GSM-R CH 18 - TRDL',
+    parties: msg.parties || 'ProRail Verkeersleiding ➔ Machinist',
+    text: msg.text,
+    trainId: msg.trainId || null,
+    trainNum: msg.trainNum || null
+  };
+
+  appState.commMessages.unshift(message);
+  if (appState.commMessages.length > 50) {
+    appState.commMessages.pop();
+  }
+
+  // Update teller badges
+  updateCommCounters();
+
+  // Update de interactieve ticker op de linker corridorstrip
+  const tickerTimeEl = document.getElementById('commTickerTime');
+  const tickerTextEl = document.getElementById('corridorAlertText');
+  if (tickerTimeEl) tickerTimeEl.textContent = timeStr;
+  if (tickerTextEl) {
+    tickerTextEl.innerHTML = `<strong>[${message.chan}]</strong> ${message.parties}: "${message.text}"`;
+  }
+
+  // Update ongelezen badge als het scherm gesloten is
+  const modal = document.getElementById('commModal');
+  const isModalOpen = modal && modal.style.display === 'flex';
+
+  if (!isModalOpen) {
+    appState.commUnreadCount = (appState.commUnreadCount || 0) + 1;
+    const badge = document.getElementById('commUnreadBadge');
+    if (badge) {
+      badge.textContent = appState.commUnreadCount;
+      badge.style.opacity = '1';
+    }
+  } else {
+    renderCommMessages();
+  }
+
+  // Speel subtiele realistische mobilofoon squelch chirp af
+  playAuthenticRadioBeep();
+}
+
+function updateCommCounters() {
+  const all = appState.commMessages.length;
+  const trdl = appState.commMessages.filter(m => m.type === 'trdl').length;
+  const baanvak = appState.commMessages.filter(m => m.type === 'baanvak' || m.type === 'alarm').length;
+  const omroep = appState.commMessages.filter(m => m.type === 'omroep').length;
+
+  const countAll = document.getElementById('countCommAll');
+  const countTrdl = document.getElementById('countCommTrdl');
+  const countBaanvak = document.getElementById('countCommBaanvak');
+  const countOmroep = document.getElementById('countCommOmroep');
+
+  if (countAll) countAll.textContent = all;
+  if (countTrdl) countTrdl.textContent = trdl;
+  if (countBaanvak) countBaanvak.textContent = baanvak;
+  if (countOmroep) countOmroep.textContent = omroep;
+}
+
+function renderCommMessages() {
+  const listEl = document.getElementById('commMessagesStream');
+  if (!listEl) return;
+
+  const filter = appState.commActiveFilter || 'all';
+  const filtered = appState.commMessages.filter(m => {
+    if (filter === 'all') return true;
+    if (filter === 'trdl') return m.type === 'trdl';
+    if (filter === 'baanvak') return m.type === 'baanvak' || m.type === 'alarm';
+    if (filter === 'omroep') return m.type === 'omroep';
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `
+      <div style="padding: 30px 16px; text-align: center; color: var(--text-sub);">
+        <div style="font-size: 2rem; margin-bottom: 8px;">📻</div>
+        <strong style="color: var(--text-main);">Geen berichten in dit communicatiekanaal.</strong><br>
+        <span style="font-size: 0.8rem;">Verkeersleidingspost luistert op de actieve frequenties...</span>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  filtered.forEach(m => {
+    const actionHtml = m.trainId ? `
+      <div style="margin-top: 6px;">
+        <button class="comm-msg-action" onclick="window.selectTrainAndCloseComm('${m.trainId}')" type="button">
+          🔍 Volg Trein #${m.trainNum} live op satellietkaart ➔
+        </button>
+      </div>
+    ` : '';
+
+    html += `
+      <div class="comm-msg-card ${m.type}">
+        <div class="comm-msg-head">
+          <span class="comm-msg-time">[${m.time}]</span>
+          <span class="comm-msg-chan ${m.type}">[${m.chanName}]</span>
+        </div>
+        <div class="comm-msg-parties">${m.parties}</div>
+        <div class="comm-msg-text">"${m.text}"</div>
+        ${actionHtml}
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+window.openCommScreen = () => {
+  const modal = document.getElementById('commModal');
+  if (!modal) return;
+
+  modal.style.display = 'flex';
+  appState.commUnreadCount = 0;
+  const badge = document.getElementById('commUnreadBadge');
+  if (badge) {
+    badge.textContent = '0';
+    badge.style.opacity = '0.5';
+  }
+
+  renderCommMessages();
+  playAuthenticRadioBeep();
+};
+
+window.selectTrainAndCloseComm = (trainId) => {
+  const modal = document.getElementById('commModal');
+  if (modal) modal.style.display = 'none';
+  window.selectTrain(trainId);
+};
+
+// Realistische spoorwegcommunicatie generator op basis van échte actieve treinen
+function generateLiveRailwayMessage() {
+  const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+  if (allParsed.length === 0) return;
+
+  const corridorKey = appState.activeCorridorKey;
+  const corridor = CORRIDORS[corridorKey] || CORRIDORS['enschede-denhaag'];
+
+  // Zoek bij voorkeur treinen op de huidige corridor, anders landelijk
+  const corridorTrains = allParsed.filter(t => matchTrainToCorridor(t, corridor));
+  const pool = corridorTrains.length > 0 ? corridorTrains : allParsed;
+  const train = pool[Math.floor(Math.random() * pool.length)];
+  const op = train.operator;
+
+  // Kies een station van het actieve traject
+  const stations = corridor.stations || [];
+  const st1 = stations[Math.floor(Math.random() * stations.length)] || { name: 'Utrecht Centraal', code: 'UT', sporen: '4b' };
+  const st2 = stations[Math.floor(Math.random() * stations.length)] || { name: 'Amersfoort Centraal', code: 'AMF', sporen: '2' };
+  const dest = corridor.name ? corridor.name.split('➔').pop().trim() : 'Eindbestemming';
+
+  // Verschillende communicatiescenario's
+  const scenarios = [
+    // 1. Seinbeeld & Rijweg vrijgave (TRDL)
+    {
+      type: 'trdl',
+      chan: 'GSM-R CH 18',
+      chanName: 'GSM-R CH 18 - TRDL',
+      parties: `Treindienstleider Post ${st1.name} ➔ Machinist ${op.code} #${train.trainNum}`,
+      text: `Rijweg naar spoor ${st1.sporen} is veilig vastgelegd. Uitrijsein toont groen, baanvaksnelheid ${Math.max(80, train.speed || 120)} km/h vrijgegeven richting ${st2.name}.`,
+      trainId: train.id,
+      trainNum: train.trainNum
+    },
+    // 2. Machinist statusmelding
+    {
+      type: 'trdl',
+      chan: 'GSM-R CH 18',
+      chanName: 'GSM-R CABINERADIO',
+      parties: `Machinist ${op.code} #${train.trainNum} ➔ Post ${st2.name}`,
+      text: `Passeren baanvak ${st1.name} met actueel ${train.speed} km/h. ATB en veiligheidssystemen normaal. Dienstregeling op schema.`,
+      trainId: train.id,
+      trainNum: train.trainNum
+    },
+    // 3. Vertraging & kruising
+    {
+      type: 'trdl',
+      chan: 'GSM-R CH 18',
+      chanName: 'GSM-R VERKEERSLEIDING',
+      parties: `Verkeersleiding ${st1.name} ➔ Machinist ${op.code} #${train.trainNum}`,
+      text: train.statusType === 'delayed'
+        ? `We signaleren +${train.delayMin || 2}m vertraging. We laten u kruisen bij ${st2.name} op spoor 2, daarna vrije baan.`
+        : `Trein #${train.trainNum} rijdt exact op tijd door sector ${st1.code}. Rijweg voor u blijft open tot ${dest}.`,
+      trainId: train.id,
+      trainNum: train.trainNum
+    },
+    // 4. Baanvak & Veiligheid / Wissels
+    {
+      type: 'baanvak',
+      chan: 'BAANVAK',
+      chanName: 'PRO-RAIL BAANVAKBERICHT',
+      parties: `ProRail Verkeersleidingspost ➔ Baanvak ${corridor.shortName}`,
+      text: `Wisselcomplex nabij ${st1.name} gekeurd door Storingsdienst. Wisselverwarming en detectielussen operationeel. Normale seinen volgen.`,
+      trainId: train.id,
+      trainNum: train.trainNum
+    },
+    // 5. Stationsomroep
+    {
+      type: 'omroep',
+      chan: 'OMROEP',
+      chanName: 'STATIONSOMROEP',
+      parties: `Stationsomroep ${st1.name} ➔ Perron Spoor ${st1.sporen}`,
+      text: `Dames en heren, de ${op.name} trein #${train.trainNum} richting ${dest} vertrekt over circa 2 minuten vanaf spoor ${st1.sporen}. Vergeet niet in te checken.`,
+      trainId: train.id,
+      trainNum: train.trainNum
+    },
+    // 6. Conducteur gereedmelding
+    {
+      type: 'trdl',
+      chan: 'GSM-R LOKAAL',
+      chanName: 'GSM-R BOORDPERSOONEEL',
+      parties: `Hoofdconducteur Trein #${train.trainNum} ➔ Machinist`,
+      text: `Instapprocedure voltooid te ${st1.name}. Alle buitendeuren vergrendeld en vertreklicht gedoofd. We zijn vertrekbekwaam.`,
+      trainId: train.id,
+      trainNum: train.trainNum
+    }
+  ];
+
+  // Als er een pech-trein is, prioriteer alarm
+  if (train.statusType === 'pech') {
+    scenarios.unshift({
+      type: 'alarm',
+      chan: 'ALARM CH 18',
+      chanName: '🚨 GSM-R NOODOPROEP',
+      parties: `ALARM - Verkeersleider Post ${st1.name} ➔ Alle treinen`,
+      text: `Trein #${train.trainNum} (${op.code}) meldt stilstand / technische storing nabij ${st1.name}. Storingsmonteur ProRail onderweg. Nadering op zicht!`,
+      trainId: train.id,
+      trainNum: train.trainNum
+    });
+  }
+
+  const selectedScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+  addCommMessage(selectedScenario);
+}
+
+function initCommunicationEngine() {
+  // Initiële authentieke communicatieberichten laden
+  const seedMessages = [
+    {
+      type: 'trdl',
+      chan: 'GSM-R CH 18',
+      chanName: 'GSM-R CH 18 - TRDL',
+      parties: 'ProRail Post Utrecht (TRDL) ➔ Machinist NS IC #1754',
+      text: 'Rijweg naar spoor 4b Utrecht Centraal veilig vastgelegd. Sein 214 toont groen. Baanvaksnelheid 130 km/h vrijgegeven richting Amersfoort.',
+      trainNum: '1754'
+    },
+    {
+      type: 'baanvak',
+      chan: 'BAANVAK',
+      chanName: 'PRO-RAIL BAANVAKBERICHT',
+      parties: 'ProRail Incidentenbestrijding (ICB) ➔ Verkeersleiding',
+      text: 'Bovenleidingcontrole tussen Deventer en Olst afgerond. Geen bijzonderheden aangetroffen, normale dienstregeling actief.'
+    },
+    {
+      type: 'omroep',
+      chan: 'OMROEP',
+      chanName: 'STATIONSOMROEP',
+      parties: 'Stationsomroep Amersfoort Centraal ➔ Perron Spoor 1',
+      text: 'Dames en heren, de Intercity naar Den Haag Centraal van 20:41 vertrekt van spoor 1. Instappen is mogelijk.'
+    },
+    {
+      type: 'trdl',
+      chan: 'GSM-R CH 18',
+      chanName: 'GSM-R GOEDEREN',
+      parties: 'Post Kijfhoek ➔ Machinist DB Cargo Trein #60231',
+      text: 'Remproef akkoord bevonden op Kijfhoek spoor K08. Vertreksein naar de Betuweroute staat veilig richting Emmerich.',
+      trainNum: '60231'
+    }
+  ];
+
+  seedMessages.reverse().forEach(m => addCommMessage(m));
+
+  // Periodiek nieuwe levende communicatieberichten genereren (elke 8 - 14 seconden)
+  function scheduleNext() {
+    const delay = 8000 + Math.floor(Math.random() * 6000);
+    setTimeout(() => {
+      try {
+        generateLiveRailwayMessage();
+      } catch (err) {
+        console.warn('Comm engine error:', err);
+      }
+      scheduleNext();
+    }, delay);
+  }
+
+  scheduleNext();
+}
+
+// =============================================================
 // 10. Live GPS: "In Welke Trein Zit Ik?" & "Waar Ben Ik?"
 // =============================================================
 function findMyTrain() {
@@ -2118,9 +2470,59 @@ function setupNavigation() {
     }
   });
 
+  // Live Communicatiescherm Knoppen
+  document.getElementById('btnOpenCommScreen')?.addEventListener('click', () => {
+    window.openCommScreen();
+  });
+  document.getElementById('btnFloatingComm')?.addEventListener('click', () => {
+    window.openCommScreen();
+  });
+
+  // Sluit Communicatiemodal
+  document.getElementById('btnCloseCommModal')?.addEventListener('click', () => {
+    const modal = document.getElementById('commModal');
+    if (modal) modal.style.display = 'none';
+  });
+
+  document.getElementById('commModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'commModal') {
+      e.target.style.display = 'none';
+    }
+  });
+
+  // Communicatie Audio Toggle
+  document.getElementById('btnCommSoundToggle')?.addEventListener('click', () => {
+    appState.commSoundEnabled = !appState.commSoundEnabled;
+    const btn = document.getElementById('btnCommSoundToggle');
+    const icon = document.getElementById('commSoundIcon');
+    if (btn) btn.classList.toggle('active', appState.commSoundEnabled);
+    if (icon) icon.textContent = appState.commSoundEnabled ? '🔊' : '🔇';
+    if (appState.commSoundEnabled) playAuthenticRadioBeep();
+  });
+
+  // Communicatie Filterknoppen
+  document.querySelectorAll('.comm-filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.comm-filter-btn').forEach(b => b.classList.remove('active'));
+      const target = e.currentTarget;
+      target.classList.add('active');
+      appState.commActiveFilter = target.getAttribute('data-filter');
+      renderCommMessages();
+    });
+  });
+
+  // Wis Communicatielog
+  document.getElementById('btnClearCommLog')?.addEventListener('click', () => {
+    appState.commMessages = [];
+    updateCommCounters();
+    renderCommMessages();
+  });
+
   // ESC toets sluit modals
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      const commModal = document.getElementById('commModal');
+      if (commModal) commModal.style.display = 'none';
       const stModal = document.getElementById('stationModal');
       if (stModal) stModal.style.display = 'none';
       const myTrainModal = document.getElementById('myTrainModal');
@@ -2146,6 +2548,7 @@ function setupNavigation() {
 async function init() {
   initMap();
   setupNavigation();
+  initCommunicationEngine();
 
   populateLineButtons('ns');
   const defaultCorridor = CORRIDORS['enschede-denhaag'];

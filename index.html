@@ -113,8 +113,14 @@
         </nav>
       </div>
 
-      <!-- Live GPS "In welke trein zit ik?" & Audio Knoppen -->
+      <!-- Live GPS "In welke trein zit ik?", Live Communicatie & Audio Knoppen -->
       <div class="header-audio-controls">
+        <button id="btnOpenCommScreen" class="btn-comm-screen" type="button" title="Open het live spoorweg communicatie- en mobilofoonscherm">
+          <span class="comm-radio-icon">📻</span>
+          <span class="comm-live-dot">●</span>
+          <span class="comm-btn-label">Live Spoor Communicatie</span>
+          <span id="commUnreadBadge" class="comm-unread-badge">3</span>
+        </button>
         <button id="btnFindMyTrain" class="btn-find-my-train" type="button" title="Vind automatisch de trein waarin u nu zit met live GPS">
           <span class="gps-icon-animated">📍</span>
           <span class="find-train-label">Waar ben ik? (Mijn Trein)</span>
@@ -183,10 +189,13 @@
         </button>
       </div>
 
-      <!-- Meldingen/Storingen op dit traject -->
-      <div id="corridorAlertBox" class="corridor-alert-box ok">
-        <span class="alert-icon">ℹ️</span>
-        <span id="corridorAlertText">Actuele dienstregeling: treinen rijden volgens schema op deze lijn.</span>
+      <!-- Meldingen & Live Communicatie op dit traject -->
+      <div id="corridorAlertBox" class="corridor-alert-box ok" onclick="window.openCommScreen()" role="button" tabindex="0" title="Tik om het live communicatiescherm te openen">
+        <div class="comm-ticker-header">
+          <span class="comm-live-indicator">● GSM-R LIVE COMMUNICATIE</span>
+          <span id="commTickerTime" class="comm-ticker-time">Zojuist</span>
+        </div>
+        <div id="corridorAlertText" class="comm-ticker-text">ProRail Verkeersleiding: Baanvak Enschede - Den Haag operationeel volgens dienstregeling.</div>
       </div>
 
       <!-- De Schematische Lijnstrip (Station naar Station met rijdende treinen) -->
@@ -235,6 +244,7 @@
       <div class="map-floating-bar">
         <div class="map-type-buttons">
           <button id="btnFloatingFindTrain" class="map-chip gps-chip" type="button" title="Vind live mijn trein via GPS">📍 Waar ben ik?</button>
+          <button id="btnFloatingComm" class="map-chip" type="button" title="Open live spoorweg communicatiescherm" style="border-color: #38bdf8; color: #38bdf8;">📻 Communicatie</button>
           <button id="btnToggleLabelDensity" class="map-chip" type="button" title="Wissel labelweergave om overlappende teksten van treinen te voorkomen">🏷️ Labels: Slim (Anti-Chaos)</button>
           <button id="btnSatEsri" class="map-chip active" type="button">🛰️ Echte Satelliet (Esri)</button>
           <button id="btnSatPdok" class="map-chip" type="button">🇳🇱 Luchtfoto Nederland (PDOK)</button>
@@ -375,6 +385,54 @@
             Tik met je vinger op een trein om deze direct live op de satelliet te volgen.
           </span>
         </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- SPOORWEG COMMUNICATIE & MEDEDELINGEN SCHERM (Echte levende spoorwegcommunicatie) -->
+  <aside id="commModal" class="comm-modal" role="dialog" aria-modal="true" aria-labelledby="commModalTitle" style="display: none;">
+    <div class="comm-dialog">
+      <div class="comm-dialog-header">
+        <div class="comm-header-left">
+          <div class="comm-scanner-icon">📻</div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h3 id="commModalTitle" class="comm-modal-title">Live Spoor Communicatie &amp; Mededelingen</h3>
+              <span class="comm-live-tag">● LIVE GSM-R</span>
+            </div>
+            <span class="comm-modal-sub">ProRail Verkeersleiding &bull; Kanaal 18 TRDL &bull; Machinisten &bull; Stationsomroep</span>
+          </div>
+        </div>
+        <div class="comm-header-actions">
+          <button id="btnCommSoundToggle" class="comm-ctrl-btn active" type="button" title="Radio squelch / microfoon piep aan/uit">
+            <span id="commSoundIcon">🔊</span> Radio Audio
+          </button>
+          <button id="btnCloseCommModal" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
+        </div>
+      </div>
+
+      <!-- Filterknoppen voor communicatietypes -->
+      <div class="comm-filter-strip">
+        <button class="comm-filter-btn active" data-filter="all" type="button">📡 Alle Berichten (<span id="countCommAll">0</span>)</button>
+        <button class="comm-filter-btn" data-filter="trdl" type="button">🚦 Verkeersleiding &amp; GSM-R (<span id="countCommTrdl">0</span>)</button>
+        <button class="comm-filter-btn" data-filter="baanvak" type="button">📢 Baanvak &amp; Storingen (<span id="countCommBaanvak">0</span>)</button>
+        <button class="comm-filter-btn" data-filter="omroep" type="button">🚉 Stationsomroep (<span id="countCommOmroep">0</span>)</button>
+      </div>
+
+      <!-- Het Actieve Communicatiescherm (Console log) -->
+      <div class="comm-dialog-body">
+        <div id="commMessagesStream" class="comm-messages-stream">
+          <!-- Dynamisch gevuld met levende spoorberichten -->
+        </div>
+      </div>
+
+      <!-- Console Footer -->
+      <div class="comm-dialog-footer">
+        <div class="comm-footer-status">
+          <span class="live-dot-pulse">●</span>
+          <span>Frequentie: GSM-R 921.2 MHz &bull; Verkeersleiding ProRail &bull; Status: Real-time actief</span>
+        </div>
+        <button id="btnClearCommLog" class="btn btn-secondary btn-sm" type="button">🗑️ Wis Scherm</button>
       </div>
     </div>
   </aside>
