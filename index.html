@@ -36,102 +36,90 @@
     </div>
   </aside>
 
-  <!-- Hoofdbalk: Titel, Categorieën, Lijnkiezer & Geluid -->
+  <!-- Hoofdbalk: Schoon, Compact & Overzichtelijk (Eén slanke werkbalk) -->
   <header class="app-header">
     <div class="header-main-row">
+      <!-- Brand Logo -->
       <div class="brand-box">
-        <div class="ns-badge">PRO-RAIL &bull; NL</div>
-        <div>
-          <h1 class="brand-heading">&lt;treinen&gt;</h1>
-          <p class="brand-subheading">Alle Spoorwegmaatschappijen &bull; Goederen &bull; Internationaal &bull; Live Snelheden</p>
-        </div>
+        <div class="ns-badge">PRO-RAIL</div>
+        <h1 class="brand-heading">&lt;treinen&gt;</h1>
       </div>
 
-      <!-- Navigatie: Categorieën en Lijnkiezer -->
-      <div class="header-nav-container">
-        <!-- Weergavekeuze: Alle Treinen in Heel NL vs Traject per Maatschappij -->
-        <div class="view-mode-bar" role="toolbar" aria-label="Weergavekeuze spoornet">
-          <button id="btnViewAllNL" class="view-mode-btn" type="button" title="Toon alle treinen in heel Nederland van alle maatschappijen tegelijk">
-            <span>🌐 Alle Treinen (Heel Nederland)</span>
-          </button>
-
-          <div class="traject-dropdown-container">
-            <label for="trajectSelect" class="traject-select-label">📍 Trajectkeuze:</label>
-            <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject">
-              <option value="all">🌐 Heel Nederland (Alle treinen &amp; alle maatschappijen)</option>
-              <optgroup label="🚆 NS Reizigers Hoofdlijnen">
-                <option value="enschede-denhaag" selected>NS &bull; Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag C</option>
-                <option value="amsterdam-maastricht">NS &bull; Amsterdam C ➔ Utrecht ➔ Eindhoven ➔ Maastricht</option>
-                <option value="rotterdam-amsterdam">NS &bull; Rotterdam C ➔ Schiphol ➔ Amsterdam C</option>
-                <option value="groningen-utrecht">NS &bull; Groningen / Leeuwarden ➔ Zwolle ➔ Utrecht C</option>
-                <option value="vlissingen-eindhoven">NS &bull; Vlissingen ➔ Breda ➔ Tilburg ➔ Eindhoven C</option>
-              </optgroup>
-              <optgroup label="🚊 Regionaal (Arriva &bull; Blauwnet &bull; Qbuzz &bull; Keolis)">
-                <option value="arriva-vechtdal">Arriva &bull; Vechtdallijnen (Zwolle ➔ Emmen)</option>
-                <option value="arriva-noord">Arriva &bull; Noordelijke Lijnen (Leeuwarden ➔ Groningen)</option>
-                <option value="arriva-maaslijn">Arriva &bull; Maaslijn (Nijmegen ➔ Venlo ➔ Roermond)</option>
-                <option value="arriva-drielanden">Arriva &bull; Drielandentrein (Luik ➔ Maastricht ➔ Aken)</option>
-                <option value="keolis-zwolle">Blauwnet / Keolis &bull; Enschede ➔ Almelo ➔ Zwolle</option>
-                <option value="qbuzz-merwede">Qbuzz &bull; MerwedeLingelijn (Dordrecht ➔ Geldermalsen)</option>
-              </optgroup>
-              <optgroup label="⚡ Internationaal (Eurostar &bull; ICE &bull; Intercity Berlijn)">
-                <option value="eurostar-hsl">Eurostar HSL &bull; Amsterdam ➔ Brussel / Parijs</option>
-                <option value="ice-international">ICE International &bull; Amsterdam ➔ Frankfurt</option>
-                <option value="ic-berlijn">Intercity Berlijn &bull; Amsterdam ➔ Berlijn</option>
-              </optgroup>
-              <optgroup label="🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; Rail Force One &bull; Lineas)">
-                <option value="betuweroute">Betuweroute &bull; Rotterdam Haven ➔ Kijfhoek ➔ Zevenaar</option>
-                <option value="brabant-goederen">Brabantroute Goederen &bull; Kijfhoek ➔ Venlo Grens</option>
-                <option value="havenlijn-twente">Havenspoorlijn &bull; Waalhaven ➔ Bad Bentheim</option>
-              </optgroup>
-            </select>
-          </div>
-        </div>
-
-        <!-- Categorie Tabs -->
-        <div class="category-tabs" role="tablist" aria-label="Spoorwegcategorieën">
-          <button class="cat-tab-btn active" data-category="ns" type="button" role="tab">
-            <span>🚆 NS Reizigers</span>
-          </button>
-          <button class="cat-tab-btn" data-category="regional" type="button" role="tab">
-            <span>🚊 Regionaal (Arriva &bull; Blauwnet &bull; Qbuzz)</span>
-          </button>
-          <button class="cat-tab-btn" data-category="international" type="button" role="tab">
-            <span>⚡ Internationaal (Eurostar &bull; ICE &bull; Berlijn)</span>
-          </button>
-          <button class="cat-tab-btn" data-category="freight" type="button" role="tab">
-            <span>🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; RFO)</span>
-          </button>
-          <button class="cat-tab-btn" data-category="all" type="button" role="tab">
-            <span>🇳🇱 Heel Nederland (Satelliet Radar)</span>
-          </button>
-        </div>
-
-        <!-- Lijnkeuze Knoppen (dynamisch gefilterd of direct aanklikbaar) -->
-        <nav id="lineSelectorNav" class="line-selector-nav" aria-label="Kies spoorlijn">
-          <!-- Dynamisch opgebouwd in app.js -->
-        </nav>
+      <!-- Centraal Traject Dropdown Menu (Geen rijen vol knoppen meer) -->
+      <div class="traject-dropdown-container">
+        <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject of heel Nederland">
+          <option value="all">🌐 Heel Nederland — Alle treinen van alle maatschappijen</option>
+          <optgroup label="🚆 NS Reizigers Hoofdlijnen">
+            <option value="enschede-denhaag" selected>NS &bull; Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag C</option>
+            <option value="amsterdam-maastricht">NS &bull; Amsterdam C ➔ Utrecht ➔ Eindhoven ➔ Maastricht</option>
+            <option value="rotterdam-amsterdam">NS &bull; Rotterdam C ➔ Schiphol ➔ Amsterdam C</option>
+            <option value="groningen-utrecht">NS &bull; Groningen / Leeuwarden ➔ Zwolle ➔ Utrecht C</option>
+            <option value="vlissingen-eindhoven">NS &bull; Vlissingen ➔ Breda ➔ Tilburg ➔ Eindhoven C</option>
+          </optgroup>
+          <optgroup label="🚊 Regionaal (Arriva &bull; Blauwnet &bull; Qbuzz &bull; Keolis)">
+            <option value="arriva-vechtdal">Arriva &bull; Vechtdallijnen (Zwolle ➔ Emmen)</option>
+            <option value="arriva-noord">Arriva &bull; Noordelijke Lijnen (Leeuwarden ➔ Groningen)</option>
+            <option value="arriva-maaslijn">Arriva &bull; Maaslijn (Nijmegen ➔ Venlo ➔ Roermond)</option>
+            <option value="arriva-drielanden">Arriva &bull; Drielandentrein (Luik ➔ Maastricht ➔ Aken)</option>
+            <option value="keolis-zwolle">Blauwnet / Keolis &bull; Enschede ➔ Almelo ➔ Zwolle</option>
+            <option value="qbuzz-merwede">Qbuzz &bull; MerwedeLingelijn (Dordrecht ➔ Geldermalsen)</option>
+          </optgroup>
+          <optgroup label="⚡ Internationaal (Eurostar &bull; ICE &bull; Intercity Berlijn)">
+            <option value="eurostar-hsl">Eurostar HSL &bull; Amsterdam ➔ Brussel / Parijs</option>
+            <option value="ice-international">ICE International &bull; Amsterdam ➔ Frankfurt</option>
+            <option value="ic-berlijn">Intercity Berlijn &bull; Amsterdam ➔ Berlijn</option>
+          </optgroup>
+          <optgroup label="🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; Rail Force One &bull; Lineas)">
+            <option value="betuweroute">Betuweroute &bull; Rotterdam Haven ➔ Kijfhoek ➔ Zevenaar</option>
+            <option value="brabant-goederen">Brabantroute Goederen &bull; Kijfhoek ➔ Venlo Grens</option>
+            <option value="havenlijn-twente">Havenspoorlijn &bull; Waalhaven ➔ Bad Bentheim</option>
+          </optgroup>
+        </select>
       </div>
 
-      <!-- Live GPS "In welke trein zit ik?", Live Communicatie & Audio Knoppen -->
-      <div class="header-audio-controls">
-        <button id="btnOpenCommScreen" class="btn-comm-screen" type="button" title="Open het live spoorweg communicatie- en mobilofoonscherm">
-          <span class="comm-radio-icon">📻</span>
-          <span class="comm-live-dot">●</span>
-          <span class="comm-btn-label">Live Spoor Communicatie</span>
+      <!-- Rechter Bediening: Compacte Knoppen -->
+      <div class="header-tools-row">
+        <!-- Live Spoor Communicatie Knop -->
+        <button id="btnOpenCommScreen" class="header-action-btn comm-btn" type="button" title="Live Spoor Communicatie (GSM-R)">
+          <span class="btn-icon">📻</span>
+          <span class="btn-label-text">Radio</span>
           <span id="commUnreadBadge" class="comm-unread-badge">3</span>
         </button>
-        <button id="btnFindMyTrain" class="btn-find-my-train" type="button" title="Vind automatisch de trein waarin u nu zit met live GPS">
-          <span class="gps-icon-animated">📍</span>
-          <span class="find-train-label">Waar ben ik? (Mijn Trein)</span>
+
+        <!-- Waar ben ik? GPS Knop -->
+        <button id="btnFindMyTrain" class="header-action-btn gps-btn" type="button" title="Vind live mijn trein via GPS">
+          <span class="btn-icon">📍</span>
+          <span class="btn-label-text">Mijn Trein</span>
         </button>
-        <button id="btnPlayChime" class="btn-chime" type="button" title="Speel de authentieke 3-tonige NS stationsgong af">
-          <span class="chime-icon">🔔</span>
-          <span>NS Gong</span>
+
+        <!-- NS Gong Knop -->
+        <button id="btnPlayChime" class="header-action-btn chime-btn" type="button" title="Speel de authentieke 3-tonige NS stationsgong af">
+          <span class="btn-icon">🔔</span>
         </button>
-        <button id="btnAudioToggle" class="btn-audio-toggle active" type="button" title="Geluidssignalen aan/uit">
-          <span id="audioStatusText">🔊 Geluid: Aan</span>
+
+        <!-- Geluid Toggle Knop -->
+        <button id="btnAudioToggle" class="header-action-btn audio-btn active" type="button" title="Geluidssignalen aan/uit">
+          <span id="audioStatusText">🔊</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Onzichtbare compatibiliteitscontainers voor achterwaartse compatibiliteit -->
+    <div style="display: none;" aria-hidden="true">
+      <button id="btnViewAllNL" type="button"></button>
+      <button id="btnFloatingFindTrain" type="button"></button>
+      <button id="btnFloatingComm" type="button"></button>
+      <button id="btnToggleLabelDensity" type="button"></button>
+      <button id="btnSatEsri" type="button"></button>
+      <button id="btnSatPdok" type="button"></button>
+      <button id="btnMapDark" type="button"></button>
+      <div id="lineSelectorNav"></div>
+      <div class="category-tabs">
+        <button class="cat-tab-btn" data-category="ns"></button>
+        <button class="cat-tab-btn" data-category="regional"></button>
+        <button class="cat-tab-btn" data-category="international"></button>
+        <button class="cat-tab-btn" data-category="freight"></button>
+        <button class="cat-tab-btn" data-category="all"></button>
       </div>
     </div>
   </header>
@@ -152,16 +140,23 @@
   <!-- Hoofdvenster: Split Screen (Lijnstrip links & Echte Satelliet rechts) -->
   <div id="mainLayout" class="main-layout">
 
-    <!-- LINKERPANEEL: Het Overzichtelijke Lijnoverzicht (Enschede tot Eindpunt) -->
+    <!-- LINKERPANEEL: Het Overzichtelijke Lijnoverzicht (Minimaliseerbaar) -->
     <section class="corridor-panel" aria-label="Lijnoverzicht">
       <div class="corridor-header">
         <div class="corridor-title-row">
-          <h2 id="corridorTitle" class="corridor-title">Lijn: Enschede ➔ Den Haag Centraal</h2>
-          <span id="corridorPunctualityBadge" class="status-badge green">🟢 91% Op tijd</span>
-        </div>
-        <div class="corridor-info-row">
-          <span id="corridorRouteMeta">Lengte: 185 km &bull; Tussenstations: 12 &bull; Vervoerder: NS</span>
-          <span id="corridorLiveCount">Actieve treinen op dit traject: <strong>Laden...</strong></span>
+          <div class="corridor-title-col">
+            <h2 id="corridorTitle" class="corridor-title">Lijn: Enschede ➔ Den Haag Centraal</h2>
+            <div class="corridor-info-sub">
+              <span id="corridorRouteMeta">Lengte: 185 km &bull; NS</span> &bull; 
+              <span id="corridorLiveCount">Laden...</span>
+            </div>
+          </div>
+          <div class="corridor-header-actions">
+            <span id="corridorPunctualityBadge" class="status-badge green">🟢 91%</span>
+            <button id="btnToggleCorridorPanel" class="btn-minimize-panel" type="button" title="Minimaliseer lijnoverzicht voor volledig satellietbeeld">
+              ◀ Minimaliseer
+            </button>
+          </div>
         </div>
       </div>
 
@@ -169,7 +164,7 @@
       <div class="status-filter-bar" role="toolbar" aria-label="Statusoverzicht alle maatschappijen">
         <button id="btnFilterAll" class="status-filter-btn active" data-filter="all" type="button" title="Toon het rustige station-voor-station lijnoverzicht">
           <span class="status-indicator-dot all">●</span>
-          <span class="status-btn-text">Lijnoverzicht</span>
+          <span class="status-btn-text">Lijn</span>
           <span id="badgeCountAll" class="status-pill-badge">0</span>
         </button>
         <button id="btnFilterOntime" class="status-filter-btn btn-ontime" data-filter="ontime" type="button" title="Toon alle treinen die op tijd rijden van alle maatschappijen">
@@ -184,7 +179,7 @@
         </button>
         <button id="btnFilterPech" class="status-filter-btn btn-pech" data-filter="pech" type="button" title="Toon alle treinen met pech, storing of stilstand van alle maatschappijen">
           <span class="status-indicator-dot pech">●</span>
-          <span class="status-btn-text">Pech / Gestrand</span>
+          <span class="status-btn-text">Pech</span>
           <span id="badgeCountPech" class="status-pill-badge">0</span>
         </button>
       </div>
@@ -200,19 +195,6 @@
 
       <!-- De Schematische Lijnstrip (Station naar Station met rijdende treinen) -->
       <div class="line-diagram-container">
-        <div class="diagram-legend">
-          <span>⚡ &gt;100 km/u</span>
-          <span>🟢 60-100 km/u</span>
-          <span>🟡 15-60 km/u</span>
-          <span>🔴 Stilstand</span>
-          <span style="opacity: 0.6;">|</span>
-          <span title="NS Reizigers">🟡 NS</span>
-          <span title="Arriva">🔵 Arriva</span>
-          <span title="Blauwnet / Keolis">🔷 Blauwnet</span>
-          <span title="Eurostar">🔴 Eurostar</span>
-          <span title="ICE International">⚪ ICE</span>
-          <span title="DB Cargo / Rail Force One">🟠 Goederen</span>
-        </div>
         <div id="lineDiagram" class="line-diagram">
           <!-- Dynamisch gegenereerd vanuit actuele GPS data -->
         </div>
@@ -238,20 +220,33 @@
       </div>
     </section>
 
-    <!-- RECHTERPANEEL: De Echte Satellietkaart van Nederland (Schoon & Geen Chaos) -->
+    <!-- RECHTERPANEEL: De Echte Satellietkaart van Nederland (Schoon & Minimaliseerbaar) -->
     <section class="map-panel" aria-label="Satellietkaart">
-      <!-- Zwevende Kaartbalk -->
+      <!-- Zwevende knop om Lijnoverzicht weer te openen als het geminimaliseerd is -->
+      <button id="btnFloatingExpandPanel" class="floating-expand-btn" type="button" title="Open lijnoverzicht &amp; stations" style="display: none;">
+        <span>📋 Lijnoverzicht</span>
+      </button>
+
+      <!-- Schone, compacte kaartbalk (Dropdown menu's i.p.v. 6 brede knoppen) -->
       <div class="map-floating-bar">
-        <div class="map-type-buttons">
-          <button id="btnFloatingFindTrain" class="map-chip gps-chip" type="button" title="Vind live mijn trein via GPS">📍 Waar ben ik?</button>
-          <button id="btnFloatingComm" class="map-chip" type="button" title="Open live spoorweg communicatiescherm" style="border-color: #38bdf8; color: #38bdf8;">📻 Communicatie</button>
-          <button id="btnToggleLabelDensity" class="map-chip" type="button" title="Wissel labelweergave om overlappende teksten van treinen te voorkomen">🏷️ Labels: Slim (Anti-Chaos)</button>
-          <button id="btnSatEsri" class="map-chip active" type="button">🛰️ Echte Satelliet (Esri)</button>
-          <button id="btnSatPdok" class="map-chip" type="button">🇳🇱 Luchtfoto Nederland (PDOK)</button>
-          <button id="btnMapDark" class="map-chip" type="button">🌙 Nacht Radar</button>
+        <div class="map-dropdown-controls">
+          <!-- Kaartlaag Dropdown -->
+          <select id="mapLayerSelect" class="map-header-dropdown" aria-label="Kies kaartweergave">
+            <option value="esri" selected>🛰️ Satelliet (Esri)</option>
+            <option value="pdok">🇳🇱 Luchtfoto (PDOK)</option>
+            <option value="dark">🌙 Nacht Radar</option>
+          </select>
+
+          <!-- Label Weergave Dropdown (Anti-Chaos) -->
+          <select id="labelDensitySelect" class="map-header-dropdown" aria-label="Kies labelweergave">
+            <option value="smart" selected>🏷️ Labels: Slim</option>
+            <option value="compact">🏷️ Labels: Compact</option>
+            <option value="full">🏷️ Labels: Alles</option>
+          </select>
         </div>
+
         <div class="map-search-box">
-          <input type="text" id="trainSearchInput" placeholder="🔍 Zoek treinnummer..." autocomplete="off">
+          <input type="text" id="trainSearchInput" placeholder="🔍 Trein..." autocomplete="off">
         </div>
       </div>
 

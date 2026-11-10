@@ -800,6 +800,18 @@ function initMap() {
     }
   });
 
+  // Dropdown menu's voor kaartweergave en labels
+  document.getElementById('mapLayerSelect')?.addEventListener('change', (e) => {
+    switchLayer(e.target.value);
+  });
+
+  document.getElementById('labelDensitySelect')?.addEventListener('change', (e) => {
+    appState.labelMode = e.target.value;
+    if (appState.lastRenderedTrains && appState.lastRenderedTrains.length > 0) {
+      renderMapTrains(appState.lastRenderedTrains);
+    }
+  });
+
   document.getElementById('btnSatEsri')?.addEventListener('click', () => switchLayer('esri'));
   document.getElementById('btnSatPdok')?.addEventListener('click', () => switchLayer('pdok'));
   document.getElementById('btnMapDark')?.addEventListener('click', () => switchLayer('dark'));
@@ -815,6 +827,12 @@ function switchLayer(name) {
   });
   appState.layers[name].addTo(map);
   appState.baseLayer = name;
+
+  // Sync de kaartlaag dropdown
+  const select = document.getElementById('mapLayerSelect');
+  if (select && select.value !== name) {
+    select.value = name;
+  }
 
   ['btnSatEsri', 'btnSatPdok', 'btnMapDark'].forEach(id => {
     document.getElementById(id)?.classList.remove('active');
@@ -2237,6 +2255,12 @@ function toggleLabelDensity() {
     }
   }
 
+  // Sync de label dropdown
+  const select = document.getElementById('labelDensitySelect');
+  if (select && select.value !== nextMode) {
+    select.value = nextMode;
+  }
+
   if (appState.lastRenderedTrains && appState.lastRenderedTrains.length > 0) {
     renderMapTrains(appState.lastRenderedTrains);
   }
@@ -2432,9 +2456,42 @@ function setupNavigation() {
   document.getElementById('btnAudioToggle')?.addEventListener('click', () => {
     appState.soundEnabled = !appState.soundEnabled;
     const btn = document.getElementById('btnAudioToggle');
-    btn.classList.toggle('active', appState.soundEnabled);
-    document.getElementById('audioStatusText').textContent = appState.soundEnabled ? '🔊 Geluid: Aan' : '🔇 Geluid: Uit';
+    btn?.classList.toggle('active', appState.soundEnabled);
+    const audioText = document.getElementById('audioStatusText');
+    if (audioText) audioText.textContent = appState.soundEnabled ? '🔊' : '🔇';
     if (appState.soundEnabled) playAuthenticNSChime();
+  });
+
+  // Lijnoverzicht minimaliseren en uitklappen (voor iPad, iPhone en laptops)
+  function toggleCorridorPanel(forceState) {
+    const layout = document.getElementById('mainLayout');
+    const btnToggle = document.getElementById('btnToggleCorridorPanel');
+    const btnFloating = document.getElementById('btnFloatingExpandPanel');
+    if (!layout) return;
+
+    const shouldCollapse = forceState !== undefined ? forceState : !layout.classList.contains('panel-collapsed');
+
+    if (shouldCollapse) {
+      layout.classList.add('panel-collapsed');
+      if (btnToggle) btnToggle.textContent = '▶ Uitklappen';
+      if (btnFloating) btnFloating.style.display = 'inline-flex';
+    } else {
+      layout.classList.remove('panel-collapsed');
+      if (btnToggle) btnToggle.textContent = '◀ Minimaliseer';
+      if (btnFloating) btnFloating.style.display = 'none';
+    }
+
+    if (appState.map) {
+      setTimeout(() => appState.map.invalidateSize(), 220);
+    }
+  }
+
+  document.getElementById('btnToggleCorridorPanel')?.addEventListener('click', () => {
+    toggleCorridorPanel();
+  });
+
+  document.getElementById('btnFloatingExpandPanel')?.addEventListener('click', () => {
+    toggleCorridorPanel(false);
   });
 
   // Station Vertrekstaat Modal Sluiten
