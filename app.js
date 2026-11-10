@@ -1,98 +1,58 @@
 import { TreinenWasmBridge } from './wasm_bridge.js';
 
-// Global App State
-const state = {
+// Global State
+const appState = {
   bridge: new TreinenWasmBridge(),
-  currentVersion: null,
-  latestVersion: null,
-  updateAvailable: false,
+  map: null,
+  activeBaseLayer: 'esri',
+  layers: {},
+  trains: new Map(), // key: matnummer of id, value: TrainObject
   selectedTrainId: null,
-  simSpeed: 1.0,
-  isPaused: false,
-  isNightMode: false,
-  soundEnabled: true,
+  isFollowingTrain: false,
+  activeOperatorFilter: 'all',
+  searchQuery: '',
+  scannerEnabled: true,
   audioCtx: null,
-  canvas: null,
-  ctx: null,
-  lastFrameTime: performance.now()
+  currentChannel: 'all',
+  lastRadioMsgTime: 0
 };
 
 // -------------------------------------------------------------
-// 1. Automatische Versiedetectie & Service Worker Lifecycle
+// 1. Automatische Versiedetectie
 // -------------------------------------------------------------
-async function initVersionDetection() {
-  const versionBadge = document.getElementById('versionBadge');
-  const updateBanner = document.getElementById('updateBanner');
-  const updateBannerText = document.getElementById('updateBannerText');
-  const btnReloadUpdate = document.getElementById('btnReloadUpdate');
-  const btnDismissUpdate = document.getElementById('btnDismissUpdate');
+async function initVersionCheck() {
+  const banner = document.getElementById('updateBanner');
+  const bannerText = document.getElementById('updateBannerText');
+  const btnReload = document.getElementById('btnReloadUpdate');
+  const btnDismiss = document.getElementById('btnDismissUpdate');
 
-  // Haal initiële lokale versie op
+  let currentVersion = null;
   try {
     const res = await fetch('./version.json?_t=' + Date.now(), { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      state.currentVersion = data;
-      localStorage.setItem('treinen_active_version', JSON.stringify(data));
-      if (versionBadge) {
-        versionBadge.textContent = `v${data.version} (${data.commit})`;
-        versionBadge.title = `Gebouwd op: ${data.buildTime} | Branch: ${data.branch}`;
-      }
-      console.log('📦 Huidige applicatieversie:', data.version, data.commit);
-    }
-  } catch (e) {
-    console.warn('Kon lokale version.json niet laden:', e);
-  }
+    if (res.ok) currentVersion = await res.json();
+  } catch (e) {}
 
-  // Functie om te controleren op nieuwere versies op de server
-  async function checkForUpdates() {
+  async function checkRemote() {
     try {
-      const res = await fetch('./version.json?_t=' + Date.now(), { credentials: 'omit', cache: 'no-store' });
+      const res = await fetch('./version.json?_t=' + Date.now(), { cache: 'no-store' });
       if (!res.ok) return;
-      const remoteData = await res.json();
-
-      if (state.currentVersion && (remoteData.version !== state.currentVersion.version || remoteData.commit !== state.currentVersion.commit)) {
-        console.log('🚀 Nieuwe versie gedetecteerd!', remoteData);
-        state.latestVersion = remoteData;
-        state.updateAvailable = true;
-
-        if (updateBanner && updateBannerText) {
-          updateBannerText.innerHTML = `<strong>Nieuwe versie beschikbaar!</strong> Versie <code>v${remoteData.version}</code> (commit <code>${remoteData.commit}</code>) is gepubliceerd.`;
-          updateBanner.classList.add('visible');
-        }
-
-        if (versionBadge) {
-          versionBadge.classList.add('update-ready');
-          versionBadge.textContent = `⚠️ Update naar v${remoteData.version}`;
+      const remote = await res.json();
+      if (currentVersion && (remote.version !== currentVersion.version || remote.commit !== currentVersion.commit)) {
+        if (banner && bannerText) {
+          bannerText.innerHTML = `<strong>Nieuwe versie beschikbaar!</strong> Versie <code>v${remote.version}</code> (commit <code>${remote.commit}</code>) is gepubliceerd.`;
+          banner.classList.add('visible');
         }
       }
-    } catch (err) {
-      console.debug('Achtergrond controle versie overgeslagen:', err);
-    }
+    } catch (e) {}
   }
 
-  // Controleer direct bij laden
-  checkForUpdates();
-
-  // Controleer elke 30 seconden automatisch
-  setInterval(checkForUpdates, 30000);
-
-  // Controleer wanneer het tabblad weer actief wordt
+  setInterval(checkRemote, 30000);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      checkForUpdates();
-    }
+    if (document.visibilityState === 'visible') checkRemote();
   });
 
-  // Knoppen in update banner
-  if (btnReloadUpdate) {
-    btnReloadUpdate.addEventListener('click', async () => {
-      btnReloadUpdate.textContent = 'Bezig met bijwerken...';
-      // Vertel eventuele service worker om te updaten
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ action: 'SKIP_WAITING' });
-      }
-      // Leeg browser caches en herlaad hard
+  if (btnReload) {
+    btnReload.addEventListener('click', async () => {
       if ('caches' in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
@@ -100,644 +60,614 @@ async function initVersionDetection() {
       window.location.reload();
     });
   }
-
-  if (btnDismissUpdate) {
-    btnDismissUpdate.addEventListener('click', () => {
-      updateBanner.classList.remove('visible');
-    });
-  }
-
-  // Service Worker registreren voor offline PWA & cache updates
-  if ('serviceWorker' in navigator) {
-    try {
-      const reg = await navigator.serviceWorker.register('./sw.js');
-      console.log('🚆 Service Worker geregistreerd met scope:', reg.scope);
-
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            checkForUpdates();
-          }
-        });
-      });
-    } catch (swErr) {
-      console.warn('Service worker registratie overgeslagen:', swErr);
-    }
+  if (btnDismiss) {
+    btnDismiss.addEventListener('click', () => banner.classList.remove('visible'));
   }
 }
 
 // -------------------------------------------------------------
-// 2. Web Audio Geluidseffecten
+// 2. Leaflet Satelliet Kaart & Spoorinfrastructuur Setup
+// -------------------------------------------------------------
+function initMap() {
+  // Kaart gecentreerd op Nederland
+  const map = L.map('map', {
+    center: [52.1326, 5.2913],
+    zoom: 8,
+    minZoom: 7,
+    maxZoom: 18,
+    zoomControl: false
+  });
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  // Satelliet Kaartlagen
+  // 1. Esri World Imagery (Hoge resolutie wereldwijde satellietbeelden)
+  const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri &bull; Maxar, Earthstar Geographics',
+    maxZoom: 19
+  });
+
+  // 2. PDOK Luchtfoto Nederland (Officiële 8cm/25cm overheid luchtfoto)
+  const pdokSat = L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg', {
+    attribution: '&copy; PDOK &bull; Kadaster Luchtfoto Nederland',
+    maxZoom: 19
+  });
+
+  // 3. CartoDB Dark (Nacht Radar)
+  const darkMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; CartoDB &bull; OpenStreetMap',
+    maxZoom: 19
+  });
+
+  // 4. OpenRailwayMap Sporen Overlay (Alle echte sporen, seinen en wissels in Nederland)
+  const railwayOverlay = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenRailwayMap &bull; OpenStreetMap',
+    maxZoom: 19,
+    opacity: 0.9
+  });
+
+  // Standaard Satelliet + Spoorlijnen actief
+  esriSat.addTo(map);
+  railwayOverlay.addTo(map);
+
+  appState.map = map;
+  appState.layers = {
+    esri: esriSat,
+    pdok: pdokSat,
+    dark: darkMap,
+    tracks: railwayOverlay
+  };
+
+  // Knoppen voor wisselen van satelliet / kaartlaag
+  document.getElementById('btnLayerSat')?.addEventListener('click', () => switchBaseLayer('esri'));
+  document.getElementById('btnLayerPdok')?.addEventListener('click', () => switchBaseLayer('pdok'));
+  document.getElementById('btnLayerDark')?.addEventListener('click', () => switchBaseLayer('dark'));
+
+  document.getElementById('btnToggleTracks')?.addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    if (map.hasLayer(railwayOverlay)) {
+      map.removeLayer(railwayOverlay);
+      btn.classList.remove('active');
+      btn.textContent = '🛤️ Spoorlijnen: UIT';
+    } else {
+      map.addLayer(railwayOverlay);
+      btn.classList.add('active');
+      btn.textContent = '🛤️ Spoorlijnen: AAN';
+    }
+  });
+}
+
+function switchBaseLayer(name) {
+  const map = appState.map;
+  ['esri', 'pdok', 'dark'].forEach(k => {
+    if (map.hasLayer(appState.layers[k])) {
+      map.removeLayer(appState.layers[k]);
+    }
+  });
+
+  appState.layers[name].addTo(map);
+  appState.activeBaseLayer = name;
+
+  ['btnLayerSat', 'btnLayerPdok', 'btnLayerDark'].forEach(id => {
+    document.getElementById(id)?.classList.remove('active');
+  });
+  if (name === 'esri') document.getElementById('btnLayerSat')?.classList.add('active');
+  if (name === 'pdok') document.getElementById('btnLayerPdok')?.classList.add('active');
+  if (name === 'dark') document.getElementById('btnLayerDark')?.classList.add('active');
+}
+
+// -------------------------------------------------------------
+// 3. Live Nederlandse Treinendata (JSONP Stream)
+// -------------------------------------------------------------
+function fetchLiveTrains() {
+  return new Promise((resolve) => {
+    const callbackName = 'eqfeed_callback_' + Math.floor(Math.random() * 1000000);
+    let resolved = false;
+
+    window[callbackName] = (data) => {
+      resolved = true;
+      try { delete window[callbackName]; } catch (e) {}
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+
+    // Standaard JSONP fallback voor treinposities.nl
+    window.eqfeed_callback = (data) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(data);
+      }
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://treinposities.nl/treinen.php?pos=1&_t=${Date.now()}`;
+    script.async = true;
+    script.onerror = () => {
+      if (!resolved) {
+        resolved = true;
+        resolve(null);
+      }
+    };
+    document.head.appendChild(script);
+
+    // Timeout na 4 seconden
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        resolve(null);
+      }
+    }, 4000);
+  });
+}
+
+// Bepaal de vervoerder op basis van het trein-materieelnummer en icoon
+function identifyOperator(colorIcon, matnummer, matnr) {
+  const c = (colorIcon || '').toLowerCase();
+  const m = (matnummer || '').toLowerCase();
+  const t = (matnr || '').toLowerCase();
+
+  if (c.includes('arriva') || m.includes('arriva')) {
+    return { id: 'arriva', name: 'Arriva Nederland', color: '#ef4444', text: '#ffffff' };
+  }
+  if (c.includes('keolis') || c.includes('blauwnet') || m.includes('keolis')) {
+    return { id: 'keolis', name: 'Keolis / Blauwnet', color: '#0284c7', text: '#ffffff' };
+  }
+  if (c.includes('eurostar') || c.includes('tgv') || c.includes('pbka') || c.includes('ice') || t.includes('eurostar') || t.includes('ice')) {
+    return { id: 'eurostar', name: 'Eurostar / ICE International', color: '#990022', text: '#ffffff' };
+  }
+  if (c.includes('cargo') || c.includes('traxx') || c.includes('rfo') || m.includes('rfo') || m.includes('dbcargo') || m.includes('lineas')) {
+    return { id: 'cargo', name: 'Goederen / DB Cargo / RFO', color: '#ea580c', text: '#ffffff' };
+  }
+  // Standaard NS Reizigers
+  return { id: 'ns', name: 'NS Reizigers', color: '#ffc917', text: '#003082' };
+}
+
+// -------------------------------------------------------------
+// 4. Verwerking en Weergave van Treinen op de Satellietkaart
+// -------------------------------------------------------------
+function parseTrainData(item) {
+  if (!item || !item.geometry || !item.geometry.coordinates) return null;
+  const coords = item.geometry.coordinates;
+  const lat = parseFloat(coords[0]);
+  const lon = parseFloat(coords[1]);
+  if (isNaN(lat) || isNaN(lon)) return null;
+
+  const props = item.properties || {};
+  const matnrString = props.matnr || '';
+  const matnummer = props.matnummer || 'TREIN';
+  const colorIcon = props.color || '';
+  const gpsdata = props.gpsdata || '';
+
+  // Parse snelheid uit bijv. "3112 met trein 1165 @ 23km/h"
+  let speed = 0;
+  const speedMatch = matnrString.match(/@\s*(\d+)\s*km\/h/i);
+  if (speedMatch) {
+    speed = parseInt(speedMatch[1], 10);
+  }
+
+  // Parse treinnummer uit bijv. "met trein 1165 @"
+  let trainNumber = '';
+  const trainMatch = matnrString.match(/trein\s+(\d+)/i);
+  if (trainMatch) {
+    trainNumber = trainMatch[1];
+  } else {
+    trainNumber = matnummer.replace(/\D/g, '') || '0';
+  }
+
+  // Parse materieel type
+  let materialName = matnummer;
+  const operator = identifyOperator(colorIcon, matnummer, matnrString);
+
+  // Punctualiteit via WebAssembly
+  const punctualityScore = appState.bridge.calculatePunctuality(speed, speed === 0 ? 120 : 0);
+
+  return {
+    id: matnummer + '_' + trainNumber,
+    matnummer,
+    trainNumber,
+    matnrString,
+    lat,
+    lon,
+    speed,
+    operator,
+    punctualityScore,
+    gpsdata,
+    colorIcon
+  };
+}
+
+function updateTrains(featureList) {
+  if (!featureList || !Array.isArray(featureList)) return;
+
+  let totalSpeed = 0;
+  let maxSpeed = 0;
+  let onTimeCount = 0;
+  let displayedCount = 0;
+
+  const currentIds = new Set();
+
+  featureList.forEach((raw) => {
+    const t = parseTrainData(raw);
+    if (!t) return;
+
+    currentIds.add(t.id);
+    totalSpeed += t.speed;
+    if (t.speed > maxSpeed) maxSpeed = t.speed;
+    if (t.punctualityScore === 0) onTimeCount++;
+
+    // Filter controle
+    const matchOperator = appState.activeOperatorFilter === 'all' || t.operator.id === appState.activeOperatorFilter;
+    const matchSearch = !appState.searchQuery || t.trainNumber.includes(appState.searchQuery) || t.matnummer.toLowerCase().includes(appState.searchQuery.toLowerCase());
+
+    if (!matchOperator || !matchSearch) {
+      if (appState.trains.has(t.id)) {
+        const existing = appState.trains.get(t.id);
+        if (existing.marker) existing.marker.remove();
+        appState.trains.delete(t.id);
+      }
+      return;
+    }
+
+    displayedCount++;
+
+    if (appState.trains.has(t.id)) {
+      // Bestaande trein updaten
+      const existing = appState.trains.get(t.id);
+      existing.speed = t.speed;
+      existing.punctualityScore = t.punctualityScore;
+      existing.lat = t.lat;
+      existing.lon = t.lon;
+      existing.gpsdata = t.gpsdata;
+
+      // Update marker positie
+      if (existing.marker) {
+        existing.marker.setLatLng([t.lat, t.lon]);
+        // Update popup/tag
+        const el = existing.marker.getElement();
+        if (el) {
+          const tag = el.querySelector('.train-tag');
+          if (tag) tag.textContent = `${t.trainNumber} (${t.speed}k)`;
+        }
+      }
+    } else {
+      // Nieuwe marker aanmaken
+      const marker = createTrainMarker(t);
+      marker.addTo(appState.map);
+      t.marker = marker;
+      appState.trains.set(t.id, t);
+    }
+  });
+
+  // Verwijder verdwenen treinen
+  for (const [id, t] of appState.trains.entries()) {
+    if (!currentIds.has(id)) {
+      if (t.marker) t.marker.remove();
+      appState.trains.delete(id);
+    }
+  }
+
+  // Update HUD statistieken
+  const total = featureList.length;
+  document.getElementById('statTrainCount').textContent = `${total} (${displayedCount} op kaart)`;
+  const avgSpeed = total > 0 ? Math.round(totalSpeed / total) : 0;
+  document.getElementById('statAvgSpeed').textContent = `${avgSpeed} km/u`;
+  document.getElementById('statTopSpeed').textContent = `${maxSpeed} km/u`;
+  const pct = total > 0 ? ((onTimeCount / total) * 100).toFixed(1) : '90.0';
+  document.getElementById('statPunctuality').textContent = `${pct}%`;
+
+  // Volg geselecteerde trein indien actief
+  if (appState.isFollowingTrain && appState.selectedTrainId) {
+    const selected = appState.trains.get(appState.selectedTrainId);
+    if (selected) {
+      appState.map.panTo([selected.lat, selected.lon], { animate: true, duration: 1.0 });
+      updateDetailCard(selected);
+    }
+  }
+
+  // Genereer mogelijke spoorcommunicatie
+  triggerRadioCommunications(featureList);
+}
+
+// Maak een custom HTML marker voor een trein op de kaart
+function createTrainMarker(t) {
+  // Punctualiteit kleur: 0 = Groen, 1 = Geel, 2 = Rood
+  const statusBorder = t.punctualityScore === 0 ? '#10b981' : t.punctualityScore === 1 ? '#f59e0b' : '#ef4444';
+
+  const html = `
+    <div class="train-custom-marker" title="${t.operator.name} Trein ${t.trainNumber} - ${t.speed} km/u">
+      <div class="train-tag">${t.trainNumber} (${t.speed}k)</div>
+      <div class="train-pin" style="background-color: ${t.operator.color}; border-color: ${statusBorder};">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="${t.operator.text}">
+          <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.5 0 6 .4 6 2H6c0-1.6 2.5-2 6-2zm-5 9c-.83 0-1.5-.67-1.5-1.5S6.17 10 7 10s1.5.67 1.5 1.5S7.83 13 7 13zm10 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+        </svg>
+      </div>
+    </div>
+  `;
+
+  const icon = L.divIcon({
+    className: 'train-div-icon',
+    html: html,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+
+  const marker = L.marker([t.lat, t.lon], { icon });
+  marker.on('click', () => {
+    selectTrain(t);
+  });
+
+  return marker;
+}
+
+function selectTrain(t) {
+  appState.selectedTrainId = t.id;
+  updateDetailCard(t);
+  appState.map.flyTo([t.lat, t.lon], Math.max(appState.map.getZoom(), 12), { duration: 1.2 });
+  playRadioBeep();
+}
+
+function updateDetailCard(t) {
+  const card = document.getElementById('trainDetailCard');
+  if (!card) return;
+
+  card.classList.add('open');
+  document.getElementById('cardOperatorBadge').textContent = t.operator.name;
+  document.getElementById('cardOperatorBadge').style.backgroundColor = t.operator.color;
+  document.getElementById('cardOperatorBadge').style.color = t.operator.text;
+
+  document.getElementById('cardTrainTitle').textContent = `Trein #${t.trainNumber}`;
+  document.getElementById('cardSpeedNumber').textContent = t.speed;
+
+  const puncEl = document.getElementById('cardPunctualityBadge');
+  if (t.punctualityScore === 0) {
+    puncEl.className = 'punctuality-badge on-time';
+    puncEl.textContent = '🟢 Op tijd (Rijdend)';
+  } else if (t.punctualityScore === 1) {
+    puncEl.className = 'punctuality-badge delayed';
+    puncEl.textContent = '🟡 Vertraagd / Naderend';
+  } else {
+    puncEl.className = 'punctuality-badge halted';
+    puncEl.textContent = '🔴 Stilstaand op Baanvak';
+  }
+
+  document.getElementById('cardMaterial').textContent = t.matnummer;
+  document.getElementById('cardOperator').textContent = t.operator.name;
+  document.getElementById('cardSeries').textContent = `${t.trainNumber} (Intercity/Sprinter)`;
+  document.getElementById('cardGpsTime').textContent = t.gpsdata || 'Zojuist';
+  document.getElementById('cardCoords').textContent = `${t.lat.toFixed(4)}° N, ${t.lon.toFixed(4)}° E`;
+
+  const btnFollow = document.getElementById('btnFollowTrain');
+  if (btnFollow) {
+    btnFollow.textContent = appState.isFollowingTrain ? '⏹️ Stop Volgen' : '🎥 Volg Trein (Chase Cam)';
+    btnFollow.className = appState.isFollowingTrain ? 'btn btn-follow active' : 'btn btn-follow';
+  }
+}
+
+// -------------------------------------------------------------
+// 5. Live Spoorweg Communicatie & Radio Scanner
 // -------------------------------------------------------------
 function getAudioContext() {
-  if (!state.audioCtx) {
+  if (!appState.audioCtx) {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (AudioContext) {
-      state.audioCtx = new AudioContext();
-    }
+    if (AudioContext) appState.audioCtx = new AudioContext();
   }
-  if (state.audioCtx && state.audioCtx.state === 'suspended') {
-    state.audioCtx.resume();
+  if (appState.audioCtx && appState.audioCtx.state === 'suspended') {
+    appState.audioCtx.resume();
   }
-  return state.audioCtx;
+  return appState.audioCtx;
 }
 
-function playStationChime() {
-  if (!state.soundEnabled) return;
+// Authentieke GSM-R / Motorola squelch radio piep
+function playRadioBeep() {
+  if (!appState.scannerEnabled) return;
   const ctx = getAudioContext();
   if (!ctx) return;
 
   const now = ctx.currentTime;
-  // Klassieke Nederlandse stationsgong (drie opeenvolgende tonen: F4 -> A4 -> C5)
-  const notes = [349.23, 440.0, 523.25];
-  notes.forEach((freq, i) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now + i * 0.28);
-
-    gain.gain.setValueAtTime(0.001, now + i * 0.28);
-    gain.gain.exponentialRampToValueAtTime(0.18, now + i * 0.28 + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.28 + 0.55);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now + i * 0.28);
-    osc.stop(now + i * 0.28 + 0.6);
-  });
-}
-
-function playTrainHorn() {
-  if (!state.soundEnabled) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  const now = ctx.currentTime;
-  const osc1 = ctx.createOscillator();
-  const osc2 = ctx.createOscillator();
+  const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
-  // Dubbeltonige tyfoon (370Hz en 440Hz)
-  osc1.frequency.setValueAtTime(370, now);
-  osc2.frequency.setValueAtTime(440, now);
+  // Bandpass filter voor echt walkie-talkie / radio geluid
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 1750;
+  filter.Q.value = 3.0;
+
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(880, now);
+  osc.frequency.exponentialRampToValueAtTime(1320, now + 0.04);
+  osc.frequency.setValueAtTime(1760, now + 0.08);
 
   gain.gain.setValueAtTime(0.001, now);
-  gain.gain.exponentialRampToValueAtTime(0.25, now + 0.08);
-  gain.gain.exponentialRampToValueAtTime(0.2, now + 0.6);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+  gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
 
-  osc1.connect(gain);
-  osc2.connect(gain);
+  osc.connect(filter);
+  filter.connect(gain);
   gain.connect(ctx.destination);
 
-  osc1.start(now);
-  osc2.start(now);
-  osc1.stop(now + 0.95);
-  osc2.stop(now + 0.95);
+  osc.start(now);
+  osc.stop(now + 0.15);
 }
 
-// -------------------------------------------------------------
-// 3. Canvas Rendering Loop & Visualisatie
-// -------------------------------------------------------------
-function resizeCanvas() {
-  const canvas = state.canvas;
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  state.ctx.resetTransform();
-  state.ctx.scale(dpr, dpr);
+// Spraaksynthese voor live verkeersleidingsberichten
+function speakDispatchMessage(text) {
+  if (!appState.scannerEnabled || !('speechSynthesis' in window)) return;
+  // Breek eerdere spraak af om opstapeling te voorkomen
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'nl-NL';
+  utterance.rate = 1.05;
+  utterance.pitch = 0.95;
+
+  const voices = window.speechSynthesis.getVoices();
+  const dutchVoice = voices.find(v => v.lang.includes('nl'));
+  if (dutchVoice) utterance.voice = dutchVoice;
+
+  window.speechSynthesis.speak(utterance);
 }
 
-function renderScene() {
-  const ctx = state.ctx;
-  const canvas = state.canvas;
-  const dpr = window.devicePixelRatio || 1;
-  const width = canvas.width / dpr;
-  const height = canvas.height / dpr;
+function addRadioLine(callsign, text, isUrgent = false) {
+  const box = document.getElementById('radioTranscriptBox');
+  if (!box) return;
 
-  // Schaal en centreer het netwerk op het canvas
-  // Originele coördinatenbox is ca 700x600
-  const scale = Math.min(width / 750, height / 640);
-  const offsetX = (width - 700 * scale) / 2 + 30 * scale;
-  const offsetY = (height - 600 * scale) / 2 + 20 * scale;
+  const timeStr = new Date().toLocaleTimeString('nl-NL');
+  const div = document.createElement('div');
+  div.className = 'radio-line' + (isUrgent ? ' urgent' : '');
+  div.innerHTML = `
+    <span class="msg-time">[${timeStr}]</span>
+    <span class="msg-callsign">${callsign}:</span>
+    <span class="msg-text">${text}</span>
+  `;
 
-  ctx.save();
-  ctx.clearRect(0, 0, width, height);
+  box.prepend(div);
+  // Beperk transcript tot 50 regels
+  while (box.children.length > 50) {
+    box.removeChild(box.lastChild);
+  }
 
-  // Achtergrond / Topografie van Nederland
-  if (state.isNightMode) {
-    ctx.fillStyle = '#0a0d14';
-    ctx.fillRect(0, 0, width, height);
+  // Speel radio-effect
+  playRadioBeep();
+
+  // Spreek bericht uit als scanner aan staat
+  if (appState.scannerEnabled) {
+    speakDispatchMessage(`${callsign}: ${text}`);
+  }
+}
+
+// Genereert authentieke live verkeersleidingsinteracties op basis van echte rijdende treinen
+function triggerRadioCommunications(features) {
+  const now = Date.now();
+  if (now - appState.lastRadioMsgTime < 14000) return; // Minstens 14s tussen berichten
+  appState.lastRadioMsgTime = now;
+
+  if (!features || features.length === 0) return;
+
+  // Kies een willekeurige actieve trein
+  const item = features[Math.floor(Math.random() * features.length)];
+  const parsed = parseTrainData(item);
+  if (!parsed) return;
+
+  const posts = [
+    { name: 'Post Utrecht', trdl: 'Treindienstleider Utrecht' },
+    { name: 'Post Amsterdam', trdl: 'Treindienstleider Amsterdam' },
+    { name: 'Post Rotterdam', trdl: 'Verkeersleiding Rotterdam' },
+    { name: 'Post Eindhoven', trdl: 'Treindienstleider Eindhoven' },
+    { name: 'Post Zwolle', trdl: 'Treindienstleider Zwolle' },
+    { name: 'KNSB Landelijk', trdl: 'Landelijke Verkeersleiding ProRail' }
+  ];
+  const post = posts[Math.floor(Math.random() * posts.length)];
+
+  let message = '';
+  let isUrgent = false;
+
+  if (parsed.speed > 130) {
+    message = `Trein ${parsed.trainNumber} (${parsed.matnummer}) passeert baanvak op volle snelheid met ${parsed.speed} km/u. Seinen groen, spoorbaan vrij.`;
+  } else if (parsed.speed === 0) {
+    isUrgent = true;
+    message = `Trein ${parsed.trainNumber} gemeld stilstaand. Post ${post.name} controleert blokbeveiliging en wisselstand.`;
+  } else if (parsed.punctualityScore === 1) {
+    message = `Trein ${parsed.trainNumber}: vertraagd naderen met ${parsed.speed} km/u wegens treinscheiding. Rijden op zicht tot volgend hoofdsein.`;
   } else {
-    // Mooie zachte landkaart
-    ctx.fillStyle = '#eaf0ea'; // Land
-    ctx.fillRect(0, 0, width, height);
-
-    // IJsselmeer & Noordzee wateraccenten
-    ctx.fillStyle = '#d6e6f2';
-    // IJsselmeer
-    ctx.beginPath();
-    ctx.ellipse(offsetX + 380 * scale, offsetY + 110 * scale, 55 * scale, 75 * scale, -0.2, 0, Math.PI * 2);
-    ctx.fill();
+    message = `Aan machinist trein ${parsed.trainNumber} (${parsed.operator.name}): vertreksein getoond, snelheid ${parsed.speed} km/u geautoriseerd richting knooppunt.`;
   }
 
-  // Pas netwerkschaal toe
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(scale, scale);
-
-  // A. Teken Sporen (Bielzen + Spoorstaven)
-  state.bridge.tracks.forEach((track, idx) => {
-    const p0 = state.bridge.stations[track.from];
-    const p3 = state.bridge.stations[track.to];
-    const cp1 = track.cp1;
-    const cp2 = track.cp2;
-
-    // 1. Spoorbedding (ballast)
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p3.x, p3.y);
-    ctx.strokeStyle = state.isNightMode ? '#1e2433' : '#cbd5e1';
-    ctx.lineWidth = 9;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // 2. Bielzen (dwarsliggers)
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p3.x, p3.y);
-    ctx.strokeStyle = state.isNightMode ? '#334155' : '#94a3b8';
-    ctx.lineWidth = 7;
-    ctx.setLineDash([3, 5]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // 3. Dubbel spoor (Rails)
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p3.x, p3.y);
-    ctx.strokeStyle = state.isNightMode ? '#475569' : '#475569';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-  });
-
-  // B. Teken Wissels (Junctions)
-  state.bridge.switches.forEach((sw) => {
-    const swState = state.bridge.getSwitchState(sw.id);
-    ctx.save();
-    ctx.translate(sw.x, sw.y);
-
-    // Wissel indicator cirkel
-    ctx.beginPath();
-    ctx.arc(0, 0, 11, 0, Math.PI * 2);
-    ctx.fillStyle = swState === 0 ? '#10b981' : '#f59e0b';
-    ctx.shadowColor = swState === 0 ? '#10b981' : '#f59e0b';
-    ctx.shadowBlur = state.isNightMode ? 10 : 4;
-    ctx.fill();
-
-    // Wissel pijl / stand
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    if (swState === 0) {
-      // Rechtdoor
-      ctx.moveTo(-5, 0);
-      ctx.lineTo(5, 0);
-      ctx.lineTo(2, -3);
-    } else {
-      // Afbuigend
-      ctx.moveTo(-5, 3);
-      ctx.lineTo(4, -4);
-      ctx.lineTo(0, -5);
-    }
-    ctx.stroke();
-    ctx.restore();
-  });
-
-  // C. Teken Seinen
-  state.bridge.tracks.forEach((track, i) => {
-    if (i % 2 === 0) {
-      const sigState = state.bridge.getSignalState(i);
-      const pos = state.bridge.getPointOnTrack(i, 0.45);
-      const colors = ['#ef4444', '#f59e0b', '#10b981']; // Rood, Geel, Groen
-      const sigColor = colors[sigState] || '#10b981';
-
-      ctx.save();
-      ctx.translate(pos.x, pos.y);
-      ctx.rotate(pos.angle + Math.PI / 2);
-
-      // Seinpaal
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(8, -6, 5, 12);
-
-      // Seinlamp
-      ctx.beginPath();
-      ctx.arc(10.5, 0, 4, 0, Math.PI * 2);
-      ctx.fillStyle = sigColor;
-      ctx.shadowColor = sigColor;
-      ctx.shadowBlur = state.isNightMode ? 12 : 5;
-      ctx.fill();
-      ctx.restore();
-    }
-  });
-
-  // D. Teken Treinen
-  const trainCount = state.bridge.getTrainCount();
-  for (let i = 0; i < trainCount; i++) {
-    const train = state.bridge.getTrain(i);
-    if (!train) continue;
-
-    ctx.save();
-    ctx.translate(train.x, train.y);
-    ctx.rotate(train.angle);
-
-    const isSelected = state.selectedTrainId === train.id;
-
-    // Selectie-glow
-    if (isSelected) {
-      ctx.beginPath();
-      ctx.roundRect(-24, -14, 48, 28, 6);
-      ctx.strokeStyle = '#00a8ff';
-      ctx.lineWidth = 3;
-      ctx.shadowColor = '#00a8ff';
-      ctx.shadowBlur = 12;
-      ctx.stroke();
-    }
-
-    // Treinschaduw
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.beginPath();
-    ctx.roundRect(-20, -7, 40, 16, 4);
-    ctx.fill();
-
-    // Treinlichaam (Locomotief / Rijtuig)
-    ctx.fillStyle = train.typeColor;
-    ctx.beginPath();
-    ctx.roundRect(-20, -9, 40, 18, 5);
-    ctx.fill();
-
-    // NS Blauwe of type accentband
-    ctx.fillStyle = train.typeAccent;
-    ctx.fillRect(-12, -7, 24, 14);
-
-    // Ramen
-    ctx.fillStyle = state.isNightMode ? '#ffea85' : '#1e293b';
-    ctx.fillRect(-8, -5, 6, 4);
-    ctx.fillRect(2, -5, 6, 4);
-    ctx.fillRect(-8, 1, 6, 4);
-    ctx.fillRect(2, 1, 6, 4);
-
-    // Koplampen (voorkant)
-    ctx.fillStyle = '#fffbeb';
-    ctx.shadowColor = '#fffbeb';
-    ctx.shadowBlur = state.isNightMode ? 14 : 6;
-    ctx.beginPath();
-    ctx.arc(19, -4, 2.5, 0, Math.PI * 2);
-    ctx.arc(19, 4, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Sluitlichten / achterkant
-    ctx.fillStyle = '#ef4444';
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 4;
-    ctx.beginPath();
-    ctx.arc(-19, -4, 1.8, 0, Math.PI * 2);
-    ctx.arc(-19, 4, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Treinlabel (Snelheid & ID)
-    ctx.restore();
-    ctx.save();
-    ctx.translate(train.x, train.y);
-
-    ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = state.isNightMode ? '#e2e8f0' : '#0f172a';
-    ctx.fillText(`${train.id} (${Math.round(train.speed)} km/u)`, 0, -14);
-
-    ctx.restore();
-  }
-
-  // E. Teken Stations
-  state.bridge.stations.forEach((st) => {
-    ctx.save();
-    ctx.translate(st.x, st.y);
-
-    // Station halo
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
-    ctx.fillStyle = state.isNightMode ? 'rgba(0, 48, 130, 0.4)' : 'rgba(255, 201, 23, 0.3)';
-    ctx.fill();
-
-    // Station kern
-    ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, Math.PI * 2);
-    ctx.fillStyle = '#003082'; // NS Blauw
-    ctx.strokeStyle = '#ffc917'; // NS Geel
-    ctx.lineWidth = 2.5;
-    ctx.fill();
-    ctx.stroke();
-
-    // Station Naamplaat
-    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = state.isNightMode ? '#f8fafc' : '#020617';
-    ctx.fillText(st.name, 0, 24);
-
-    ctx.font = '400 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
-    ctx.fillStyle = state.isNightMode ? '#94a3b8' : '#64748b';
-    ctx.fillText(`Spoor 1-${st.sporen}`, 0, 35);
-
-    ctx.restore();
-  });
-
-  ctx.restore();
-}
-
-// -------------------------------------------------------------
-// 4. Simulatie Loop (60 FPS)
-// -------------------------------------------------------------
-function simulationLoop(now) {
-  const dt = Math.min((now - state.lastFrameTime) / 1000, 0.1);
-  state.lastFrameTime = now;
-
-  if (!state.isPaused && state.bridge.isLoaded) {
-    const effectiveDt = dt * state.simSpeed;
-    state.bridge.step(effectiveDt);
-  }
-
-  renderScene();
-  updateLiveInfo();
-
-  requestAnimationFrame(simulationLoop);
-}
-
-// -------------------------------------------------------------
-// 5. UI Updates & Vertrekstaten
-// -------------------------------------------------------------
-function updateLiveInfo() {
-  const simClockEl = document.getElementById('simClock');
-  const activeTrainsCountEl = document.getElementById('activeTrainsCount');
-
-  if (simClockEl && state.bridge.isLoaded) {
-    const totalSec = Math.floor(state.bridge.getSimTime()) + 8 * 3600 + 15 * 60; // Start om 08:15
-    const hrs = String(Math.floor((totalSec / 3600) % 24)).padStart(2, '0');
-    const mins = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-    const secs = String(totalSec % 60).padStart(2, '0');
-    simClockEl.textContent = `${hrs}:${mins}:${secs}`;
-  }
-
-  if (activeTrainsCountEl && state.bridge.isLoaded) {
-    activeTrainsCountEl.textContent = state.bridge.getTrainCount();
-  }
-
-  // Update geselecteerde trein paneel
-  if (state.selectedTrainId !== null && state.bridge.isLoaded) {
-    const count = state.bridge.getTrainCount();
-    let selectedTrain = null;
-    for (let i = 0; i < count; i++) {
-      const t = state.bridge.getTrain(i);
-      if (t && t.id === state.selectedTrainId) {
-        selectedTrain = t;
-        break;
-      }
-    }
-    updateInspectorDrawer(selectedTrain);
-  }
-
-  // Update Vertrektijdenbord
-  renderDepartureBoard();
-}
-
-function updateInspectorDrawer(train) {
-  const drawer = document.getElementById('trainInspector');
-  if (!drawer) return;
-
-  if (!train) {
-    drawer.classList.remove('open');
-    return;
-  }
-
-  drawer.classList.add('open');
-  document.getElementById('inspTrainId').textContent = `${train.typeName} #${train.id}`;
-  document.getElementById('inspSpeed').textContent = `${Math.round(train.speed)} km/u`;
-  document.getElementById('inspTargetSpeed').textContent = `${Math.round(train.targetSpeed)} km/u`;
-  document.getElementById('inspStatus').textContent = train.stateName;
-  document.getElementById('inspRoute').textContent = `${train.curStationName} ➔ ${train.nextStationName}`;
-  document.getElementById('inspPassengers').textContent = train.passengers;
-  document.getElementById('inspDelay').textContent = train.delay > 0 ? `+${train.delay}s` : 'Op tijd';
-
-  const btnBrake = document.getElementById('btnEmergencyBrake');
-  if (btnBrake) {
-    btnBrake.textContent = train.state === 3 ? '🚨 Noodrem Opheffen' : '⚠️ Noodrem Activeren';
-    btnBrake.className = train.state === 3 ? 'btn btn-success' : 'btn btn-danger';
-  }
-}
-
-let lastBoardUpdate = 0;
-function renderDepartureBoard() {
-  const now = performance.now();
-  if (now - lastBoardUpdate < 1000) return; // Max 1x per seconde
-  lastBoardUpdate = now;
-
-  const boardBody = document.getElementById('departureTableBody');
-  if (!boardBody || !state.bridge.isLoaded) return;
-
-  const count = state.bridge.getTrainCount();
-  let rowsHtml = '';
-  for (let i = 0; i < count; i++) {
-    const t = state.bridge.getTrain(i);
-    if (!t) continue;
-
-    const delayBadge = t.delay > 0 ? `<span class="badge badge-warning">+${Math.round(t.delay / 60)} min</span>` : '<span class="badge badge-success">Op tijd</span>';
-    const spoor = (t.trackId % 8) + 1;
-
-    rowsHtml += `
-      <tr class="${state.selectedTrainId === t.id ? 'selected-row' : ''}" onclick="window.selectTrainById(${t.id})">
-        <td><strong>${t.id}</strong></td>
-        <td><span class="train-pill" style="border-left-color: ${t.typeColor}">${t.typeName}</span></td>
-        <td>${t.nextStationName}</td>
-        <td><strong>Spoor ${spoor}</strong></td>
-        <td>${Math.round(t.speed)} km/u</td>
-        <td>${delayBadge}</td>
-      </tr>
-    `;
-  }
-  boardBody.innerHTML = rowsHtml;
+  addRadioLine(post.trdl, message, isUrgent);
 }
 
 // -------------------------------------------------------------
 // 6. Event Listeners & Interactie
 // -------------------------------------------------------------
-function setupInteraction() {
-  const canvas = state.canvas;
+function setupEventListeners() {
+  // Scanner AAN / UIT knop
+  const btnScanner = document.getElementById('btnRadioScanner');
+  btnScanner?.addEventListener('click', () => {
+    appState.scannerEnabled = !appState.scannerEnabled;
+    btnScanner.classList.toggle('active', appState.scannerEnabled);
+    btnScanner.classList.toggle('muted', !appState.scannerEnabled);
+    document.getElementById('scannerStatusText').textContent = appState.scannerEnabled ? '📻 Radio Scanner: AAN' : '🔇 Radio Scanner: UIT';
+    if (appState.scannerEnabled) {
+      playRadioBeep();
+      addRadioLine('📡 Systeem', 'Spoorweg radio scanner opnieuw afgestemd op ProRail verkeersleidingskanalen.');
+    } else {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    }
+  });
 
-  // Klik op Canvas om trein of wissel te selecteren
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+  // Kanaalkeuze
+  document.getElementById('channelSelect')?.addEventListener('change', (e) => {
+    appState.currentChannel = e.target.value;
+    const txt = e.target.options[e.target.selectedIndex].text;
+    document.getElementById('radioChannelName').textContent = `Kanaal: ${txt}`;
+    playRadioBeep();
+  });
 
-    const width = canvas.width / dpr;
-    const height = canvas.height / dpr;
-    const scale = Math.min(width / 750, height / 640);
-    const offsetX = (width - 700 * scale) / 2 + 30 * scale;
-    const offsetY = (height - 600 * scale) / 2 + 20 * scale;
-
-    const netX = (clickX - offsetX) / scale;
-    const netY = (clickY - offsetY) / scale;
-
-    // A. Controleer of een wissel is aangeklikt
-    let switchClicked = false;
-    state.bridge.switches.forEach((sw) => {
-      const dist = Math.hypot(sw.x - netX, sw.y - netY);
-      if (dist < 18) {
-        state.bridge.toggleSwitch(sw.id);
-        playStationChime();
-        switchClicked = true;
-      }
+  // Vervoerder filters
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      const el = e.currentTarget;
+      el.classList.add('active');
+      appState.activeOperatorFilter = el.getAttribute('data-op');
     });
+  });
 
-    if (switchClicked) return;
-
-    // B. Controleer of een trein is aangeklikt
-    let trainFound = false;
-    const count = state.bridge.getTrainCount();
-    for (let i = 0; i < count; i++) {
-      const t = state.bridge.getTrain(i);
-      if (t) {
-        const dist = Math.hypot(t.x - netX, t.y - netY);
-        if (dist < 22) {
-          state.selectedTrainId = t.id;
-          trainFound = true;
-          playStationChime();
+  // Zoekveld
+  document.getElementById('searchInput')?.addEventListener('input', (e) => {
+    appState.searchQuery = e.target.value.trim().toLowerCase();
+    // Als exact treinnummer gezocht wordt, zoom er direct naar
+    if (appState.searchQuery.length >= 3) {
+      for (const [id, t] of appState.trains.entries()) {
+        if (t.trainNumber.includes(appState.searchQuery)) {
+          selectTrain(t);
           break;
         }
       }
     }
-
-    if (!trainFound) {
-      state.selectedTrainId = null;
-      updateInspectorDrawer(null);
-    }
   });
 
-  // Global helper voor onclick in tabel
-  window.selectTrainById = (id) => {
-    state.selectedTrainId = id;
-    playStationChime();
-  };
-
-  // Bedieningsknoppen
-  document.getElementById('btnPause')?.addEventListener('click', () => {
-    state.isPaused = !state.isPaused;
-    document.getElementById('btnPause').textContent = state.isPaused ? '▶️ Hervatten' : '⏸️ Pauze';
+  // Volg trein knop
+  document.getElementById('btnFollowTrain')?.addEventListener('click', () => {
+    appState.isFollowingTrain = !appState.isFollowingTrain;
+    const btn = document.getElementById('btnFollowTrain');
+    btn.textContent = appState.isFollowingTrain ? '⏹️ Stop Volgen' : '🎥 Volg Trein (Chase Cam)';
+    btn.className = appState.isFollowingTrain ? 'btn btn-follow active' : 'btn btn-follow';
   });
 
-  document.getElementById('btnSpeed1')?.addEventListener('click', () => setSimSpeed(1.0));
-  document.getElementById('btnSpeed2')?.addEventListener('click', () => setSimSpeed(2.0));
-  document.getElementById('btnSpeed5')?.addEventListener('click', () => setSimSpeed(5.0));
-
-  function setSimSpeed(s) {
-    state.simSpeed = s;
-    ['btnSpeed1', 'btnSpeed2', 'btnSpeed5'].forEach(id => document.getElementById(id)?.classList.remove('active'));
-    if (s === 1.0) document.getElementById('btnSpeed1')?.classList.add('active');
-    if (s === 2.0) document.getElementById('btnSpeed2')?.classList.add('active');
-    if (s === 5.0) document.getElementById('btnSpeed5')?.classList.add('active');
-  }
-
-  document.getElementById('btnNightMode')?.addEventListener('click', () => {
-    state.isNightMode = !state.isNightMode;
-    document.body.classList.toggle('night-mode', state.isNightMode);
+  // Sluit detail card
+  document.getElementById('btnCloseDetail')?.addEventListener('click', () => {
+    document.getElementById('trainDetailCard')?.classList.remove('open');
+    appState.selectedTrainId = null;
+    appState.isFollowingTrain = false;
   });
+}
 
-  document.getElementById('btnSound')?.addEventListener('click', () => {
-    state.soundEnabled = !state.soundEnabled;
-    const btn = document.getElementById('btnSound');
-    btn.textContent = state.soundEnabled ? '🔊 Geluid: Aan' : '🔇 Geluid: Uit';
-    if (state.soundEnabled) playStationChime();
-  });
+// -------------------------------------------------------------
+// 7. Hoofd Startloop
+// -------------------------------------------------------------
+async function init() {
+  initMap();
+  initVersionCheck();
+  setupEventListeners();
 
-  document.getElementById('btnHorn')?.addEventListener('click', () => {
-    playTrainHorn();
-  });
+  // Laad WebAssembly telemetrie engine
+  await appState.bridge.loadWasm('./treinen.wasm');
 
-  document.getElementById('btnEmergencyBrake')?.addEventListener('click', () => {
-    if (state.selectedTrainId === null) return;
-    const count = state.bridge.getTrainCount();
-    for (let i = 0; i < count; i++) {
-      const t = state.bridge.getTrain(i);
-      if (t && t.id === state.selectedTrainId) {
-        const newBrake = t.state === 3 ? 0 : 1;
-        state.bridge.setEmergencyBrake(t.id, newBrake);
-        playTrainHorn();
-        break;
+  // Start live polling van alle treinen in Nederland
+  async function poll() {
+    try {
+      const data = await fetchLiveTrains();
+      if (data && data.features) {
+        updateTrains(data.features);
       }
+    } catch (err) {
+      console.warn('Fout bij ophalen treinposities:', err);
     }
-  });
-
-  // Trein toevoegen knoppen
-  document.getElementById('btnAddVIRM')?.addEventListener('click', () => {
-    state.bridge.addTrain(0, Math.floor(Math.random() * 8));
-    playStationChime();
-  });
-
-  document.getElementById('btnAddSprinter')?.addEventListener('click', () => {
-    state.bridge.addTrain(1, Math.floor(Math.random() * 8));
-    playStationChime();
-  });
-
-  document.getElementById('btnAddEurostar')?.addEventListener('click', () => {
-    state.bridge.addTrain(3, 1);
-    playStationChime();
-  });
-
-  document.getElementById('btnAddCargo')?.addEventListener('click', () => {
-    state.bridge.addTrain(2, 6);
-    playStationChime();
-  });
-
-  window.addEventListener('resize', resizeCanvas);
-}
-
-// -------------------------------------------------------------
-// 7. Initialisatie van de Applicatie
-// -------------------------------------------------------------
-async function initApp() {
-  state.canvas = document.getElementById('railwayCanvas');
-  state.ctx = state.canvas.getContext('2d');
-  resizeCanvas();
-
-  // 1. Initialiseer automatische versiedetectie
-  initVersionDetection();
-
-  // 2. Koppel event listeners
-  setupInteraction();
-
-  // 3. Laad WebAssembly simulatie module
-  try {
-    await state.bridge.loadWasm('./treinen.wasm');
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) loadingOverlay.style.display = 'none';
-
-    // Start 60 FPS loop
-    requestAnimationFrame(simulationLoop);
-  } catch (err) {
-    console.error('Fatale fout bij initialiseren:', err);
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) {
-      loadingOverlay.innerHTML = `
-        <div style="background: #ef4444; color: white; padding: 20px; border-radius: 8px; max-width: 400px; text-align: center;">
-          <h3>Fout bij laden van WebAssembly</h3>
-          <p>${err.message}</p>
-          <button class="btn btn-primary" onclick="location.reload()">Opnieuw proberen</button>
-        </div>
-      `;
-    }
+    setTimeout(poll, 4500); // Elke 4.5 seconden verversen
   }
+
+  poll();
 }
 
-window.addEventListener('DOMContentLoaded', initApp);
+window.addEventListener('DOMContentLoaded', init);

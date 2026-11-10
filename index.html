@@ -2,17 +2,22 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>treinen - Cross Platform WebAssembly Spoorwegsimulatie</title>
-  <meta name="description" content="Cross platform WebAssembly treinsimulatie van het Nederlandse spoornetwerk met automatische versieherkenning.">
-  <meta name="theme-color" content="#ffc917">
-  <link rel="manifest" href="./manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>treinen - Live Satelliet Spoorweg Radar Nederland</title>
+  <meta name="description" content="Alle actuele rijdende treinen in Nederland live op echte satellietbeelden en luchtfoto's, met spoorlijnen, vertragingen en live radiocommunicatie.">
+  <meta name="theme-color" content="#0a0f1d">
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <link rel="stylesheet" href="./style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ffc917'/><path d='M25 35h50v35H25z' fill='%23003082'/><circle cx='38' cy='55' r='6' fill='%23ffffff'/><circle cx='62' cy='55' r='6' fill='%23ffffff'/></svg>">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
 
-  <!-- Automatische Versie Update Melding Banner -->
+  <!-- Automatische Versie Update Banner -->
   <aside id="updateBanner" class="update-banner" role="alert" aria-live="assertive">
     <div class="update-content">
       <div class="update-info">
@@ -23,177 +28,167 @@
       </div>
       <div class="update-actions">
         <button id="btnReloadUpdate" class="btn btn-primary" type="button">🚀 Direct Bijwerken &amp; Herladen</button>
-        <button id="btnDismissUpdate" class="btn btn-secondary" type="button" aria-label="Sluit melding">Later</button>
+        <button id="btnDismissUpdate" class="btn btn-secondary" type="button">Later</button>
       </div>
     </div>
   </aside>
 
-  <!-- Header -->
-  <header>
-    <div class="header-container">
-      <div class="brand-wrapper">
-        <div class="logo-badge" aria-hidden="true">NS / WASM</div>
-        <div>
-          <h1 class="brand-title">&lt;treinen&gt;</h1>
-          <p class="brand-subtitle">Cross-Platform WebAssembly Spoorwegnetwerk</p>
+  <!-- Bovenbalk / Live Cockpit HUD -->
+  <header class="hud-header">
+    <div class="hud-top">
+      <div class="brand-group">
+        <div class="logo-pill">SPOOR RADAR NL</div>
+        <h1 class="brand-title">&lt;treinen&gt;</h1>
+        <span class="live-tag"><span class="pulse-dot"></span> LIVE DATA</span>
+      </div>
+
+      <!-- Telemetrie Statistieken -->
+      <div class="hud-metrics">
+        <div class="metric-pill" title="Totaal aantal actieve treinen in Nederland">
+          <span class="metric-icon">🚆</span>
+          <span class="metric-label">Actieve Treinen:</span>
+          <strong id="statTrainCount" class="metric-value">Laden...</strong>
+        </div>
+        <div class="metric-pill" title="Landelijke punctualiteit">
+          <span class="metric-icon">⏱️</span>
+          <span class="metric-label">Punctualiteit:</span>
+          <strong id="statPunctuality" class="metric-value" style="color: #10b981;">89.2%</strong>
+        </div>
+        <div class="metric-pill" title="Gemiddelde snelheid">
+          <span class="metric-icon">⚡</span>
+          <span class="metric-label">Gem. Snelheid:</span>
+          <strong id="statAvgSpeed" class="metric-value">84 km/u</strong>
+        </div>
+        <div class="metric-pill" title="Hoogste gemeten snelheid">
+          <span class="metric-icon">🚀</span>
+          <span class="metric-label">Topsnelheid:</span>
+          <strong id="statTopSpeed" class="metric-value" style="color: #38bdf8;">196 km/u</strong>
         </div>
       </div>
-      <div class="header-meta">
-        <div class="meta-pill" title="Simulatietijd">
-          <span>🕒</span>
-          <strong id="simClock">08:15:00</strong>
-        </div>
-        <div class="meta-pill" title="Actieve treinen in het netwerk">
-          <span>🚆</span>
-          <span>Actieve treinen: <strong id="activeTrainsCount">4</strong></span>
-        </div>
-        <div id="versionBadge" class="version-pill" title="Huidige versie">
-          v1.0.0 (laden...)
-        </div>
+
+      <!-- Live Spoorweg Scanner Knop -->
+      <div class="scanner-controls">
+        <button id="btnRadioScanner" class="btn-scanner active" type="button" title="Luister live naar verkeersleidingscommunicatie">
+          <span class="scanner-anim"><span></span><span></span><span></span></span>
+          <span id="scannerStatusText">📻 Radio Scanner: AAN</span>
+        </button>
+        <select id="channelSelect" class="channel-select" title="Kies verkeersleidingspost">
+          <option value="all">📡 Alle Verkeersleidingsposten</option>
+          <option value="ut">Post Utrecht (Centraal)</option>
+          <option value="asd">Post Amsterdam &amp; Schiphol</option>
+          <option value="rtd">Post Rotterdam &amp; HSL-Zuid</option>
+          <option value="ehv">Post Eindhoven (Zuid)</option>
+          <option value="zl">Post Zwolle (Noord/Oost)</option>
+          <option value="calamity">🚨 Calamiteitenorganisatie ProRail</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Onderbalk: Kaartlagen, Filters en Zoeken -->
+    <div class="hud-sub">
+      <div class="layer-buttons">
+        <span class="sub-label">Beeld:</span>
+        <button id="btnLayerSat" class="btn-layer active" type="button">🛰️ Echte Satelliet (Esri)</button>
+        <button id="btnLayerPdok" class="btn-layer" type="button">🇳🇱 Luchtfoto NL (PDOK)</button>
+        <button id="btnLayerDark" class="btn-layer" type="button">🌙 Nacht Radar</button>
+        <button id="btnToggleTracks" class="btn-layer active" type="button">🛤️ Spoorlijnen: AAN</button>
+      </div>
+
+      <!-- Vervoerder Filters -->
+      <div class="operator-filters">
+        <span class="sub-label">Vervoerder:</span>
+        <button class="filter-chip active" data-op="all">Alle</button>
+        <button class="filter-chip" data-op="ns"><span class="chip-dot" style="background: #ffc917;"></span>NS</button>
+        <button class="filter-chip" data-op="arriva"><span class="chip-dot" style="background: #ef4444;"></span>Arriva</button>
+        <button class="filter-chip" data-op="keolis"><span class="chip-dot" style="background: #0284c7;"></span>Keolis/Blauwnet</button>
+        <button class="filter-chip" data-op="eurostar"><span class="chip-dot" style="background: #990022;"></span>Eurostar/ICE</button>
+        <button class="filter-chip" data-op="cargo"><span class="chip-dot" style="background: #f97316;"></span>Goederen</button>
+      </div>
+
+      <!-- Zoekveld -->
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Zoek trein (bijv. 1165, 766) of station..." autocomplete="off">
       </div>
     </div>
   </header>
 
-  <!-- Bedieningsbalk (Toolbar) -->
-  <nav class="toolbar" aria-label="Simulatiebediening">
-    <div class="toolbar-container">
-      <div class="tool-group">
-        <span class="group-label">Simulatie:</span>
-        <button id="btnPause" class="btn" type="button">⏸️ Pauze</button>
-        <button id="btnSpeed1" class="btn active" type="button">1x</button>
-        <button id="btnSpeed2" class="btn" type="button">2x</button>
-        <button id="btnSpeed5" class="btn" type="button">5x</button>
-      </div>
+  <!-- Fullscreen Satelliet Kaart Container -->
+  <div id="map"></div>
 
-      <div class="tool-group">
-        <span class="group-label">Weergave &amp; Geluid:</span>
-        <button id="btnNightMode" class="btn" type="button">🌙 Dag / Nacht</button>
-        <button id="btnSound" class="btn" type="button">🔊 Geluid: Aan</button>
-        <button id="btnHorn" class="btn" type="button">📢 Tyfoon</button>
+  <!-- Live Spoor Communicatie Radio Transcript Ticker (Onderaan) -->
+  <div class="radio-ticker-panel">
+    <div class="radio-header">
+      <div class="radio-title">
+        <span class="live-blink">●</span>
+        <strong>LIVE SPOOR COMMUNICATIE &amp; DISPATCH (PRO-RAIL VERKEERSLEIDING)</strong>
       </div>
-
-      <div class="tool-group">
-        <span class="group-label">Trein toevoegen:</span>
-        <button id="btnAddVIRM" class="btn" type="button" title="Voeg NS Dubbeldekker VIRM toe">+ VIRM</button>
-        <button id="btnAddSprinter" class="btn" type="button" title="Voeg NS Sprinter SLT toe">+ Sprinter</button>
-        <button id="btnAddEurostar" class="btn" type="button" title="Voeg Eurostar HSL toe">+ Eurostar</button>
-        <button id="btnAddCargo" class="btn" type="button" title="Voeg Goederentrein toe">+ Goederen</button>
+      <div class="radio-meta">
+        <span id="radioChannelName">Kanaal: Landelijk Netwerk</span> &bull; 
+        <span id="radioTimestamp">18:42:00</span>
       </div>
     </div>
-  </nav>
-
-  <!-- Hoofdvenster -->
-  <main>
-    <!-- Interactief Canvas -->
-    <div class="canvas-wrapper">
-      <canvas id="railwayCanvas" width="1200" height="700"></canvas>
-
-      <!-- Laadscherm -->
-      <div id="loadingOverlay" class="loading-overlay">
-        <div class="spinner"></div>
-        <p><strong>WebAssembly simulatie wordt geïnitialiseerd...</strong></p>
+    <div id="radioTranscriptBox" class="radio-transcript-box">
+      <div class="radio-line initial-msg">
+        <span class="msg-time">[18:42:01]</span>
+        <span class="msg-callsign">📡 Landelijke Verkeersleiding ProRail:</span>
+        <span class="msg-text">Verbinding met spoorwegnetwerk operationeel. Live monitoring van alle rijdende treinen in Nederland actief.</span>
       </div>
+    </div>
+  </div>
 
-      <!-- Kaart Legenda -->
-      <div class="map-legend">
-        <div class="legend-item">
-          <div class="legend-color" style="background: #ffc917;"></div>
-          <span>Intercity VIRM</span>
+  <!-- Trein Volg- & Telemetrie Card (Verschijnt bij selectie) -->
+  <div id="trainDetailCard" class="train-detail-card">
+    <div class="card-header">
+      <div>
+        <div id="cardOperatorBadge" class="operator-badge">NS Reizigers</div>
+        <h2 id="cardTrainTitle" class="card-title">Trein #1165 (ICNG 3112)</h2>
+      </div>
+      <button id="btnCloseDetail" class="btn-close" type="button" aria-label="Sluiten">✕</button>
+    </div>
+
+    <div class="card-body">
+      <!-- Snelheidsmeter Display -->
+      <div class="speed-dial-box">
+        <div class="speed-dial-value">
+          <span id="cardSpeedNumber">138</span>
+          <small>km/u</small>
         </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #f0f2f5; border: 1px solid #94a3b8;"></div>
-          <span>Sprinter SLT</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #990022;"></div>
-          <span>Eurostar / Thalys</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #e2001a;"></div>
-          <span>DB Cargo Traxx</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #10b981; border-radius: 50%;"></div>
-          <span>Wissel (Klik om om te leggen)</span>
+        <div id="cardPunctualityBadge" class="punctuality-badge on-time">
+          🟢 Op tijd (Rijdend)
         </div>
       </div>
 
-      <!-- Trein Inspectie Drawer -->
-      <aside id="trainInspector" class="train-inspector" aria-label="Trein details">
-        <div class="inspector-header">
-          <span id="inspTrainId" class="inspector-title">Trein #101</span>
-          <button class="btn btn-secondary" style="padding: 2px 8px;" onclick="window.selectTrainById(null)" type="button">✕</button>
+      <!-- Telemetrie Gegevens -->
+      <div class="telemetry-grid">
+        <div class="tele-item">
+          <label>Materieel</label>
+          <strong id="cardMaterial">ICNG-8 (3112)</strong>
         </div>
-        <div class="inspector-grid">
-          <div class="grid-cell">
-            <label>Snelheid</label>
-            <span id="inspSpeed">130 km/u</span>
-          </div>
-          <div class="grid-cell">
-            <label>Maximum</label>
-            <span id="inspTargetSpeed">140 km/u</span>
-          </div>
-          <div class="grid-cell">
-            <label>Status</label>
-            <span id="inspStatus">Rijdend</span>
-          </div>
-          <div class="grid-cell">
-            <label>Reizigers</label>
-            <span id="inspPassengers">312</span>
-          </div>
-          <div class="grid-cell" style="grid-column: span 2;">
-            <label>Traject</label>
-            <span id="inspRoute">Amsterdam Centraal ➔ Utrecht Centraal</span>
-          </div>
-          <div class="grid-cell">
-            <label>Punctualiteit</label>
-            <span id="inspDelay">Op tijd</span>
-          </div>
+        <div class="tele-item">
+          <label>Vervoerder</label>
+          <strong id="cardOperator">Nederlandse Spoorwegen</strong>
         </div>
-        <button id="btnEmergencyBrake" class="btn btn-danger" style="width: 100%; justify-content: center;" type="button">
-          ⚠️ Noodrem Activeren
+        <div class="tele-item">
+          <label>Treinserie</label>
+          <strong id="cardSeries">1100 (Intercity)</strong>
+        </div>
+        <div class="tele-item">
+          <label>Laatste GPS Fix</label>
+          <strong id="cardGpsTime">Zojuist</strong>
+        </div>
+        <div class="tele-item full-width">
+          <label>Locatiecoördinaten</label>
+          <strong id="cardCoords">52.0907° N, 5.1214° E</strong>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button id="btnFollowTrain" class="btn btn-follow" type="button">
+          🎥 Volg Trein (Chase Cam)
         </button>
-      </aside>
-    </div>
-
-    <!-- Live Vertrektijden (NS Digitale Schermen) -->
-    <section class="departure-board" aria-label="Live Vertrektijden">
-      <div class="board-header">
-        <h2 class="board-title">🚆 Live Vertrektijden Nederland</h2>
-        <span style="font-size: 0.8rem; opacity: 0.9;">Automatisch ververst via WebAssembly</span>
-      </div>
-      <div class="board-table-wrapper">
-        <table class="departure-table">
-          <thead>
-            <tr>
-              <th>Trein</th>
-              <th>Materieel</th>
-              <th>Bestemming</th>
-              <th>Spoor</th>
-              <th>Snelheid</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="departureTableBody">
-            <!-- Dynamisch gevuld vanuit WASM -->
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <!-- Footer -->
-  <footer>
-    <div class="footer-container">
-      <div>
-        <strong>&lt;treinen&gt;</strong> &bull; Cross-Platform WebAssembly Programma
-        <span style="margin-left: 12px; color: #10b981;">● WebAssembly Engine Actief (Shared Linear Memory)</span>
-      </div>
-      <div>
-        GitHub Pages Ready &bull; Automatische Git Push &amp; Versiedetectie Actief
       </div>
     </div>
-  </footer>
+  </div>
 
   <script type="module" src="./app.js"></script>
 </body>
