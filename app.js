@@ -2679,12 +2679,82 @@ function setupNavigation() {
 }
 
 // =============================================================
-// 11. Start Applicatie
+// 12. Versiebeheer & Live Updates
+// =============================================================
+const APP_VERSION = '2.2.0';
+let appBuildMeta = { version: APP_VERSION, commit: 'latest', buildTime: '' };
+
+async function initVersionManagement() {
+  async function checkVersion() {
+    try {
+      const res = await fetch(`./version.json?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        appBuildMeta = data;
+        const verStr = `v${data.version || APP_VERSION}`;
+        const commitStr = data.commit ? ` (${data.commit})` : '';
+
+        const badge = document.getElementById('appVersionBadge');
+        if (badge) {
+          badge.textContent = verStr;
+          badge.title = `Treinen ${verStr}${commitStr} - Tik voor versie-info`;
+        }
+
+        const footerVer = document.getElementById('footerVersionText');
+        if (footerVer) {
+          footerVer.textContent = `${verStr}${commitStr}`;
+        }
+
+        // Als er een nieuwere versie op de server staat
+        if (data.version && data.version !== APP_VERSION) {
+          const banner = document.getElementById('updateBanner');
+          const verCode = document.getElementById('bannerVersionNum');
+          if (verCode) verCode.textContent = `v${data.version}`;
+          if (banner) banner.style.display = 'block';
+        }
+      }
+    } catch (e) {
+      console.warn('Versiecheck niet beschikbaar:', e);
+    }
+  }
+
+  // Update Reload knoppen
+  document.getElementById('btnReloadUpdate')?.addEventListener('click', () => {
+    if ('caches' in window) {
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+        window.location.reload(true);
+      });
+    } else {
+      window.location.reload(true);
+    }
+  });
+
+  document.getElementById('btnDismissUpdate')?.addEventListener('click', () => {
+    const banner = document.getElementById('updateBanner');
+    if (banner) banner.style.display = 'none';
+  });
+
+  // Klik op de versietag toont een nette popup met build details
+  document.getElementById('appVersionBadge')?.addEventListener('click', () => {
+    const verStr = `v${appBuildMeta.version || APP_VERSION}`;
+    const commitStr = appBuildMeta.commit || 'main';
+    const buildTime = appBuildMeta.buildTime ? new Date(appBuildMeta.buildTime).toLocaleString('nl-NL') : 'Recent';
+    playAuthenticNSChime();
+    alert(`🚆 Treinen — ProRail Live Satelliet Radar\n\nVersie: ${verStr}\nCommit: ${commitStr}\nLaatste build: ${buildTime}\nStatus: Alle systemen en services zijn actueel.`);
+  });
+
+  checkVersion();
+  setInterval(checkVersion, 60000);
+}
+
+// =============================================================
+// 13. Start Applicatie
 // =============================================================
 async function init() {
   initMap();
   setupNavigation();
   initCommunicationEngine();
+  initVersionManagement();
 
   populateLineButtons('ns');
   const defaultCorridor = CORRIDORS['enschede-denhaag'];
