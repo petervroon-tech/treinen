@@ -240,6 +240,19 @@ body {
   border-color: var(--ns-yellow);
 }
 
+.header-action-btn.planner-btn {
+  background: rgba(255, 201, 23, 0.16);
+  border-color: var(--ns-yellow);
+  color: var(--ns-yellow);
+}
+
+.header-action-btn.planner-btn:hover,
+.header-action-btn.planner-btn.active {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
+  font-weight: 900;
+}
+
 .header-action-btn.comm-btn {
   background: rgba(14, 165, 233, 0.18);
   border-color: #0284c7;
@@ -286,6 +299,115 @@ body {
   padding: 1px 5px;
   border-radius: 999px;
   line-height: 1.2;
+}
+
+/* -------------------------------------------------------------
+   Uitklapbare Trajectplanner (Kies Start & Aankomst Station)
+------------------------------------------------------------- */
+.route-planner-bar {
+  background: #060e22;
+  border-bottom: 2px solid var(--ns-yellow);
+  padding: 8px 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  z-index: 190;
+  animation: slideDownPlanner 0.2s ease-out;
+}
+
+@keyframes slideDownPlanner {
+  from { transform: translateY(-30%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.route-planner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.rp-field-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rp-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ns-yellow);
+  white-space: nowrap;
+}
+
+.rp-select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  min-width: 170px;
+  max-width: 250px;
+  transition: all 0.15s ease;
+}
+
+.rp-select:hover, .rp-select:focus {
+  border-color: var(--ns-yellow);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.rp-select option {
+  background: #0b1428;
+  color: #ffffff;
+}
+
+.rp-swap-btn {
+  background: rgba(255, 201, 23, 0.15);
+  border: 1px solid var(--ns-yellow);
+  color: var(--ns-yellow);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rp-swap-btn:hover {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
+  transform: rotate(180deg);
+}
+
+.rp-actions-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rp-btn-apply {
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  border-radius: 6px;
+}
+
+.rp-btn-clear {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+.rp-route-summary {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-align: center;
 }
 
 .category-tabs {
@@ -1729,6 +1851,39 @@ body {
   .header-action-btn {
     padding: 4px 7px;
     font-size: 0.72rem;
+  }
+
+  .route-planner-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .rp-field-col {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .rp-select {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    font-size: 0.76rem;
+    padding: 5px 8px;
+  }
+
+  .rp-swap-btn {
+    align-self: center;
+    padding: 3px 12px;
+  }
+
+  .rp-actions-col {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .rp-btn-apply {
+    flex: 1;
   }
 
   .map-floating-bar {

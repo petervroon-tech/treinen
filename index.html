@@ -14,8 +14,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.2.0">
-  <link rel="manifest" href="./manifest.json?v=2.2.0">
+  <link rel="stylesheet" href="./style.css?v=2.3.0">
+  <link rel="manifest" href="./manifest.json?v=2.3.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -26,7 +26,7 @@
       <div class="update-info">
         <span class="update-icon" aria-hidden="true">🔔</span>
         <span id="updateBannerText">
-          <strong>Nieuwe versie beschikbaar!</strong> Versie <code id="bannerVersionNum">v2.2.0</code> is zojuist gepubliceerd.
+          <strong>Nieuwe versie beschikbaar!</strong> Versie <code id="bannerVersionNum">v2.3.0</code> is zojuist gepubliceerd.
         </span>
       </div>
       <div class="update-actions">
@@ -43,13 +43,16 @@
       <div class="brand-box">
         <div class="ns-badge">PRO-RAIL</div>
         <h1 class="brand-heading">&lt;treinen&gt;</h1>
-        <span id="appVersionBadge" class="app-version-badge" title="Treinen Versie v2.2.0 - Tik voor versie-info">v2.2.0</span>
+        <span id="appVersionBadge" class="app-version-badge" title="Treinen Versie v2.3.0 - Tik voor versie-info">v2.3.0</span>
       </div>
 
       <!-- Centraal Traject Dropdown Menu (Geen rijen vol knoppen meer) -->
       <div class="traject-dropdown-container">
         <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject of heel Nederland">
           <option value="all">🌐 Heel Nederland — Alle treinen van alle maatschappijen</option>
+          <optgroup label="🎯 Eigen Traject (Kies Start &amp; Aankomst)">
+            <option value="custom-route">🎯 Kies Eigen Traject (Van ➔ Naar, bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)...</option>
+          </optgroup>
           <optgroup label="🚆 NS Reizigers Hoofdlijnen">
             <option value="enschede-denhaag" selected>NS &bull; Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag C</option>
             <option value="eindhoven-maastricht">NS &bull; Eindhoven C ➔ Weert ➔ Roermond ➔ Sittard ➔ Maastricht (Rustig)</option>
@@ -81,6 +84,12 @@
 
       <!-- Rechter Bediening: Compacte Knoppen -->
       <div class="header-tools-row">
+        <!-- Eigen Traject (Van ➔ Naar) Knop -->
+        <button id="btnToggleRoutePlanner" class="header-action-btn planner-btn" type="button" title="Kies specifiek vertrek- en aankomststation (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)">
+          <span class="btn-icon">🎯</span>
+          <span class="btn-label-text">Van / Naar</span>
+        </button>
+
         <!-- Live Spoor Communicatie Knop -->
         <button id="btnOpenCommScreen" class="header-action-btn comm-btn" type="button" title="Live Spoor Communicatie (GSM-R)">
           <span class="btn-icon">📻</span>
@@ -126,6 +135,39 @@
     </div>
   </header>
 
+  <!-- UITKLAPBARE TRAJECTPLANNER (Kies Start- en Aankomststation) -->
+  <aside id="routePlannerBar" class="route-planner-bar" style="display: none;">
+    <div class="route-planner-content">
+      <div class="rp-field-col">
+        <label for="routeFromSelect" class="rp-label">📍 Van (Start):</label>
+        <select id="routeFromSelect" class="rp-select" aria-label="Vertrekstation">
+          <option value="">Laden...</option>
+        </select>
+      </div>
+
+      <button id="btnSwapRoute" class="rp-swap-btn" type="button" title="Draai reisrichting om">
+        ⇄
+      </button>
+
+      <div class="rp-field-col">
+        <label for="routeToSelect" class="rp-label">🏁 Naar (Aankomst):</label>
+        <select id="routeToSelect" class="rp-select" aria-label="Aankomststation">
+          <option value="">Laden...</option>
+        </select>
+      </div>
+
+      <div class="rp-actions-col">
+        <button id="btnApplyRoute" class="btn btn-primary rp-btn-apply" type="button">
+          🔍 Toon Treinen
+        </button>
+        <button id="btnClearRoute" class="btn btn-secondary rp-btn-clear" type="button" title="Sluit trajectplanner en herstel vorig overzicht">
+          ✕ Sluit
+        </button>
+      </div>
+    </div>
+    <div id="rpRouteSummary" class="rp-route-summary" style="display: none;"></div>
+  </aside>
+
   <!-- Mobiele & iPad Weergave Schakelaar (Smartphones & Tablets) -->
   <nav class="mobile-view-bar" role="tablist" aria-label="Weergave schakelaar">
     <button id="btnMobileSplit" class="mobile-view-btn active" data-view="split" type="button">
@@ -151,7 +193,7 @@
             <div class="corridor-info-sub">
               <span id="corridorRouteMeta">Lengte: 185 km &bull; NS</span> &bull; 
               <span id="corridorLiveCount">Laden...</span> &bull;
-              <span class="version-tag-sub">v2.2.0</span>
+              <span class="version-tag-sub">v2.3.0</span>
             </div>
           </div>
           <div class="corridor-header-actions">
@@ -268,10 +310,10 @@
       <div class="map-status-footer">
         <div>
           <span class="live-dot">●</span> 
-          <span id="mapStatusText">ProRail &bull; Treinen v2.2.0 &bull; Echte satellietbeelden</span>
+          <span id="mapStatusText">ProRail &bull; Treinen v2.3.0 &bull; Echte satellietbeelden</span>
         </div>
         <div>
-          <span>Bron: ProRail / NDOV Open Data &bull; GPS Real-time &bull; <strong id="footerVersionText">v2.2.0</strong></span>
+          <span>Bron: ProRail / NDOV Open Data &bull; GPS Real-time &bull; <strong id="footerVersionText">v2.3.0</strong></span>
         </div>
       </div>
     </section>
@@ -285,7 +327,7 @@
         <div class="my-train-title-group">
           <span id="myTrainOpBadge" class="op-badge op-ns">[NS]</span>
           <h3 id="myTrainTitle" class="my-train-heading">U zit in Trein #1762</h3>
-          <span class="modal-version-tag">GPS v2.2.0</span>
+          <span class="modal-version-tag">GPS v2.3.0</span>
         </div>
         <button id="btnCloseMyTrain" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
       </div>
@@ -355,7 +397,7 @@
           <div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <h3 id="stModalTitle" class="st-modal-name">Utrecht Centraal</h3>
-              <span class="modal-version-tag">Perron v2.2.0</span>
+              <span class="modal-version-tag">Perron v2.3.0</span>
             </div>
             <span id="stModalSub" class="st-modal-sub">Code: UT &bull; 21 Perronsporen &bull; Knooppunt</span>
           </div>
@@ -409,7 +451,7 @@
             <div style="display: flex; align-items: center; gap: 8px;">
               <h3 id="commModalTitle" class="comm-modal-title">Live Spoor Communicatie &amp; Mededelingen</h3>
               <span class="comm-live-tag">● LIVE GSM-R</span>
-              <span class="modal-version-tag">TRDL v2.2.0</span>
+              <span class="modal-version-tag">TRDL v2.3.0</span>
             </div>
             <span class="comm-modal-sub">ProRail Verkeersleiding &bull; Kanaal 18 TRDL &bull; Machinisten &bull; Stationsomroep</span>
           </div>
@@ -448,6 +490,6 @@
     </div>
   </aside>
 
-  <script type="module" src="./app.js?v=2.2.0"></script>
+  <script type="module" src="./app.js?v=2.3.0"></script>
 </body>
 </html>
