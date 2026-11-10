@@ -501,7 +501,7 @@ const appState = {
   activeCategory: 'ns',
   activeCorridorKey: 'enschede-denhaag',
   activeStatusFilter: 'all', // 'all' | 'ontime' | 'delayed' | 'pech'
-  labelMode: 'smart', // 'smart' (anti-chaos) | 'minimal' | 'compact' | 'full'
+  labelMode: 'minimal', // Standaard 'minimal' (Alleen Iconen) voor een rustig & overzichtelijk scherm
   motionFilter: 'all', // 'all' | 'moving' | 'standing'
   commSoundEnabled: true,
   commMessages: [],
@@ -1224,17 +1224,16 @@ function updateLineOverview() {
     const isTerminal = st.terminal || idx === 0 || idx === corridor.stations.length - 1;
 
     html += `
-      <div class="station-node ${isTerminal ? 'terminal' : ''}" onclick="window.selectStation('${st.code}')" role="button" tabindex="0" title="Tik om alle stoppende treinen en perrons te zien">
+      <div class="station-node ${isTerminal ? 'terminal' : ''}" onclick="window.selectStation('${st.code}')" role="button" tabindex="0" title="Tik om alle treinen op ${st.name} te zien">
         <div class="station-track-col">
           <div class="station-bullet"></div>
           ${idx < corridor.stations.length - 1 ? '<div class="track-line"></div>' : ''}
         </div>
         <div class="station-details">
-          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;">
-            <div class="station-name">${st.name}</div>
-            <span class="st-tap-hint">👉 Tik voor treinen</span>
+          <div class="station-name-row">
+            <span class="station-name">${st.name}</span>
+            <span class="station-platform-badge">Spoor ${st.sporen}</span>
           </div>
-          <div class="station-sub">Spoor ${st.sporen} &bull; Code: ${st.code}</div>
         </div>
       </div>
     `;
@@ -1623,6 +1622,20 @@ window.selectTrain = (trainId) => {
     document.getElementById('inspStatus').textContent = spdInfo.text;
     document.getElementById('inspGps').textContent = train.gpsdata;
   }
+
+  // Geef de geselecteerde marker een opvallende gloed en open de tag direct
+  appState.trainMarkers.forEach((m, id) => {
+    const el = m.getElement();
+    if (el) {
+      const isSelected = id === trainId;
+      el.classList.toggle('selected', isSelected);
+      const markerPin = el.querySelector('.clean-train-pin');
+      if (markerPin) {
+        markerPin.style.transform = isSelected ? 'scale(1.4)' : '';
+        markerPin.style.boxShadow = isSelected ? '0 0 16px var(--ns-yellow)' : '';
+      }
+    }
+  });
 
   appState.map.flyTo([train.lat, train.lon], 14, { duration: 1.2 });
 };

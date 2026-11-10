@@ -926,22 +926,23 @@ body {
   gap: 8px;
 }
 
-.st-tap-hint {
-  font-size: 0.65rem;
+.station-platform-badge {
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
   font-weight: 700;
-  color: var(--ns-yellow);
-  background: rgba(255, 201, 23, 0.12);
-  border: 1px solid rgba(255, 201, 23, 0.3);
-  padding: 2px 6px;
-  border-radius: 4px;
-  opacity: 0.85;
-  transition: opacity 0.15s;
+  color: var(--text-sub);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 2px 7px;
+  border-radius: 5px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.station-node:hover .st-tap-hint {
-  opacity: 1;
-  background: var(--ns-yellow);
-  color: var(--ns-blue);
+.station-node:hover .station-platform-badge {
+  background: rgba(255, 201, 23, 0.18);
+  border-color: var(--ns-yellow);
+  color: var(--ns-yellow);
 }
 
 .station-track-col {
