@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "commit": "init",
+  "fullCommit": "local-development",
+  "buildTime": "2026-11-10T17:00:00Z",
+  "branch": "main",
+  "environment": "local",
+  "title": "Treinen WASM Simulatie"
+}

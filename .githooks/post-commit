@@ -1,0 +1,45 @@
+#!/bin/sh
+# Treinen auto-push hook
+# Wordt automatisch geactiveerd na elke 'git commit'.
+
+# Voorkom oneindige recursie of uitvoeren tijdens rebase/amend indien gewenst
+if [ "$TREINEN_NO_AUTOPUSH" = "1" ]; then
+  exit 0
+fi
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [ -z "$BRANCH" ] || [ "$BRANCH" = "HEAD" ]; then
+  exit 0
+fi
+
+# Controleer of remote 'origin' of een andere remote bestaat
+if git remote | grep -q "^origin$"; then
+  echo ""
+  echo "🚂 [treinen] Automatisch pushen naar origin/$BRANCH..."
+  if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+    git push origin "$BRANCH"
+  else
+    git push -u origin "$BRANCH"
+  fi
+  if [ $? -eq 0 ]; then
+    echo "✅ [treinen] Automatische push succesvol voltooid!"
+  else
+    echo "⚠️  [treinen] Automatische push is mislukt. Controleer je internetverbinding of remote permissies."
+  fi
+  echo ""
+else
+  FIRST_REMOTE=$(git remote 2>/dev/null | head -n 1)
+  if [ -n "$FIRST_REMOTE" ]; then
+    echo ""
+    echo "🚂 [treinen] Automatisch pushen naar $FIRST_REMOTE/$BRANCH..."
+    git push "$FIRST_REMOTE" "$BRANCH"
+    echo ""
+  else
+    echo ""
+    echo "ℹ️  [treinen] Geen Git remote gevonden om naar te pushen."
+    echo "   Koppel je GitHub repository met:"
+    echo "   git remote add origin https://github.com/<jouw-gebruikersnaam>/treinen.git"
+    echo "   Vanaf dat moment pusht elke commit automatisch!"
+    echo ""
+  fi
+fi

@@ -1,0 +1,12 @@
+# Rust build output
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# OS files
+.DS_Store
+Thumbs.db

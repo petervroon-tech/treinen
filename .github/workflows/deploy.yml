@@ -1,0 +1,75 @@
+name: Deploy Treinen naar GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+# Permissies vereist voor GitHub Pages deployment met OIDC id-token
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Voorkom overlappende deployments
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Bouw WebAssembly binary en valideer
+        run: |
+          python3 tools/build_wasm.py
+
+      - name: Genereer versie metadata (automatische herkenning)
+        run: |
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "${GITHUB_SHA:0:7}")
+          VERSION="1.0.${{ github.run_number }}"
+          
+          python3 -c "
+          import json, os
+          version_info = {
+              'version': '${VERSION}',
+              'commit': '${SHORT_SHA}',
+              'fullCommit': '${{ github.sha }}',
+              'buildTime': '${BUILD_TIME}',
+              'branch': '${{ github.ref_name }}',
+              'environment': 'github-pages',
+              'title': 'Treinen WASM Simulatie'
+          }
+          with open('public/version.json', 'w') as f:
+              json.dump(version_info, f, indent=2)
+          print('Gegenereerde version.json:')
+          print(json.dumps(version_info, indent=2))
+          "
+
+      - name: Configureer GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+      - name: Deploy naar GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
