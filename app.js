@@ -682,10 +682,20 @@ function initMap() {
     maxZoom: 19
   });
 
-  const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; CartoDB &bull; OSM',
-    maxZoom: 19
+  // 100% Gratis en open Nacht Radar (Esri Dark Canvas - Geen API Key vereist!)
+  const darkBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri &bull; Nacht Radar Nederland',
+    maxZoom: 19,
+    maxNativeZoom: 16
   });
+
+  const darkLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '',
+    maxZoom: 19,
+    maxNativeZoom: 16
+  });
+
+  const dark = L.layerGroup([darkBase, darkLabels]);
 
   esri.addTo(map);
   appState.map = map;
@@ -699,7 +709,10 @@ function initMap() {
 function switchLayer(name) {
   const map = appState.map;
   ['esri', 'pdok', 'dark'].forEach(k => {
-    if (map.hasLayer(appState.layers[k])) map.removeLayer(appState.layers[k]);
+    const layer = appState.layers[k];
+    if (layer) {
+      map.removeLayer(layer);
+    }
   });
   appState.layers[name].addTo(map);
   appState.baseLayer = name;
