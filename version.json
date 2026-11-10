@@ -1,9 +1,9 @@
 {
-  "version": "1.0.1",
-  "commit": "ffb5b47",
-  "fullCommit": "ffb5b4742ff0fc8ca645882d2e04b66c1021b9ce",
-  "buildTime": "2026-11-10T17:13:34Z",
+  "version": "1.0.2",
+  "commit": "c0950c1",
+  "fullCommit": "c0950c1257a6e7371586edde0af3ace5a5711313",
+  "buildTime": "2026-11-10T17:27:50Z",
   "branch": "main",
-  "environment": "local",
+  "environment": "github-pages",
   "title": "Treinen WASM Simulatie"
 }
