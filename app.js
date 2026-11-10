@@ -1287,6 +1287,19 @@ window.selectTrain = (trainId) => {
 
   playAuthenticNSChime();
 
+  // Mobiele & iPad optimalisatie: als de gebruiker in lijstmodus zat, toon de kaart
+  const layout = document.getElementById('mainLayout');
+  if (layout && layout.classList.contains('view-list')) {
+    layout.classList.remove('view-list');
+    layout.classList.add('view-map');
+    document.querySelectorAll('.mobile-view-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-view') === 'map');
+    });
+    if (appState.map) {
+      setTimeout(() => appState.map.invalidateSize(), 100);
+    }
+  }
+
   const box = document.getElementById('inspectorBox');
   if (box) {
     box.style.display = 'block';
@@ -1380,6 +1393,43 @@ function populateLineButtons(category) {
 }
 
 function setupNavigation() {
+  // Mobiele & iPad Weergave Schakelaar (Split Screen, Alleen Lijst, Alleen Kaart)
+  document.querySelectorAll('.mobile-view-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.mobile-view-btn').forEach(b => b.classList.remove('active'));
+      const target = e.currentTarget;
+      target.classList.add('active');
+
+      const viewMode = target.getAttribute('data-view');
+      const layout = document.getElementById('mainLayout');
+      if (layout) {
+        layout.classList.remove('view-list', 'view-map', 'view-split');
+        if (viewMode === 'list') {
+          layout.classList.add('view-list');
+        } else if (viewMode === 'map') {
+          layout.classList.add('view-map');
+        } else {
+          layout.classList.add('view-split');
+        }
+      }
+
+      // Ververs Leaflet kaartafmetingen na CSS layout-transitie
+      if (appState.map) {
+        setTimeout(() => appState.map.invalidateSize(), 150);
+      }
+    });
+  });
+
+  // Schermrotatie & Resize optimalisatie voor iPads, laptops en telefoons
+  window.addEventListener('resize', () => {
+    if (appState.map) appState.map.invalidateSize();
+  });
+  window.addEventListener('orientationchange', () => {
+    setTimeout(() => {
+      if (appState.map) appState.map.invalidateSize();
+    }, 200);
+  });
+
   // Aparte Knoppen: Op tijd, Vertraagd, Pech & Lijnoverzicht
   document.querySelectorAll('.status-filter-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {

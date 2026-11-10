@@ -2,10 +2,13 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>treinen - Lijnoverzicht Enschede tot Eindpunt &amp; Echte Satellietbeelden</title>
-  <meta name="description" content="Overzichtelijk live spoorlijnoverzicht van Enschede tot eindpunt met actuele treinen, vertragingen en echte satellietbeelden.">
+  <meta name="description" content="Overzichtelijk live spoorlijnoverzicht van alle maatschappijen, goederenvervoer en internationale treinen met actuele snelheden en echte satellietbeelden.">
   <meta name="theme-color" content="#003082">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
 
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -84,8 +87,21 @@
     </div>
   </header>
 
+  <!-- Mobiele & iPad Weergave Schakelaar (Smartphones & Tablets) -->
+  <nav class="mobile-view-bar" role="tablist" aria-label="Weergave schakelaar">
+    <button id="btnMobileSplit" class="mobile-view-btn active" data-view="split" type="button">
+      <span>🌓 Split Screen</span>
+    </button>
+    <button id="btnMobileList" class="mobile-view-btn" data-view="list" type="button">
+      <span>📋 Lijn &amp; Status</span>
+    </button>
+    <button id="btnMobileMap" class="mobile-view-btn" data-view="map" type="button">
+      <span>🛰️ Satellietkaart</span>
+    </button>
+  </nav>
+
   <!-- Hoofdvenster: Split Screen (Lijnstrip links & Echte Satelliet rechts) -->
-  <div class="main-layout">
+  <div id="mainLayout" class="main-layout">
 
     <!-- LINKERPANEEL: Het Overzichtelijke Lijnoverzicht (Enschede tot Eindpunt) -->
     <section class="corridor-panel" aria-label="Lijnoverzicht">
