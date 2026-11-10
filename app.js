@@ -1,177 +1,292 @@
 import { TreinenWasmBridge } from './wasm_bridge.js';
 
+// Corridors / Lijnen definities van Nederland
+const CORRIDORS = {
+  'enschede-denhaag': {
+    id: 'enschede-denhaag',
+    name: 'Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag Centraal',
+    shortName: 'Oost-West Lijn (Enschede - Den Haag)',
+    operator: 'NS Reizigers',
+    seriesPattern: /^(17|70|16|14|24)\d{2}$/,
+    stations: [
+      { code: 'ES',   name: 'Enschede',            lat: 52.2225, lon: 6.8897, terminal: true,  sporen: '1-4' },
+      { code: 'HGL',  name: 'Hengelo',             lat: 52.2625, lon: 6.7936, terminal: false, sporen: '1-3' },
+      { code: 'AML',  name: 'Almelo',              lat: 52.3578, lon: 6.6542, terminal: false, sporen: '1-4' },
+      { code: 'WDN',  name: 'Wierden',             lat: 52.3556, lon: 6.5889, terminal: false, sporen: '1-2' },
+      { code: 'RSN',  name: 'Rijssen',             lat: 52.3117, lon: 6.5208, terminal: false, sporen: '1-2' },
+      { code: 'HON',  name: 'Holten',              lat: 52.2794, lon: 6.4217, terminal: false, sporen: '1-2' },
+      { code: 'DV',   name: 'Deventer',            lat: 52.2575, lon: 6.1606, terminal: false, sporen: '1-4' },
+      { code: 'APD',  name: 'Apeldoorn',           lat: 52.2094, lon: 5.9614, terminal: false, sporen: '1-4' },
+      { code: 'AMF',  name: 'Amersfoort Centraal', lat: 52.1539, lon: 5.3736, terminal: false, sporen: '1-7' },
+      { code: 'UT',   name: 'Utrecht Centraal',    lat: 52.0894, lon: 5.1103, terminal: false, sporen: '1-21' },
+      { code: 'GD',   name: 'Gouda',               lat: 52.0175, lon: 4.7061, terminal: false, sporen: '1-10' },
+      { code: 'GVC',  name: 'Den Haag Centraal',   lat: 52.0808, lon: 4.3247, terminal: true,  sporen: '1-12' }
+    ]
+  },
+
+  'enschede-zwolle': {
+    id: 'enschede-zwolle',
+    name: 'Enschede ➔ Hengelo ➔ Almelo ➔ Zwolle',
+    shortName: 'Blauwnet Stoptrein & Sneltrein',
+    operator: 'Keolis / Blauwnet',
+    seriesPattern: /^(312|79)\d{2}$/,
+    stations: [
+      { code: 'ES',  name: 'Enschede',  lat: 52.2225, lon: 6.8897, terminal: true,  sporen: '1-4' },
+      { code: 'HGL', name: 'Hengelo',   lat: 52.2625, lon: 6.7936, terminal: false, sporen: '1-3' },
+      { code: 'AML', name: 'Almelo',    lat: 52.3578, lon: 6.6542, terminal: false, sporen: '1-4' },
+      { code: 'WDN', name: 'Wierden',   lat: 52.3556, lon: 6.5889, terminal: false, sporen: '1-2' },
+      { code: 'NVD', name: 'Nijverdal', lat: 52.3606, lon: 6.4589, terminal: false, sporen: '1-2' },
+      { code: 'RAT', name: 'Raalte',    lat: 52.3842, lon: 6.2794, terminal: false, sporen: '1-2' },
+      { code: 'HN',  name: 'Heino',     lat: 52.4367, lon: 6.2306, terminal: false, sporen: '1-2' },
+      { code: 'ZL',  name: 'Zwolle',    lat: 52.5050, lon: 6.0917, terminal: true,  sporen: '1-16' }
+    ]
+  },
+
+  'amsterdam-maastricht': {
+    id: 'amsterdam-maastricht',
+    name: 'Amsterdam Centraal ➔ Utrecht ➔ Eindhoven ➔ Maastricht',
+    shortName: 'Noord-Zuid As (Ams - Mt)',
+    operator: 'NS Reizigers',
+    seriesPattern: /^(8|39|29|35)\d{2}$/,
+    stations: [
+      { code: 'ASD', name: 'Amsterdam Centraal', lat: 52.3792, lon: 4.9003, terminal: true,  sporen: '1-15' },
+      { code: 'UT',  name: 'Utrecht Centraal',   lat: 52.0894, lon: 5.1103, terminal: false, sporen: '1-21' },
+      { code: 'HT',  name: "'s-Hertogenbosch",   lat: 51.6906, lon: 5.2936, terminal: false, sporen: '1-7'  },
+      { code: 'EHV', name: 'Eindhoven Centraal', lat: 51.4433, lon: 5.4814, terminal: false, sporen: '1-8'  },
+      { code: 'WT',  name: 'Weert',              lat: 51.2489, lon: 5.7064, terminal: false, sporen: '1-3'  },
+      { code: 'RM',  name: 'Roermond',           lat: 51.1931, lon: 5.9928, terminal: false, sporen: '1-3'  },
+      { code: 'STD', name: 'Sittard',            lat: 50.9986, lon: 5.8589, terminal: false, sporen: '1-3'  },
+      { code: 'MT',  name: 'Maastricht',         lat: 50.8500, lon: 5.7056, terminal: true,  sporen: '1-6'  }
+    ]
+  },
+
+  'rotterdam-amsterdam': {
+    id: 'rotterdam-amsterdam',
+    name: 'Rotterdam Centraal ➔ Den Haag ➔ Schiphol ➔ Amsterdam',
+    shortName: 'Oude Lijn (Rtd - Asd)',
+    operator: 'NS Reizigers',
+    seriesPattern: /^(22|24|11|14)\d{2}$/,
+    stations: [
+      { code: 'RTD', name: 'Rotterdam Centraal', lat: 51.9250, lon: 4.4700, terminal: true,  sporen: '1-16' },
+      { code: 'DT',  name: 'Delft',              lat: 52.0069, lon: 4.3564, terminal: false, sporen: '1-4'  },
+      { code: 'GVM', name: 'Den Haag HS',        lat: 52.0706, lon: 4.3228, terminal: false, sporen: '1-6'  },
+      { code: 'LEDN',name: 'Leiden Centraal',    lat: 52.1661, lon: 4.4819, terminal: false, sporen: '1-9'  },
+      { code: 'SHL', name: 'Schiphol Airport',   lat: 52.3108, lon: 4.7628, terminal: false, sporen: '1-6'  },
+      { code: 'ASD', name: 'Amsterdam Centraal', lat: 52.3792, lon: 4.9003, terminal: true,  sporen: '1-15' }
+    ]
+  },
+
+  'groningen-utrecht': {
+    id: 'groningen-utrecht',
+    name: 'Groningen / Leeuwarden ➔ Zwolle ➔ Amersfoort ➔ Utrecht',
+    shortName: 'Noordelijke Lijn (Gn - Ut)',
+    operator: 'NS Reizigers',
+    seriesPattern: /^(5|7|18)\d{2}$/,
+    stations: [
+      { code: 'GN',  name: 'Groningen',          lat: 53.2106, lon: 6.5647, terminal: true,  sporen: '1-9'  },
+      { code: 'ASN', name: 'Assen',              lat: 52.9922, lon: 6.5683, terminal: false, sporen: '1-3'  },
+      { code: 'MP',  name: 'Meppel',             lat: 52.6917, lon: 6.1986, terminal: false, sporen: '1-3'  },
+      { code: 'ZL',  name: 'Zwolle',             lat: 52.5050, lon: 6.0917, terminal: false, sporen: '1-16' },
+      { code: 'AMF', name: 'Amersfoort Centraal', lat: 52.1539, lon: 5.3736, terminal: false, sporen: '1-7'  },
+      { code: 'UT',  name: 'Utrecht Centraal',   lat: 52.0894, lon: 5.1103, terminal: true,  sporen: '1-21' }
+    ]
+  }
+};
+
 // Global State
 const appState = {
   bridge: new TreinenWasmBridge(),
   map: null,
-  activeBaseLayer: 'esri',
+  activeCorridorKey: 'enschede-denhaag',
+  baseLayer: 'esri',
   layers: {},
-  trains: new Map(), // key: matnummer of id, value: TrainObject
-  selectedTrainId: null,
-  isFollowingTrain: false,
-  activeOperatorFilter: 'all',
-  searchQuery: '',
-  scannerEnabled: true,
+  routePolyline: null,
+  stationMarkers: [],
+  trainMarkers: new Map(),
+  soundEnabled: true,
   audioCtx: null,
-  currentChannel: 'all',
-  lastRadioMsgTime: 0
+  allLiveFeatures: [],
+  selectedTrainId: null
 };
 
 // -------------------------------------------------------------
-// 1. Automatische Versiedetectie
+// 1. Authentieke Akoestische NS Stationsgong (Geen computerstem!)
 // -------------------------------------------------------------
-async function initVersionCheck() {
-  const banner = document.getElementById('updateBanner');
-  const bannerText = document.getElementById('updateBannerText');
-  const btnReload = document.getElementById('btnReloadUpdate');
-  const btnDismiss = document.getElementById('btnDismissUpdate');
-
-  let currentVersion = null;
-  try {
-    const res = await fetch('./version.json?_t=' + Date.now(), { cache: 'no-store' });
-    if (res.ok) currentVersion = await res.json();
-  } catch (e) {}
-
-  async function checkRemote() {
-    try {
-      const res = await fetch('./version.json?_t=' + Date.now(), { cache: 'no-store' });
-      if (!res.ok) return;
-      const remote = await res.json();
-      if (currentVersion && (remote.version !== currentVersion.version || remote.commit !== currentVersion.commit)) {
-        if (banner && bannerText) {
-          bannerText.innerHTML = `<strong>Nieuwe versie beschikbaar!</strong> Versie <code>v${remote.version}</code> (commit <code>${remote.commit}</code>) is gepubliceerd.`;
-          banner.classList.add('visible');
-        }
-      }
-    } catch (e) {}
+function getAudioContext() {
+  if (!appState.audioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) appState.audioCtx = new AudioContext();
   }
+  if (appState.audioCtx && appState.audioCtx.state === 'suspended') {
+    appState.audioCtx.resume();
+  }
+  return appState.audioCtx;
+}
 
-  setInterval(checkRemote, 30000);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') checkRemote();
+// Speelt de originele drietonige NS Stationsgong (F4 -> A4 -> C5 met akoestische belboventonen)
+function playAuthenticNSChime() {
+  if (!appState.soundEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+  // F4 (349.23 Hz), A4 (440.00 Hz), C5 (523.25 Hz)
+  const notes = [
+    { freq: 349.23, time: 0.00 },
+    { freq: 440.00, time: 0.28 },
+    { freq: 523.25, time: 0.56 }
+  ];
+
+  notes.forEach(({ freq, time }) => {
+    // Grondtoon
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(freq, now + time);
+
+    gain1.gain.setValueAtTime(0.001, now + time);
+    gain1.gain.exponentialRampToValueAtTime(0.22, now + time + 0.03);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, now + time + 0.85);
+
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+
+    // Harmonische bel boventoon (2x frequentie)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 2, now + time);
+
+    gain2.gain.setValueAtTime(0.001, now + time);
+    gain2.gain.exponentialRampToValueAtTime(0.08, now + time + 0.02);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now + time + 0.45);
+
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+
+    osc1.start(now + time);
+    osc2.start(now + time);
+    osc1.stop(now + time + 0.9);
+    osc2.stop(now + time + 0.5);
   });
-
-  if (btnReload) {
-    btnReload.addEventListener('click', async () => {
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-      window.location.reload();
-    });
-  }
-  if (btnDismiss) {
-    btnDismiss.addEventListener('click', () => banner.classList.remove('visible'));
-  }
 }
 
 // -------------------------------------------------------------
-// 2. Leaflet Satelliet Kaart & Spoorinfrastructuur Setup
+// 2. Leaflet Satellietkaart Initialisatie
 // -------------------------------------------------------------
 function initMap() {
-  // Kaart gecentreerd op Nederland
   const map = L.map('map', {
-    center: [52.1326, 5.2913],
-    zoom: 8,
-    minZoom: 7,
-    maxZoom: 18,
+    center: [52.20, 5.70],
+    zoom: 9,
     zoomControl: false
   });
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  // Satelliet Kaartlagen
-  // 1. Esri World Imagery (Hoge resolutie wereldwijde satellietbeelden)
-  const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '&copy; Esri &bull; Maxar, Earthstar Geographics',
+  // Satellietlagen
+  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri &bull; Maxar',
     maxZoom: 19
   });
 
-  // 2. PDOK Luchtfoto Nederland (Officiële 8cm/25cm overheid luchtfoto)
-  const pdokSat = L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg', {
-    attribution: '&copy; PDOK &bull; Kadaster Luchtfoto Nederland',
+  const pdok = L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg', {
+    attribution: '&copy; PDOK Luchtfoto Nederland',
     maxZoom: 19
   });
 
-  // 3. CartoDB Dark (Nacht Radar)
-  const darkMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; CartoDB &bull; OpenStreetMap',
+  const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; CartoDB &bull; OSM',
     maxZoom: 19
   });
 
-  // 4. OpenRailwayMap Sporen Overlay (Alle echte sporen, seinen en wissels in Nederland)
-  const railwayOverlay = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenRailwayMap &bull; OpenStreetMap',
-    maxZoom: 19,
-    opacity: 0.9
-  });
-
-  // Standaard Satelliet + Spoorlijnen actief
-  esriSat.addTo(map);
-  railwayOverlay.addTo(map);
-
+  esri.addTo(map);
   appState.map = map;
-  appState.layers = {
-    esri: esriSat,
-    pdok: pdokSat,
-    dark: darkMap,
-    tracks: railwayOverlay
-  };
+  appState.layers = { esri, pdok, dark };
 
-  // Knoppen voor wisselen van satelliet / kaartlaag
-  document.getElementById('btnLayerSat')?.addEventListener('click', () => switchBaseLayer('esri'));
-  document.getElementById('btnLayerPdok')?.addEventListener('click', () => switchBaseLayer('pdok'));
-  document.getElementById('btnLayerDark')?.addEventListener('click', () => switchBaseLayer('dark'));
-
-  document.getElementById('btnToggleTracks')?.addEventListener('click', (e) => {
-    const btn = e.currentTarget;
-    if (map.hasLayer(railwayOverlay)) {
-      map.removeLayer(railwayOverlay);
-      btn.classList.remove('active');
-      btn.textContent = '🛤️ Spoorlijnen: UIT';
-    } else {
-      map.addLayer(railwayOverlay);
-      btn.classList.add('active');
-      btn.textContent = '🛤️ Spoorlijnen: AAN';
-    }
-  });
+  // Wisselen van kaarttype
+  document.getElementById('btnSatEsri')?.addEventListener('click', () => switchLayer('esri'));
+  document.getElementById('btnSatPdok')?.addEventListener('click', () => switchLayer('pdok'));
+  document.getElementById('btnMapDark')?.addEventListener('click', () => switchLayer('dark'));
 }
 
-function switchBaseLayer(name) {
+function switchLayer(name) {
   const map = appState.map;
   ['esri', 'pdok', 'dark'].forEach(k => {
-    if (map.hasLayer(appState.layers[k])) {
-      map.removeLayer(appState.layers[k]);
-    }
+    if (map.hasLayer(appState.layers[k])) map.removeLayer(appState.layers[k]);
   });
-
   appState.layers[name].addTo(map);
-  appState.activeBaseLayer = name;
+  appState.baseLayer = name;
 
-  ['btnLayerSat', 'btnLayerPdok', 'btnLayerDark'].forEach(id => {
+  ['btnSatEsri', 'btnSatPdok', 'btnMapDark'].forEach(id => {
     document.getElementById(id)?.classList.remove('active');
   });
-  if (name === 'esri') document.getElementById('btnLayerSat')?.classList.add('active');
-  if (name === 'pdok') document.getElementById('btnLayerPdok')?.classList.add('active');
-  if (name === 'dark') document.getElementById('btnLayerDark')?.classList.add('active');
+  if (name === 'esri') document.getElementById('btnSatEsri')?.classList.add('active');
+  if (name === 'pdok') document.getElementById('btnSatPdok')?.classList.add('active');
+  if (name === 'dark') document.getElementById('btnMapDark')?.classList.add('active');
 }
 
 // -------------------------------------------------------------
-// 3. Live Nederlandse Treinendata (JSONP Stream)
+// 3. Teken Corridor op Satellietkaart (Rustig & Schoon)
+// -------------------------------------------------------------
+function renderCorridorOnMap(corridor) {
+  const map = appState.map;
+
+  // Verwijder oude routelijn en stations
+  if (appState.routePolyline) {
+    appState.routePolyline.remove();
+  }
+  appState.stationMarkers.forEach(m => m.remove());
+  appState.stationMarkers = [];
+
+  if (!corridor) {
+    // 'all' modus: toon heel Nederland
+    map.flyTo([52.1326, 5.2913], 8, { duration: 1.0 });
+    return;
+  }
+
+  // Teken de spoorroute als een duidelijke gouden/witte lijn op de satelliet
+  const latlngs = corridor.stations.map(s => [s.lat, s.lon]);
+  appState.routePolyline = L.polyline(latlngs, {
+    color: '#ffc917',
+    weight: 4.5,
+    opacity: 0.95,
+    dashArray: '8, 4',
+    lineJoin: 'round'
+  }).addTo(map);
+
+  // Teken duidelijke stationbollen
+  corridor.stations.forEach((st, i) => {
+    const isTerm = st.terminal;
+    const marker = L.circleMarker([st.lat, st.lon], {
+      radius: isTerm ? 8 : 5,
+      fillColor: isTerm ? '#ffffff' : '#ffc917',
+      color: '#003082',
+      weight: 2.5,
+      fillOpacity: 1.0
+    }).addTo(map);
+
+    marker.bindTooltip(`<strong>${st.name}</strong><br><small>Spoor ${st.sporen}</small>`, {
+      permanent: isTerm,
+      direction: 'top',
+      offset: [0, -6],
+      className: 'station-map-tooltip'
+    });
+
+    appState.stationMarkers.push(marker);
+  });
+
+  // Zoom de kaart direct naar deze lijn
+  const bounds = L.latLngBounds(latlngs);
+  map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13, animate: true, duration: 1.2 });
+}
+
+// -------------------------------------------------------------
+// 4. Live Treinen Ophalen & Filteren per Corridor
 // -------------------------------------------------------------
 function fetchLiveTrains() {
   return new Promise((resolve) => {
-    const callbackName = 'eqfeed_callback_' + Math.floor(Math.random() * 1000000);
     let resolved = false;
 
-    window[callbackName] = (data) => {
-      resolved = true;
-      try { delete window[callbackName]; } catch (e) {}
-      if (script.parentNode) script.parentNode.removeChild(script);
-      resolve(data);
-    };
-
-    // Standaard JSONP fallback voor treinposities.nl
     window.eqfeed_callback = (data) => {
       if (!resolved) {
         resolved = true;
@@ -190,481 +305,365 @@ function fetchLiveTrains() {
     };
     document.head.appendChild(script);
 
-    // Timeout na 4 seconden
     setTimeout(() => {
       if (!resolved) {
         resolved = true;
         resolve(null);
       }
-    }, 4000);
+    }, 4500);
   });
 }
 
-// Bepaal de vervoerder op basis van het trein-materieelnummer en icoon
-function identifyOperator(colorIcon, matnummer, matnr) {
-  const c = (colorIcon || '').toLowerCase();
-  const m = (matnummer || '').toLowerCase();
-  const t = (matnr || '').toLowerCase();
-
-  if (c.includes('arriva') || m.includes('arriva')) {
-    return { id: 'arriva', name: 'Arriva Nederland', color: '#ef4444', text: '#ffffff' };
-  }
-  if (c.includes('keolis') || c.includes('blauwnet') || m.includes('keolis')) {
-    return { id: 'keolis', name: 'Keolis / Blauwnet', color: '#0284c7', text: '#ffffff' };
-  }
-  if (c.includes('eurostar') || c.includes('tgv') || c.includes('pbka') || c.includes('ice') || t.includes('eurostar') || t.includes('ice')) {
-    return { id: 'eurostar', name: 'Eurostar / ICE International', color: '#990022', text: '#ffffff' };
-  }
-  if (c.includes('cargo') || c.includes('traxx') || c.includes('rfo') || m.includes('rfo') || m.includes('dbcargo') || m.includes('lineas')) {
-    return { id: 'cargo', name: 'Goederen / DB Cargo / RFO', color: '#ea580c', text: '#ffffff' };
-  }
-  // Standaard NS Reizigers
-  return { id: 'ns', name: 'NS Reizigers', color: '#ffc917', text: '#003082' };
-}
-
-// -------------------------------------------------------------
-// 4. Verwerking en Weergave van Treinen op de Satellietkaart
-// -------------------------------------------------------------
-function parseTrainData(item) {
-  if (!item || !item.geometry || !item.geometry.coordinates) return null;
-  const coords = item.geometry.coordinates;
+function parseTrain(raw) {
+  if (!raw || !raw.geometry || !raw.geometry.coordinates) return null;
+  const coords = raw.geometry.coordinates;
   const lat = parseFloat(coords[0]);
   const lon = parseFloat(coords[1]);
   if (isNaN(lat) || isNaN(lon)) return null;
 
-  const props = item.properties || {};
+  const props = raw.properties || {};
   const matnrString = props.matnr || '';
-  const matnummer = props.matnummer || 'TREIN';
-  const colorIcon = props.color || '';
-  const gpsdata = props.gpsdata || '';
+  const matnummer = props.matnummer || '';
 
-  // Parse snelheid uit bijv. "3112 met trein 1165 @ 23km/h"
   let speed = 0;
-  const speedMatch = matnrString.match(/@\s*(\d+)\s*km\/h/i);
-  if (speedMatch) {
-    speed = parseInt(speedMatch[1], 10);
-  }
+  const spdMatch = matnrString.match(/@\s*(\d+)\s*km\/h/i);
+  if (spdMatch) speed = parseInt(spdMatch[1], 10);
 
-  // Parse treinnummer uit bijv. "met trein 1165 @"
-  let trainNumber = '';
-  const trainMatch = matnrString.match(/trein\s+(\d+)/i);
-  if (trainMatch) {
-    trainNumber = trainMatch[1];
-  } else {
-    trainNumber = matnummer.replace(/\D/g, '') || '0';
-  }
+  let trainNum = '';
+  const trMatch = matnrString.match(/trein\s+(\d+)/i);
+  if (trMatch) trainNum = trMatch[1];
+  else trainNum = matnummer.replace(/\D/g, '') || '0';
 
-  // Parse materieel type
-  let materialName = matnummer;
-  const operator = identifyOperator(colorIcon, matnummer, matnrString);
-
-  // Punctualiteit via WebAssembly
-  const punctualityScore = appState.bridge.calculatePunctuality(speed, speed === 0 ? 120 : 0);
+  // Punctualiteit via WASM
+  const puncScore = appState.bridge.calculatePunctuality(speed, speed === 0 ? 120 : 0);
 
   return {
-    id: matnummer + '_' + trainNumber,
+    id: `${matnummer}_${trainNum}`,
+    trainNum,
     matnummer,
-    trainNumber,
     matnrString,
     lat,
     lon,
     speed,
-    operator,
-    punctualityScore,
-    gpsdata,
-    colorIcon
+    puncScore,
+    gpsdata: props.gpsdata || 'Zojuist'
   };
 }
 
-function updateTrains(featureList) {
-  if (!featureList || !Array.isArray(featureList)) return;
+// Bepaal afstand tussen twee coördinaten in km
+function distanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
-  let totalSpeed = 0;
-  let maxSpeed = 0;
-  let onTimeCount = 0;
-  let displayedCount = 0;
+// Bepaal of een trein zich op het traject van de corridor bevindt
+function matchTrainToCorridor(train, corridor) {
+  if (!corridor) return true;
 
-  const currentIds = new Set();
+  // A. Match op treinserie
+  if (corridor.seriesPattern && corridor.seriesPattern.test(train.trainNum)) {
+    return true;
+  }
 
-  featureList.forEach((raw) => {
-    const t = parseTrainData(raw);
+  // B. Match op geografische nabijheid van een van de spoorsegmenten
+  for (let i = 0; i < corridor.stations.length - 1; i++) {
+    const s1 = corridor.stations[i];
+    const s2 = corridor.stations[i + 1];
+
+    const d1 = distanceKm(train.lat, train.lon, s1.lat, s1.lon);
+    const d2 = distanceKm(train.lat, train.lon, s2.lat, s2.lon);
+    const segLen = distanceKm(s1.lat, s1.lon, s2.lat, s2.lon);
+
+    // Driehoeksongelijkheid: als d1 + d2 dichtbij de segmentlengte ligt (< 6 km speling)
+    if (d1 + d2 <= segLen + 6.0 && d1 <= segLen + 4.0 && d2 <= segLen + 4.0) {
+      return { segmentIndex: i, fromStation: s1, toStation: s2, distFromS1: d1 };
+    }
+  }
+
+  return false;
+}
+
+// -------------------------------------------------------------
+// 5. Update het Overzichtelijke Lijnoverzicht (Lijnstrip)
+// -------------------------------------------------------------
+function updateLineOverview() {
+  const corridorKey = appState.activeCorridorKey;
+  const corridor = CORRIDORS[corridorKey];
+
+  const titleEl = document.getElementById('corridorTitle');
+  const metaEl = document.getElementById('corridorRouteMeta');
+  const countEl = document.getElementById('corridorLiveCount');
+  const diagramEl = document.getElementById('lineDiagram');
+
+  if (!corridor) {
+    if (titleEl) titleEl.textContent = 'Landelijke Satelliet Radar (Heel Nederland)';
+    if (metaEl) metaEl.textContent = 'Toont alle actuele treinen op alle spoorlijnen';
+    if (diagramEl) {
+      diagramEl.innerHTML = `
+        <div style="padding: 24px; text-align: center; color: var(--text-sub);">
+          <p>Kies een specifieke spoorlijn hierboven (bijv. <strong>Enschede tot eindpunt</strong>) om het station-voor-station lijnoverzicht te bekijken.</p>
+        </div>
+      `;
+    }
+    renderMapTrains(appState.allLiveFeatures.map(parseTrain).filter(Boolean));
+    return;
+  }
+
+  titleEl.textContent = `Lijn: ${corridor.name}`;
+  metaEl.textContent = `Vervoerder: ${corridor.operator} &bull; ${corridor.stations.length} Stations`;
+
+  // Filter treinen die op deze corridor rijden
+  const matchedTrains = [];
+  const segmentTrainsMap = new Map(); // key: segmentIndex, value: [trains]
+
+  appState.allLiveFeatures.forEach(raw => {
+    const t = parseTrain(raw);
     if (!t) return;
 
-    currentIds.add(t.id);
-    totalSpeed += t.speed;
-    if (t.speed > maxSpeed) maxSpeed = t.speed;
-    if (t.punctualityScore === 0) onTimeCount++;
+    const match = matchTrainToCorridor(t, corridor);
+    if (match) {
+      const segIdx = typeof match === 'object' ? match.segmentIndex : findNearestSegment(t, corridor);
+      t.segmentIndex = segIdx;
+      matchedTrains.push(t);
 
-    // Filter controle
-    const matchOperator = appState.activeOperatorFilter === 'all' || t.operator.id === appState.activeOperatorFilter;
-    const matchSearch = !appState.searchQuery || t.trainNumber.includes(appState.searchQuery) || t.matnummer.toLowerCase().includes(appState.searchQuery.toLowerCase());
-
-    if (!matchOperator || !matchSearch) {
-      if (appState.trains.has(t.id)) {
-        const existing = appState.trains.get(t.id);
-        if (existing.marker) existing.marker.remove();
-        appState.trains.delete(t.id);
-      }
-      return;
-    }
-
-    displayedCount++;
-
-    if (appState.trains.has(t.id)) {
-      // Bestaande trein updaten
-      const existing = appState.trains.get(t.id);
-      existing.speed = t.speed;
-      existing.punctualityScore = t.punctualityScore;
-      existing.lat = t.lat;
-      existing.lon = t.lon;
-      existing.gpsdata = t.gpsdata;
-
-      // Update marker positie
-      if (existing.marker) {
-        existing.marker.setLatLng([t.lat, t.lon]);
-        // Update popup/tag
-        const el = existing.marker.getElement();
-        if (el) {
-          const tag = el.querySelector('.train-tag');
-          if (tag) tag.textContent = `${t.trainNumber} (${t.speed}k)`;
-        }
-      }
-    } else {
-      // Nieuwe marker aanmaken
-      const marker = createTrainMarker(t);
-      marker.addTo(appState.map);
-      t.marker = marker;
-      appState.trains.set(t.id, t);
+      if (!segmentTrainsMap.has(segIdx)) segmentTrainsMap.set(segIdx, []);
+      segmentTrainsMap.get(segIdx).push(t);
     }
   });
 
-  // Verwijder verdwenen treinen
-  for (const [id, t] of appState.trains.entries()) {
-    if (!currentIds.has(id)) {
-      if (t.marker) t.marker.remove();
-      appState.trains.delete(id);
-    }
-  }
+  countEl.innerHTML = `Actieve treinen op dit traject: <strong>${matchedTrains.length}</strong>`;
 
-  // Update HUD statistieken
-  const total = featureList.length;
-  document.getElementById('statTrainCount').textContent = `${total} (${displayedCount} op kaart)`;
-  const avgSpeed = total > 0 ? Math.round(totalSpeed / total) : 0;
-  document.getElementById('statAvgSpeed').textContent = `${avgSpeed} km/u`;
-  document.getElementById('statTopSpeed').textContent = `${maxSpeed} km/u`;
-  const pct = total > 0 ? ((onTimeCount / total) * 100).toFixed(1) : '90.0';
-  document.getElementById('statPunctuality').textContent = `${pct}%`;
+  // Bouw het heldere stationsdiagram
+  let html = '';
+  corridor.stations.forEach((st, idx) => {
+    const isTerminal = st.terminal || idx === 0 || idx === corridor.stations.length - 1;
 
-  // Volg geselecteerde trein indien actief
-  if (appState.isFollowingTrain && appState.selectedTrainId) {
-    const selected = appState.trains.get(appState.selectedTrainId);
-    if (selected) {
-      appState.map.panTo([selected.lat, selected.lon], { animate: true, duration: 1.0 });
-      updateDetailCard(selected);
-    }
-  }
-
-  // Genereer mogelijke spoorcommunicatie
-  triggerRadioCommunications(featureList);
-}
-
-// Maak een custom HTML marker voor een trein op de kaart
-function createTrainMarker(t) {
-  // Punctualiteit kleur: 0 = Groen, 1 = Geel, 2 = Rood
-  const statusBorder = t.punctualityScore === 0 ? '#10b981' : t.punctualityScore === 1 ? '#f59e0b' : '#ef4444';
-
-  const html = `
-    <div class="train-custom-marker" title="${t.operator.name} Trein ${t.trainNumber} - ${t.speed} km/u">
-      <div class="train-tag">${t.trainNumber} (${t.speed}k)</div>
-      <div class="train-pin" style="background-color: ${t.operator.color}; border-color: ${statusBorder};">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="${t.operator.text}">
-          <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.5 0 6 .4 6 2H6c0-1.6 2.5-2 6-2zm-5 9c-.83 0-1.5-.67-1.5-1.5S6.17 10 7 10s1.5.67 1.5 1.5S7.83 13 7 13zm10 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-        </svg>
+    html += `
+      <div class="station-node ${isTerminal ? 'terminal' : ''}">
+        <div class="station-track-col">
+          <div class="station-bullet"></div>
+          ${idx < corridor.stations.length - 1 ? '<div class="track-line"></div>' : ''}
+        </div>
+        <div class="station-details">
+          <div class="station-name">${st.name}</div>
+          <div class="station-sub">Spoor ${st.sporen} &bull; ${st.code}</div>
+        </div>
       </div>
-    </div>
-  `;
+    `;
 
-  const icon = L.divIcon({
-    className: 'train-div-icon',
-    html: html,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14]
-  });
+    // Toon de treinen die tussen dit station en het volgende station rijden
+    if (idx < corridor.stations.length - 1) {
+      const trainsOnSegment = segmentTrainsMap.get(idx) || [];
+      if (trainsOnSegment.length > 0) {
+        html += `<div class="trains-between-segment">`;
+        trainsOnSegment.forEach(t => {
+          const puncClass = t.puncScore === 0 ? 'on-time' : t.puncScore === 1 ? 'delayed' : 'halted';
+          const puncText = t.puncScore === 0 ? 'Op tijd' : t.puncScore === 1 ? '+2 min' : 'Vertraagd';
 
-  const marker = L.marker([t.lat, t.lon], { icon });
-  marker.on('click', () => {
-    selectTrain(t);
-  });
-
-  return marker;
-}
-
-function selectTrain(t) {
-  appState.selectedTrainId = t.id;
-  updateDetailCard(t);
-  appState.map.flyTo([t.lat, t.lon], Math.max(appState.map.getZoom(), 12), { duration: 1.2 });
-  playRadioBeep();
-}
-
-function updateDetailCard(t) {
-  const card = document.getElementById('trainDetailCard');
-  if (!card) return;
-
-  card.classList.add('open');
-  document.getElementById('cardOperatorBadge').textContent = t.operator.name;
-  document.getElementById('cardOperatorBadge').style.backgroundColor = t.operator.color;
-  document.getElementById('cardOperatorBadge').style.color = t.operator.text;
-
-  document.getElementById('cardTrainTitle').textContent = `Trein #${t.trainNumber}`;
-  document.getElementById('cardSpeedNumber').textContent = t.speed;
-
-  const puncEl = document.getElementById('cardPunctualityBadge');
-  if (t.punctualityScore === 0) {
-    puncEl.className = 'punctuality-badge on-time';
-    puncEl.textContent = '🟢 Op tijd (Rijdend)';
-  } else if (t.punctualityScore === 1) {
-    puncEl.className = 'punctuality-badge delayed';
-    puncEl.textContent = '🟡 Vertraagd / Naderend';
-  } else {
-    puncEl.className = 'punctuality-badge halted';
-    puncEl.textContent = '🔴 Stilstaand op Baanvak';
-  }
-
-  document.getElementById('cardMaterial').textContent = t.matnummer;
-  document.getElementById('cardOperator').textContent = t.operator.name;
-  document.getElementById('cardSeries').textContent = `${t.trainNumber} (Intercity/Sprinter)`;
-  document.getElementById('cardGpsTime').textContent = t.gpsdata || 'Zojuist';
-  document.getElementById('cardCoords').textContent = `${t.lat.toFixed(4)}° N, ${t.lon.toFixed(4)}° E`;
-
-  const btnFollow = document.getElementById('btnFollowTrain');
-  if (btnFollow) {
-    btnFollow.textContent = appState.isFollowingTrain ? '⏹️ Stop Volgen' : '🎥 Volg Trein (Chase Cam)';
-    btnFollow.className = appState.isFollowingTrain ? 'btn btn-follow active' : 'btn btn-follow';
-  }
-}
-
-// -------------------------------------------------------------
-// 5. Live Spoorweg Communicatie & Radio Scanner
-// -------------------------------------------------------------
-function getAudioContext() {
-  if (!appState.audioCtx) {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (AudioContext) appState.audioCtx = new AudioContext();
-  }
-  if (appState.audioCtx && appState.audioCtx.state === 'suspended') {
-    appState.audioCtx.resume();
-  }
-  return appState.audioCtx;
-}
-
-// Authentieke GSM-R / Motorola squelch radio piep
-function playRadioBeep() {
-  if (!appState.scannerEnabled) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  const now = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-
-  // Bandpass filter voor echt walkie-talkie / radio geluid
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.value = 1750;
-  filter.Q.value = 3.0;
-
-  osc.type = 'triangle';
-  osc.frequency.setValueAtTime(880, now);
-  osc.frequency.exponentialRampToValueAtTime(1320, now + 0.04);
-  osc.frequency.setValueAtTime(1760, now + 0.08);
-
-  gain.gain.setValueAtTime(0.001, now);
-  gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(ctx.destination);
-
-  osc.start(now);
-  osc.stop(now + 0.15);
-}
-
-// Spraaksynthese voor live verkeersleidingsberichten
-function speakDispatchMessage(text) {
-  if (!appState.scannerEnabled || !('speechSynthesis' in window)) return;
-  // Breek eerdere spraak af om opstapeling te voorkomen
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'nl-NL';
-  utterance.rate = 1.05;
-  utterance.pitch = 0.95;
-
-  const voices = window.speechSynthesis.getVoices();
-  const dutchVoice = voices.find(v => v.lang.includes('nl'));
-  if (dutchVoice) utterance.voice = dutchVoice;
-
-  window.speechSynthesis.speak(utterance);
-}
-
-function addRadioLine(callsign, text, isUrgent = false) {
-  const box = document.getElementById('radioTranscriptBox');
-  if (!box) return;
-
-  const timeStr = new Date().toLocaleTimeString('nl-NL');
-  const div = document.createElement('div');
-  div.className = 'radio-line' + (isUrgent ? ' urgent' : '');
-  div.innerHTML = `
-    <span class="msg-time">[${timeStr}]</span>
-    <span class="msg-callsign">${callsign}:</span>
-    <span class="msg-text">${text}</span>
-  `;
-
-  box.prepend(div);
-  // Beperk transcript tot 50 regels
-  while (box.children.length > 50) {
-    box.removeChild(box.lastChild);
-  }
-
-  // Speel radio-effect
-  playRadioBeep();
-
-  // Spreek bericht uit als scanner aan staat
-  if (appState.scannerEnabled) {
-    speakDispatchMessage(`${callsign}: ${text}`);
-  }
-}
-
-// Genereert authentieke live verkeersleidingsinteracties op basis van echte rijdende treinen
-function triggerRadioCommunications(features) {
-  const now = Date.now();
-  if (now - appState.lastRadioMsgTime < 14000) return; // Minstens 14s tussen berichten
-  appState.lastRadioMsgTime = now;
-
-  if (!features || features.length === 0) return;
-
-  // Kies een willekeurige actieve trein
-  const item = features[Math.floor(Math.random() * features.length)];
-  const parsed = parseTrainData(item);
-  if (!parsed) return;
-
-  const posts = [
-    { name: 'Post Utrecht', trdl: 'Treindienstleider Utrecht' },
-    { name: 'Post Amsterdam', trdl: 'Treindienstleider Amsterdam' },
-    { name: 'Post Rotterdam', trdl: 'Verkeersleiding Rotterdam' },
-    { name: 'Post Eindhoven', trdl: 'Treindienstleider Eindhoven' },
-    { name: 'Post Zwolle', trdl: 'Treindienstleider Zwolle' },
-    { name: 'KNSB Landelijk', trdl: 'Landelijke Verkeersleiding ProRail' }
-  ];
-  const post = posts[Math.floor(Math.random() * posts.length)];
-
-  let message = '';
-  let isUrgent = false;
-
-  if (parsed.speed > 130) {
-    message = `Trein ${parsed.trainNumber} (${parsed.matnummer}) passeert baanvak op volle snelheid met ${parsed.speed} km/u. Seinen groen, spoorbaan vrij.`;
-  } else if (parsed.speed === 0) {
-    isUrgent = true;
-    message = `Trein ${parsed.trainNumber} gemeld stilstaand. Post ${post.name} controleert blokbeveiliging en wisselstand.`;
-  } else if (parsed.punctualityScore === 1) {
-    message = `Trein ${parsed.trainNumber}: vertraagd naderen met ${parsed.speed} km/u wegens treinscheiding. Rijden op zicht tot volgend hoofdsein.`;
-  } else {
-    message = `Aan machinist trein ${parsed.trainNumber} (${parsed.operator.name}): vertreksein getoond, snelheid ${parsed.speed} km/u geautoriseerd richting knooppunt.`;
-  }
-
-  addRadioLine(post.trdl, message, isUrgent);
-}
-
-// -------------------------------------------------------------
-// 6. Event Listeners & Interactie
-// -------------------------------------------------------------
-function setupEventListeners() {
-  // Scanner AAN / UIT knop
-  const btnScanner = document.getElementById('btnRadioScanner');
-  btnScanner?.addEventListener('click', () => {
-    appState.scannerEnabled = !appState.scannerEnabled;
-    btnScanner.classList.toggle('active', appState.scannerEnabled);
-    btnScanner.classList.toggle('muted', !appState.scannerEnabled);
-    document.getElementById('scannerStatusText').textContent = appState.scannerEnabled ? '📻 Radio Scanner: AAN' : '🔇 Radio Scanner: UIT';
-    if (appState.scannerEnabled) {
-      playRadioBeep();
-      addRadioLine('📡 Systeem', 'Spoorweg radio scanner opnieuw afgestemd op ProRail verkeersleidingskanalen.');
-    } else {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+          html += `
+            <div class="train-corridor-card ${puncClass}" onclick="window.selectTrain('${t.id}')">
+              <div class="t-info">
+                <span style="font-size: 1.1rem;">🚆</span>
+                <div>
+                  <div class="t-number">Trein ${t.trainNum}</div>
+                  <div class="t-mat">${t.matnummer}</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="t-speed-badge">${t.speed} km/u</span>
+                <span class="t-punc-badge ${puncClass}">${puncText}</span>
+              </div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
     }
   });
 
-  // Kanaalkeuze
-  document.getElementById('channelSelect')?.addEventListener('change', (e) => {
-    appState.currentChannel = e.target.value;
-    const txt = e.target.options[e.target.selectedIndex].text;
-    document.getElementById('radioChannelName').textContent = `Kanaal: ${txt}`;
-    playRadioBeep();
+  diagramEl.innerHTML = html;
+
+  // Teken uitsluitend deze treinen op de satellietkaart (geen chaos!)
+  renderMapTrains(matchedTrains);
+}
+
+function findNearestSegment(train, corridor) {
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < corridor.stations.length - 1; i++) {
+    const s1 = corridor.stations[i];
+    const s2 = corridor.stations[i + 1];
+    const midLat = (s1.lat + s2.lat) / 2;
+    const midLon = (s1.lon + s2.lon) / 2;
+    const d = distanceKm(train.lat, train.lon, midLat, midLon);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+// -------------------------------------------------------------
+// 6. Teken Alleen Relevante Treinen op de Satellietkaart
+// -------------------------------------------------------------
+function renderMapTrains(trainList) {
+  const map = appState.map;
+  const currentIds = new Set();
+
+  trainList.forEach(t => {
+    currentIds.add(t.id);
+    const statusBorder = t.puncScore === 0 ? '#10b981' : t.puncScore === 1 ? '#f59e0b' : '#ef4444';
+
+    if (appState.trainMarkers.has(t.id)) {
+      // Bestaande marker verplaatsen
+      const m = appState.trainMarkers.get(t.id);
+      m.setLatLng([t.lat, t.lon]);
+      const el = m.getElement();
+      if (el) {
+        const tag = el.querySelector('.clean-train-tag');
+        if (tag) tag.textContent = `${t.trainNum} (${t.speed}k)`;
+      }
+    } else {
+      // Nieuwe schone marker
+      const html = `
+        <div class="clean-train-marker" title="Trein ${t.trainNum} (${t.speed} km/u)">
+          <div class="clean-train-tag">${t.trainNum} (${t.speed}k)</div>
+          <div class="clean-train-pin" style="background: #003082; border-color: ${statusBorder};">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="#ffc917">
+              <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.5 0 6 .4 6 2H6c0-1.6 2.5-2 6-2zm-5 9c-.83 0-1.5-.67-1.5-1.5S6.17 10 7 10s1.5.67 1.5 1.5S7.83 13 7 13zm10 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+            </svg>
+          </div>
+        </div>
+      `;
+
+      const icon = L.divIcon({
+        className: 'clean-div-icon',
+        html,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
+      const marker = L.marker([t.lat, t.lon], { icon }).addTo(map);
+      marker.on('click', () => window.selectTrain(t.id));
+      appState.trainMarkers.set(t.id, marker);
+    }
   });
 
-  // Vervoerder filters
-  document.querySelectorAll('.filter-chip').forEach(chip => {
-    chip.addEventListener('click', (e) => {
-      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-      const el = e.currentTarget;
-      el.classList.add('active');
-      appState.activeOperatorFilter = el.getAttribute('data-op');
+  // Verwijder markers die niet meer op deze lijn rijden
+  for (const [id, m] of appState.trainMarkers.entries()) {
+    if (!currentIds.has(id)) {
+      m.remove();
+      appState.trainMarkers.delete(id);
+    }
+  }
+}
+
+// Selecteer een trein en zoom in op de satelliet
+window.selectTrain = (trainId) => {
+  appState.selectedTrainId = trainId;
+  const train = appState.allLiveFeatures.map(parseTrain).find(t => t && t.id === trainId);
+  if (!train) return;
+
+  // Speel subtiele NS chime
+  playAuthenticNSChime();
+
+  // Update inspectiebox
+  const box = document.getElementById('inspectorBox');
+  if (box) {
+    box.style.display = 'block';
+    document.getElementById('inspTitle').textContent = `Trein #${train.trainNum} (${train.matnummer})`;
+    document.getElementById('inspSpeed').textContent = `${train.speed} km/u`;
+    document.getElementById('inspMat').textContent = train.matnummer;
+    document.getElementById('inspPunc').textContent = train.puncScore === 0 ? 'Op tijd' : '+2 min vertraagd';
+    document.getElementById('inspPunc').className = `status-pill ${train.puncScore === 0 ? 'green' : 'yellow'}`;
+    document.getElementById('inspGps').textContent = train.gpsdata;
+  }
+
+  // Vlieg rustig naar de satellietlocatie
+  appState.map.flyTo([train.lat, train.lon], 14, { duration: 1.2 });
+};
+
+// -------------------------------------------------------------
+// 7. Event Handlers & Navigatie
+// -------------------------------------------------------------
+function setupNavigation() {
+  // Lijnkeuze navigatie
+  document.querySelectorAll('.line-nav-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.line-nav-btn').forEach(b => b.classList.remove('active'));
+      const target = e.currentTarget;
+      target.classList.add('active');
+
+      const lineKey = target.getAttribute('data-line');
+      appState.activeCorridorKey = lineKey;
+
+      const corridor = CORRIDORS[lineKey];
+      renderCorridorOnMap(corridor);
+      updateLineOverview();
+
+      // Speel de authentieke NS stationsgong bij het wisselen van lijn
+      playAuthenticNSChime();
     });
   });
 
+  // NS Gong knop
+  document.getElementById('btnPlayChime')?.addEventListener('click', () => {
+    playAuthenticNSChime();
+  });
+
+  // Geluid aan/uit
+  document.getElementById('btnAudioToggle')?.addEventListener('click', () => {
+    appState.soundEnabled = !appState.soundEnabled;
+    const btn = document.getElementById('btnAudioToggle');
+    btn.classList.toggle('active', appState.soundEnabled);
+    document.getElementById('audioStatusText').textContent = appState.soundEnabled ? '🔊 Geluid: Aan' : '🔇 Geluid: Uit';
+    if (appState.soundEnabled) playAuthenticNSChime();
+  });
+
   // Zoekveld
-  document.getElementById('searchInput')?.addEventListener('input', (e) => {
-    appState.searchQuery = e.target.value.trim().toLowerCase();
-    // Als exact treinnummer gezocht wordt, zoom er direct naar
-    if (appState.searchQuery.length >= 3) {
-      for (const [id, t] of appState.trains.entries()) {
-        if (t.trainNumber.includes(appState.searchQuery)) {
-          selectTrain(t);
-          break;
-        }
+  document.getElementById('trainSearchInput')?.addEventListener('input', (e) => {
+    const q = e.target.value.trim();
+    if (q.length >= 3) {
+      const match = appState.allLiveFeatures.map(parseTrain).find(t => t && t.trainNum.includes(q));
+      if (match) {
+        window.selectTrain(match.id);
       }
     }
-  });
-
-  // Volg trein knop
-  document.getElementById('btnFollowTrain')?.addEventListener('click', () => {
-    appState.isFollowingTrain = !appState.isFollowingTrain;
-    const btn = document.getElementById('btnFollowTrain');
-    btn.textContent = appState.isFollowingTrain ? '⏹️ Stop Volgen' : '🎥 Volg Trein (Chase Cam)';
-    btn.className = appState.isFollowingTrain ? 'btn btn-follow active' : 'btn btn-follow';
-  });
-
-  // Sluit detail card
-  document.getElementById('btnCloseDetail')?.addEventListener('click', () => {
-    document.getElementById('trainDetailCard')?.classList.remove('open');
-    appState.selectedTrainId = null;
-    appState.isFollowingTrain = false;
   });
 }
 
 // -------------------------------------------------------------
-// 7. Hoofd Startloop
+// 8. Start Applicatie
 // -------------------------------------------------------------
 async function init() {
   initMap();
-  initVersionCheck();
-  setupEventListeners();
+  setupNavigation();
 
-  // Laad WebAssembly telemetrie engine
+  // Stel standaard de gevraagde lijn in: Enschede tot eindpunt!
+  const defaultCorridor = CORRIDORS['enschede-denhaag'];
+  renderCorridorOnMap(defaultCorridor);
+
+  // Laad WebAssembly
   await appState.bridge.loadWasm('./treinen.wasm');
 
-  // Start live polling van alle treinen in Nederland
+  // Live polling loop (elke 4.5 seconden)
   async function poll() {
     try {
       const data = await fetchLiveTrains();
       if (data && data.features) {
-        updateTrains(data.features);
+        appState.allLiveFeatures = data.features;
+        updateLineOverview();
       }
-    } catch (err) {
-      console.warn('Fout bij ophalen treinposities:', err);
+    } catch (e) {
+      console.warn('Poll waarschuwing:', e);
     }
-    setTimeout(poll, 4500); // Elke 4.5 seconden verversen
+    setTimeout(poll, 4500);
   }
 
   poll();

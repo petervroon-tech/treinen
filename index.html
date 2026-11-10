@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>treinen - Live Satelliet Spoorweg Radar Nederland</title>
-  <meta name="description" content="Alle actuele rijdende treinen in Nederland live op echte satellietbeelden en luchtfoto's, met spoorlijnen, vertragingen en live radiocommunicatie.">
-  <meta name="theme-color" content="#0a0f1d">
-  
+  <title>treinen - Lijnoverzicht Enschede tot Eindpunt &amp; Echte Satellietbeelden</title>
+  <meta name="description" content="Overzichtelijk live spoorlijnoverzicht van Enschede tot eindpunt met actuele treinen, vertragingen en echte satellietbeelden.">
+  <meta name="theme-color" content="#003082">
+
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -23,7 +23,7 @@
       <div class="update-info">
         <span class="update-icon" aria-hidden="true">🔔</span>
         <span id="updateBannerText">
-          <strong>Nieuwe versie beschikbaar!</strong> Er is zojuist een update gepubliceerd.
+          <strong>Nieuwe versie beschikbaar!</strong> Versie <code>v2.1</code> is zojuist gepubliceerd.
         </span>
       </div>
       <div class="update-actions">
@@ -33,161 +33,137 @@
     </div>
   </aside>
 
-  <!-- Bovenbalk / Live Cockpit HUD -->
-  <header class="hud-header">
-    <div class="hud-top">
-      <div class="brand-group">
-        <div class="logo-pill">SPOOR RADAR NL</div>
-        <h1 class="brand-title">&lt;treinen&gt;</h1>
-        <span class="live-tag"><span class="pulse-dot"></span> LIVE DATA</span>
-      </div>
-
-      <!-- Telemetrie Statistieken -->
-      <div class="hud-metrics">
-        <div class="metric-pill" title="Totaal aantal actieve treinen in Nederland">
-          <span class="metric-icon">🚆</span>
-          <span class="metric-label">Actieve Treinen:</span>
-          <strong id="statTrainCount" class="metric-value">Laden...</strong>
-        </div>
-        <div class="metric-pill" title="Landelijke punctualiteit">
-          <span class="metric-icon">⏱️</span>
-          <span class="metric-label">Punctualiteit:</span>
-          <strong id="statPunctuality" class="metric-value" style="color: #10b981;">89.2%</strong>
-        </div>
-        <div class="metric-pill" title="Gemiddelde snelheid">
-          <span class="metric-icon">⚡</span>
-          <span class="metric-label">Gem. Snelheid:</span>
-          <strong id="statAvgSpeed" class="metric-value">84 km/u</strong>
-        </div>
-        <div class="metric-pill" title="Hoogste gemeten snelheid">
-          <span class="metric-icon">🚀</span>
-          <span class="metric-label">Topsnelheid:</span>
-          <strong id="statTopSpeed" class="metric-value" style="color: #38bdf8;">196 km/u</strong>
+  <!-- Hoofdbalk: Titel, Lijnkiezer & Geluid -->
+  <header class="app-header">
+    <div class="header-main-row">
+      <div class="brand-box">
+        <div class="ns-badge">NS / SPOOR</div>
+        <div>
+          <h1 class="brand-heading">&lt;treinen&gt;</h1>
+          <p class="brand-subheading">Actueel Lijnoverzicht &bull; Echte Satellietbeelden</p>
         </div>
       </div>
 
-      <!-- Live Spoorweg Scanner Knop -->
-      <div class="scanner-controls">
-        <button id="btnRadioScanner" class="btn-scanner active" type="button" title="Luister live naar verkeersleidingscommunicatie">
-          <span class="scanner-anim"><span></span><span></span><span></span></span>
-          <span id="scannerStatusText">📻 Radio Scanner: AAN</span>
+      <!-- Lijnkeuze Knoppen -->
+      <nav class="line-selector-nav" aria-label="Kies spoorlijn">
+        <button class="line-nav-btn active" data-line="enschede-denhaag" type="button">
+          <span class="line-badge yellow">IC</span>
+          <span>Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag</span>
         </button>
-        <select id="channelSelect" class="channel-select" title="Kies verkeersleidingspost">
-          <option value="all">📡 Alle Verkeersleidingsposten</option>
-          <option value="ut">Post Utrecht (Centraal)</option>
-          <option value="asd">Post Amsterdam &amp; Schiphol</option>
-          <option value="rtd">Post Rotterdam &amp; HSL-Zuid</option>
-          <option value="ehv">Post Eindhoven (Zuid)</option>
-          <option value="zl">Post Zwolle (Noord/Oost)</option>
-          <option value="calamity">🚨 Calamiteitenorganisatie ProRail</option>
-        </select>
-      </div>
-    </div>
+        <button class="line-nav-btn" data-line="enschede-zwolle" type="button">
+          <span class="line-badge blue">Blauwnet</span>
+          <span>Enschede ➔ Hengelo ➔ Almelo ➔ Zwolle</span>
+        </button>
+        <button class="line-nav-btn" data-line="amsterdam-maastricht" type="button">
+          <span class="line-badge yellow">IC</span>
+          <span>Amsterdam ➔ Utrecht ➔ Eindhoven ➔ Maastricht</span>
+        </button>
+        <button class="line-nav-btn" data-line="rotterdam-amsterdam" type="button">
+          <span class="line-badge yellow">IC</span>
+          <span>Rotterdam ➔ Den Haag ➔ Schiphol ➔ Amsterdam</span>
+        </button>
+        <button class="line-nav-btn" data-line="groningen-utrecht" type="button">
+          <span class="line-badge yellow">IC</span>
+          <span>Groningen / Leeuwarden ➔ Zwolle ➔ Utrecht</span>
+        </button>
+        <button class="line-nav-btn" data-line="all" type="button">
+          <span class="line-badge gray">NL</span>
+          <span>Heel Nederland (Satelliet Radar)</span>
+        </button>
+      </nav>
 
-    <!-- Onderbalk: Kaartlagen, Filters en Zoeken -->
-    <div class="hud-sub">
-      <div class="layer-buttons">
-        <span class="sub-label">Beeld:</span>
-        <button id="btnLayerSat" class="btn-layer active" type="button">🛰️ Echte Satelliet (Esri)</button>
-        <button id="btnLayerPdok" class="btn-layer" type="button">🇳🇱 Luchtfoto NL (PDOK)</button>
-        <button id="btnLayerDark" class="btn-layer" type="button">🌙 Nacht Radar</button>
-        <button id="btnToggleTracks" class="btn-layer active" type="button">🛤️ Spoorlijnen: AAN</button>
-      </div>
-
-      <!-- Vervoerder Filters -->
-      <div class="operator-filters">
-        <span class="sub-label">Vervoerder:</span>
-        <button class="filter-chip active" data-op="all">Alle</button>
-        <button class="filter-chip" data-op="ns"><span class="chip-dot" style="background: #ffc917;"></span>NS</button>
-        <button class="filter-chip" data-op="arriva"><span class="chip-dot" style="background: #ef4444;"></span>Arriva</button>
-        <button class="filter-chip" data-op="keolis"><span class="chip-dot" style="background: #0284c7;"></span>Keolis/Blauwnet</button>
-        <button class="filter-chip" data-op="eurostar"><span class="chip-dot" style="background: #990022;"></span>Eurostar/ICE</button>
-        <button class="filter-chip" data-op="cargo"><span class="chip-dot" style="background: #f97316;"></span>Goederen</button>
-      </div>
-
-      <!-- Zoekveld -->
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="🔍 Zoek trein (bijv. 1165, 766) of station..." autocomplete="off">
+      <!-- Authentieke NS Audio Knoppen -->
+      <div class="header-audio-controls">
+        <button id="btnPlayChime" class="btn-chime" type="button" title="Speel de authentieke 3-tonige NS stationsgong af">
+          <span class="chime-icon">🔔</span>
+          <span>NS Stationsgong</span>
+        </button>
+        <button id="btnAudioToggle" class="btn-audio-toggle active" type="button" title="Geluidssignalen aan/uit">
+          <span id="audioStatusText">🔊 Geluid: Aan</span>
+        </button>
       </div>
     </div>
   </header>
 
-  <!-- Fullscreen Satelliet Kaart Container -->
-  <div id="map"></div>
+  <!-- Hoofdvenster: Split Screen (Lijnstrip links & Echte Satelliet rechts) -->
+  <div class="main-layout">
 
-  <!-- Live Spoor Communicatie Radio Transcript Ticker (Onderaan) -->
-  <div class="radio-ticker-panel">
-    <div class="radio-header">
-      <div class="radio-title">
-        <span class="live-blink">●</span>
-        <strong>LIVE SPOOR COMMUNICATIE &amp; DISPATCH (PRO-RAIL VERKEERSLEIDING)</strong>
-      </div>
-      <div class="radio-meta">
-        <span id="radioChannelName">Kanaal: Landelijk Netwerk</span> &bull; 
-        <span id="radioTimestamp">18:42:00</span>
-      </div>
-    </div>
-    <div id="radioTranscriptBox" class="radio-transcript-box">
-      <div class="radio-line initial-msg">
-        <span class="msg-time">[18:42:01]</span>
-        <span class="msg-callsign">📡 Landelijke Verkeersleiding ProRail:</span>
-        <span class="msg-text">Verbinding met spoorwegnetwerk operationeel. Live monitoring van alle rijdende treinen in Nederland actief.</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Trein Volg- & Telemetrie Card (Verschijnt bij selectie) -->
-  <div id="trainDetailCard" class="train-detail-card">
-    <div class="card-header">
-      <div>
-        <div id="cardOperatorBadge" class="operator-badge">NS Reizigers</div>
-        <h2 id="cardTrainTitle" class="card-title">Trein #1165 (ICNG 3112)</h2>
-      </div>
-      <button id="btnCloseDetail" class="btn-close" type="button" aria-label="Sluiten">✕</button>
-    </div>
-
-    <div class="card-body">
-      <!-- Snelheidsmeter Display -->
-      <div class="speed-dial-box">
-        <div class="speed-dial-value">
-          <span id="cardSpeedNumber">138</span>
-          <small>km/u</small>
+    <!-- LINKERPANEEL: Het Overzichtelijke Lijnoverzicht (Enschede tot Eindpunt) -->
+    <section class="corridor-panel" aria-label="Lijnoverzicht">
+      <div class="corridor-header">
+        <div class="corridor-title-row">
+          <h2 id="corridorTitle" class="corridor-title">Lijn: Enschede ➔ Den Haag Centraal</h2>
+          <span id="corridorPunctualityBadge" class="status-badge green">🟢 91% Op tijd</span>
         </div>
-        <div id="cardPunctualityBadge" class="punctuality-badge on-time">
-          🟢 Op tijd (Rijdend)
+        <div class="corridor-info-row">
+          <span id="corridorRouteMeta">Lengte: 185 km &bull; Tussenstations: 12 &bull; Vervoerder: NS</span>
+          <span id="corridorLiveCount">Actieve treinen op dit traject: <strong>Laden...</strong></span>
         </div>
       </div>
 
-      <!-- Telemetrie Gegevens -->
-      <div class="telemetry-grid">
-        <div class="tele-item">
-          <label>Materieel</label>
-          <strong id="cardMaterial">ICNG-8 (3112)</strong>
+      <!-- Meldingen/Storingen op dit traject -->
+      <div id="corridorAlertBox" class="corridor-alert-box ok">
+        <span class="alert-icon">ℹ️</span>
+        <span id="corridorAlertText">Actuele dienstregeling: treinen rijden volgens schema op deze lijn.</span>
+      </div>
+
+      <!-- De Schematische Lijnstrip (Station naar Station met rijdende treinen) -->
+      <div class="line-diagram-container">
+        <div class="diagram-legend">
+          <span>🟢 Op tijd (&gt;60 km/u)</span>
+          <span>🟡 Vertraagd (1-5 min)</span>
+          <span>🔴 Stilstaand (&gt;5 min)</span>
+          <span>➔ Rijrichting</span>
         </div>
-        <div class="tele-item">
-          <label>Vervoerder</label>
-          <strong id="cardOperator">Nederlandse Spoorwegen</strong>
-        </div>
-        <div class="tele-item">
-          <label>Treinserie</label>
-          <strong id="cardSeries">1100 (Intercity)</strong>
-        </div>
-        <div class="tele-item">
-          <label>Laatste GPS Fix</label>
-          <strong id="cardGpsTime">Zojuist</strong>
-        </div>
-        <div class="tele-item full-width">
-          <label>Locatiecoördinaten</label>
-          <strong id="cardCoords">52.0907° N, 5.1214° E</strong>
+        <div id="lineDiagram" class="line-diagram">
+          <!-- Dynamisch gegenereerd vanuit actuele GPS data -->
         </div>
       </div>
 
-      <div class="card-actions">
-        <button id="btnFollowTrain" class="btn btn-follow" type="button">
-          🎥 Volg Trein (Chase Cam)
-        </button>
+      <!-- Trein Inspectie Kaart (indien aangeklikt) -->
+      <div id="inspectorBox" class="inspector-box" style="display: none;">
+        <div class="inspector-head">
+          <strong id="inspTitle">Trein #1762</strong>
+          <button class="btn-close-sm" onclick="document.getElementById('inspectorBox').style.display='none'">✕</button>
+        </div>
+        <div class="inspector-content">
+          <div><label>Snelheid:</label> <strong id="inspSpeed">132 km/u</strong></div>
+          <div><label>Materieel:</label> <strong id="inspMat">VIRM-IV</strong></div>
+          <div><label>Punctualiteit:</label> <span id="inspPunc" class="status-pill green">Op tijd</span></div>
+          <div><label>Laatste GPS:</label> <span id="inspGps">Zojuist</span></div>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <!-- RECHTERPANEEL: De Echte Satellietkaart van Nederland (Schoon & Geen Chaos) -->
+    <section class="map-panel" aria-label="Satellietkaart">
+      <!-- Zwevende Kaartbalk -->
+      <div class="map-floating-bar">
+        <div class="map-type-buttons">
+          <button id="btnSatEsri" class="map-chip active" type="button">🛰️ Echte Satelliet (Esri)</button>
+          <button id="btnSatPdok" class="map-chip" type="button">🇳🇱 Luchtfoto Nederland (PDOK)</button>
+          <button id="btnMapDark" class="map-chip" type="button">🌙 Nacht Radar</button>
+        </div>
+        <div class="map-search-box">
+          <input type="text" id="trainSearchInput" placeholder="🔍 Zoek treinnummer..." autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Het Leaflet Kaartvenster -->
+      <div id="map"></div>
+
+      <!-- Kaartstatus onderaan -->
+      <div class="map-status-footer">
+        <div>
+          <span class="live-dot">●</span> 
+          <span id="mapStatusText">Focus: Enschede tot Den Haag &bull; Echte luchtopnamen</span>
+        </div>
+        <div>
+          <span>Bron: ProRail / NDOV Open Data &bull; GPS Real-time</span>
+        </div>
+      </div>
+    </section>
+
   </div>
 
   <script type="module" src="./app.js"></script>

@@ -1,15 +1,18 @@
 :root {
-  --hud-bg: rgba(10, 15, 29, 0.92);
-  --hud-border: rgba(255, 255, 255, 0.12);
+  --ns-blue: #003082;
+  --ns-dark: #001948;
+  --ns-yellow: #ffc917;
+  --bg-dark: #090e1a;
+  --bg-card: #131b2e;
+  --bg-hover: #1c2742;
+  --border-light: rgba(255, 255, 255, 0.12);
   --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --accent-ns: #ffc917;
-  --accent-blue: #003082;
-  --accent-green: #10b981;
-  --accent-red: #ef4444;
-  --accent-yellow: #f59e0b;
-  --accent-cyan: #38bdf8;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --text-sub: #94a3b8;
+  --green: #10b981;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --blue: #0ea5e9;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -20,8 +23,8 @@
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: #050811;
+  font-family: var(--font-family);
+  background-color: var(--bg-dark);
   color: var(--text-main);
   height: 100vh;
   width: 100vw;
@@ -31,14 +34,13 @@ body {
 }
 
 /* -------------------------------------------------------------
-   Automatische Versie Update Banner
+   Update Melding Banner
 ------------------------------------------------------------- */
 .update-banner {
   display: none;
   background: linear-gradient(90deg, #003082, #1e3a8a);
-  border-bottom: 3px solid var(--accent-ns);
-  padding: 10px 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border-bottom: 3px solid var(--ns-yellow);
+  padding: 8px 16px;
   position: absolute;
   top: 0;
   left: 0;
@@ -66,33 +68,18 @@ body {
   gap: 12px;
 }
 
-.update-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.95rem;
-}
-
 /* -------------------------------------------------------------
-   Top HUD Header
+   Bovenbalk (App Header & Lijnkeuze)
 ------------------------------------------------------------- */
-.hud-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: var(--hud-bg);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--hud-border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+.app-header {
+  background-color: var(--ns-dark);
+  border-bottom: 2px solid var(--ns-yellow);
   padding: 8px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-.hud-top {
+.header-main-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -100,100 +87,108 @@ body {
   gap: 12px;
 }
 
-.brand-group {
+.brand-box {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.logo-pill {
-  background: var(--accent-ns);
-  color: var(--accent-blue);
+.ns-badge {
+  background-color: var(--ns-yellow);
+  color: var(--ns-blue);
   font-weight: 900;
-  font-size: 0.75rem;
-  letter-spacing: 1px;
+  font-size: 0.8rem;
   padding: 4px 8px;
   border-radius: 4px;
+  letter-spacing: 0.5px;
 }
 
-.brand-title {
-  font-size: 1.2rem;
+.brand-heading {
+  font-size: 1.15rem;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: -0.5px;
 }
 
-.live-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--accent-green);
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  padding: 2px 8px;
-  border-radius: 12px;
+.brand-subheading {
+  font-size: 0.72rem;
+  color: var(--text-sub);
 }
 
-.pulse-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--accent-green);
-  box-shadow: 0 0 8px var(--accent-green);
-  animation: pulseDot 1.4s infinite;
-}
-
-@keyframes pulseDot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
-}
-
-/* Telemetrie Statistieken */
-.hud-metrics {
+/* Lijnkeuze navigatie */
+.line-selector-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
-.metric-pill {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--hud-border);
-  padding: 5px 10px;
+.line-nav-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
   border-radius: 6px;
-  font-size: 0.8rem;
-  display: flex;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.metric-icon {
-  font-size: 0.95rem;
+.line-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.metric-label {
-  color: var(--text-muted);
+.line-nav-btn.active {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
+  border-color: var(--ns-yellow);
+  font-weight: 800;
 }
 
-.metric-value {
+.line-badge {
+  font-size: 0.65rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.line-badge.yellow {
+  background: #ffc917;
+  color: #003082;
+}
+
+.line-nav-btn.active .line-badge.yellow {
+  background: #003082;
+  color: #ffc917;
+}
+
+.line-badge.blue {
+  background: #0ea5e9;
   color: #ffffff;
-  font-family: var(--font-mono);
-  font-weight: 700;
 }
 
-/* Radio Scanner Besturing */
-.scanner-controls {
+.line-badge.gray {
+  background: #475569;
+  color: #ffffff;
+}
+
+/* Audio Knoppen */
+.header-audio-controls {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.btn-scanner {
-  background: rgba(16, 185, 129, 0.2);
-  border: 1px solid var(--accent-green);
-  color: #34d399;
+.btn-chime {
+  background: rgba(255, 201, 23, 0.15);
+  border: 1px solid var(--ns-yellow);
+  color: var(--ns-yellow);
   font-weight: 700;
   font-size: 0.8rem;
   padding: 6px 12px;
@@ -201,234 +196,432 @@ body {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-}
-
-.btn-scanner:hover {
-  background: rgba(16, 185, 129, 0.35);
-}
-
-.btn-scanner.muted {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: var(--hud-border);
-  color: var(--text-muted);
-}
-
-.scanner-anim {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 12px;
-}
-
-.scanner-anim span {
-  width: 3px;
-  background-color: var(--accent-green);
-  border-radius: 1px;
-  animation: soundBar 0.8s ease-in-out infinite alternate;
-}
-
-.scanner-anim span:nth-child(1) { height: 4px; animation-delay: 0.1s; }
-.scanner-anim span:nth-child(2) { height: 12px; animation-delay: 0.3s; }
-.scanner-anim span:nth-child(3) { height: 7px; animation-delay: 0.2s; }
-
-.btn-scanner.muted .scanner-anim span {
-  animation: none;
-  height: 2px;
-  background-color: var(--text-muted);
-}
-
-@keyframes soundBar {
-  from { height: 3px; }
-  to { height: 12px; }
-}
-
-.channel-select {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--hud-border);
-  color: #ffffff;
-  font-size: 0.75rem;
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  outline: none;
-}
-
-.channel-select option {
-  background: #0f172a;
-  color: #ffffff;
-}
-
-/* -------------------------------------------------------------
-   Onderste HUD balk: Lagen, Filters & Zoeken
-------------------------------------------------------------- */
-.hud-sub {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 6px;
-}
-
-.sub-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  font-weight: 700;
-}
-
-.layer-buttons, .operator-filters {
-  display: flex;
-  align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  transition: all 0.15s;
 }
 
-.btn-layer, .filter-chip {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--hud-border);
-  color: var(--text-main);
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.btn-chime:hover {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
 }
 
-.btn-layer:hover, .filter-chip:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.btn-layer.active {
-  background: var(--accent-ns);
-  color: var(--accent-blue);
-  font-weight: 700;
-  border-color: var(--accent-ns);
-}
-
-.filter-chip.active {
-  background: #ffffff;
-  color: #0f172a;
-  font-weight: 700;
-  border-color: #ffffff;
-}
-
-.chip-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.search-box input {
+.btn-audio-toggle {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--hud-border);
-  color: #ffffff;
+  border: 1px solid var(--border-light);
+  color: var(--text-sub);
   font-size: 0.8rem;
-  padding: 5px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
-  width: 260px;
-  outline: none;
-  transition: border-color 0.2s;
+  cursor: pointer;
 }
 
-.search-box input:focus {
-  border-color: var(--accent-ns);
+.btn-audio-toggle.active {
+  color: #ffffff;
+  border-color: var(--green);
 }
 
 /* -------------------------------------------------------------
-   Map Container
+   Hoofdlayout: Split Screen (Lijnstrip links, Kaart rechts)
 ------------------------------------------------------------- */
-#map {
+.main-layout {
   flex: 1;
-  width: 100%;
-  height: 100%;
-  background-color: #050811;
-  z-index: 1;
+  display: flex;
+  width: 100vw;
+  height: calc(100vh - 56px);
+  overflow: hidden;
 }
 
 /* -------------------------------------------------------------
-   Live Spoor Communicatie Radio Ticker (Onderaan)
+   Linkerpaneel: Het Rustige Lijnoverzicht
 ------------------------------------------------------------- */
-.radio-ticker-panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: rgba(10, 15, 29, 0.94);
-  backdrop-filter: blur(12px);
-  border-top: 2px solid var(--accent-ns);
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.6);
+.corridor-panel {
+  width: 480px;
+  min-width: 380px;
+  background-color: var(--bg-card);
+  border-right: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+
+.corridor-header {
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.corridor-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.corridor-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ns-yellow);
+}
+
+.status-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.status-badge.green {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.corridor-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-sub);
+}
+
+.corridor-alert-box {
+  background: rgba(16, 185, 129, 0.1);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.25);
   padding: 8px 18px;
-  max-height: 140px;
+  font-size: 0.78rem;
+  color: #a7f3d0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.corridor-alert-box.warning {
+  background: rgba(245, 158, 11, 0.15);
+  border-bottom-color: rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+}
+
+/* Lijnstrip Diagram */
+.line-diagram-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.diagram-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-sub);
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border-light);
+  margin-bottom: 12px;
+}
+
+.line-diagram {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Station Item in Lijnstrip */
+.station-node {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  min-height: 48px;
+}
+
+.station-track-col {
+  width: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.station-bullet {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ns-yellow);
+  border: 3px solid var(--ns-blue);
+  z-index: 2;
+  box-shadow: 0 0 8px rgba(255, 201, 23, 0.6);
+}
+
+.station-node.terminal .station-bullet {
+  width: 18px;
+  height: 18px;
+  background: #ffffff;
+  border: 4px solid var(--ns-yellow);
+  box-shadow: 0 0 12px var(--ns-yellow);
+}
+
+.track-line {
+  width: 4px;
+  background: #334155;
+  flex: 1;
+  margin-top: -2px;
+  margin-bottom: -2px;
+  min-height: 36px;
+}
+
+.station-details {
+  flex: 1;
+  padding-left: 10px;
+  padding-bottom: 10px;
+}
+
+.station-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.station-node.terminal .station-name {
+  color: var(--ns-yellow);
+  font-size: 0.95rem;
+}
+
+.station-sub {
+  font-size: 0.7rem;
+  color: var(--text-sub);
+}
+
+/* Treinblokken tussen stations */
+.trains-between-segment {
+  margin-left: 32px;
+  padding: 4px 0 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.radio-header {
+.train-corridor-card {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-left: 4px solid var(--ns-yellow);
+  border-radius: 6px;
+  padding: 7px 10px;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  font-size: 0.75rem;
-}
-
-.radio-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--accent-ns);
-  letter-spacing: 0.5px;
-}
-
-.live-blink {
-  color: var(--accent-red);
-  animation: pulseDot 1s infinite;
-}
-
-.radio-meta {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-}
-
-.radio-transcript-box {
-  overflow-y: auto;
-  max-height: 85px;
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 4px;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-
-.radio-line {
-  line-height: 1.4;
-  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.15s ease;
   animation: fadeIn 0.3s ease;
 }
 
-.radio-line .msg-time {
-  color: var(--text-muted);
-  margin-right: 6px;
+.train-corridor-card:hover {
+  background: rgba(255, 201, 23, 0.15);
+  border-color: var(--ns-yellow);
+  transform: translateX(3px);
 }
 
-.radio-line .msg-callsign {
-  color: var(--accent-cyan);
+.train-corridor-card.delayed {
+  border-left-color: var(--yellow);
+}
+
+.train-corridor-card.halted {
+  border-left-color: var(--red);
+}
+
+.t-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.t-number {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #ffffff;
+}
+
+.t-mat {
+  font-size: 0.7rem;
+  color: var(--text-sub);
+}
+
+.t-speed-badge {
+  font-family: var(--font-mono);
   font-weight: 700;
-  margin-right: 6px;
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #38bdf8;
 }
 
-.radio-line.urgent .msg-callsign {
-  color: var(--accent-red);
+.t-punc-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.t-punc-badge.on-time {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.t-punc-badge.delayed {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.t-punc-badge.halted {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+/* -------------------------------------------------------------
+   Inspectie Box (Onderaan Lijnstrip)
+------------------------------------------------------------- */
+.inspector-box {
+  background: rgba(0, 0, 0, 0.45);
+  border-top: 2px solid var(--ns-yellow);
+  padding: 10px 18px;
+}
+
+.inspector-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.btn-close-sm {
+  background: transparent;
+  border: none;
+  color: var(--text-sub);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.inspector-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.inspector-content label {
+  color: var(--text-sub);
+}
+
+/* -------------------------------------------------------------
+   Rechterpaneel: Satellietkaart (Schoon & Geen Chaos)
+------------------------------------------------------------- */
+.map-panel {
+  flex: 1;
+  position: relative;
+  height: 100%;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  background-color: #050811;
+}
+
+.map-floating-bar {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.map-type-buttons, .map-search-box {
+  pointer-events: auto;
+}
+
+.map-type-buttons {
+  display: flex;
+  gap: 6px;
+  background: rgba(10, 15, 29, 0.9);
+  backdrop-filter: blur(8px);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+}
+
+.map-chip {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.map-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.map-chip.active {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
+  font-weight: 800;
+}
+
+.map-search-box input {
+  background: rgba(10, 15, 29, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-light);
+  color: #ffffff;
+  font-size: 0.8rem;
+  padding: 7px 12px;
+  border-radius: 8px;
+  width: 220px;
+  outline: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.map-search-box input:focus {
+  border-color: var(--ns-yellow);
+}
+
+.map-status-footer {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  right: 16px;
+  z-index: 1000;
+  background: rgba(10, 15, 29, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-light);
+  padding: 6px 14px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  pointer-events: none;
+}
+
+.live-dot {
+  color: var(--green);
+  animation: pulseDot 1.4s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 @keyframes fadeIn {
@@ -437,231 +630,60 @@ body {
 }
 
 /* -------------------------------------------------------------
-   Trein Telemetrie & Chase Cam Card
+   Custom Leaflet Markers voor de Schone Kaart
 ------------------------------------------------------------- */
-.train-detail-card {
-  position: absolute;
-  top: 100px;
-  right: 18px;
-  z-index: 1000;
-  width: 320px;
-  background: rgba(10, 15, 29, 0.95);
-  backdrop-filter: blur(16px);
-  border: 2px solid var(--accent-ns);
-  border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-  padding: 16px;
-  display: none;
-  animation: slideInRight 0.3s ease-out forwards;
-}
-
-.train-detail-card.open {
-  display: block;
-}
-
-@keyframes slideInRight {
-  from { transform: translateX(20px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 1px solid var(--hud-border);
-  padding-bottom: 10px;
-  margin-bottom: 12px;
-}
-
-.operator-badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: var(--accent-ns);
-  color: var(--accent-blue);
-  margin-bottom: 4px;
-}
-
-.card-title {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.btn-close {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.btn-close:hover {
-  color: #ffffff;
-}
-
-.speed-dial-box {
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--hud-border);
-  border-radius: 8px;
-  padding: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.speed-dial-value {
-  font-family: var(--font-mono);
-  font-weight: 900;
-  font-size: 2.2rem;
-  color: #ffffff;
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.speed-dial-value small {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-family: var(--font-sans);
-}
-
-.punctuality-badge {
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-.punctuality-badge.on-time {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-}
-
-.punctuality-badge.delayed {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-}
-
-.punctuality-badge.halted {
-  background: rgba(239, 68, 68, 0.25);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.5);
-}
-
-.telemetry-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  font-size: 0.8rem;
-  margin-bottom: 14px;
-}
-
-.tele-item label {
-  display: block;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-}
-
-.tele-item strong {
-  color: #ffffff;
-  font-family: var(--font-mono);
-}
-
-.tele-item.full-width {
-  grid-column: span 2;
-}
-
-.btn-follow {
-  width: 100%;
-  background: linear-gradient(135deg, var(--accent-ns), #ffb700);
-  color: var(--accent-blue);
-  font-weight: 800;
-  font-size: 0.85rem;
-  padding: 9px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(255, 201, 23, 0.35);
-  transition: transform 0.15s ease;
-}
-
-.btn-follow:hover {
-  transform: translateY(-1px);
-}
-
-.btn-follow.active {
-  background: var(--accent-red);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
-}
-
-/* -------------------------------------------------------------
-   Custom Leaflet Train Markers
-------------------------------------------------------------- */
-.train-custom-marker {
-  position: relative;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.train-custom-marker:hover {
-  transform: scale(1.25);
-  z-index: 500 !important;
-}
-
-.train-pin {
-  width: 24px;
-  height: 24px;
+.clean-train-pin {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
   border: 2px solid #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-.train-tag {
+.clean-train-pin:hover {
+  transform: scale(1.3);
+  z-index: 500 !important;
+}
+
+.clean-train-tag {
   position: absolute;
-  top: -14px;
+  top: -16px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(10, 15, 29, 0.85);
-  color: #ffffff;
-  font-size: 9px;
-  font-weight: 700;
+  background: rgba(0, 25, 72, 0.9);
+  color: #ffc917;
+  font-size: 10px;
+  font-weight: 800;
   font-family: var(--font-mono);
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
   white-space: nowrap;
   pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 201, 23, 0.4);
 }
 
 /* -------------------------------------------------------------
    Responsive Aanpassingen
 ------------------------------------------------------------- */
 @media (max-width: 900px) {
-  .hud-metrics {
-    display: none;
+  .main-layout {
+    flex-direction: column;
   }
-  .train-detail-card {
-    top: auto;
-    bottom: 140px;
-    right: 10px;
-    left: 10px;
-    width: auto;
-  }
-  .search-box input {
+  .corridor-panel {
     width: 100%;
+    min-width: 100%;
+    height: 48%;
+  }
+  .map-panel {
+    height: 52%;
+  }
+  .line-selector-nav {
+    overflow-x: auto;
+    flex-wrap: nowrap;
   }
 }
