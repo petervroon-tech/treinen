@@ -1,5 +1,5 @@
 // Treinen Service Worker - Versiebeheer & Offline Cache
-const APP_VERSION = '2.4.0';
+const APP_VERSION = '2.5.0';
 const CACHE_NAME = `treinen-cache-v${APP_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -26,7 +26,10 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+        keys.filter((k) => k !== CACHE_NAME).map((k) => {
+          console.log('[SW] Oude cache opgeruimd:', k);
+          return caches.delete(k);
+        })
       );
     }).then(() => self.clients.claim())
   );
@@ -40,7 +43,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // version.json altijd live ophalen
+  // version.json ALTIJD direct live van het netwerk ophalen
   if (url.pathname.endsWith('/version.json')) {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request))
@@ -48,18 +51,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 100% Network-First voor alle applicatiebestanden: ALTIJD de meest recente versie ophalen!
+  // Pas als er géén internetverbinding is (bv. in een tunnel), val terug op de offline cache.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((networkRes) => {
+    fetch(event.request, { cache: 'no-cache' })
+      .then((networkRes) => {
         if (networkRes && networkRes.status === 200) {
           const clone = networkRes.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return networkRes;
-      }).catch(() => cached);
-
-      return cached || fetchPromise;
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 

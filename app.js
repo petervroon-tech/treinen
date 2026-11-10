@@ -935,19 +935,27 @@ function fetchLiveTrains() {
   return new Promise((resolve) => {
     let resolved = false;
 
+    const script = document.createElement('script');
+    script.id = 'liveTrainTelemetryScript';
+    script.src = `https://treinposities.nl/treinen.php?pos=1&_t=${Date.now()}`;
+    script.async = true;
+
+    function cleanup() {
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
     window.eqfeed_callback = (data) => {
       if (!resolved) {
         resolved = true;
+        cleanup();
         resolve(data);
       }
     };
 
-    const script = document.createElement('script');
-    script.src = `https://treinposities.nl/treinen.php?pos=1&_t=${Date.now()}`;
-    script.async = true;
     script.onerror = () => {
       if (!resolved) {
         resolved = true;
+        cleanup();
         resolve(null);
       }
     };
@@ -956,10 +964,29 @@ function fetchLiveTrains() {
     setTimeout(() => {
       if (!resolved) {
         resolved = true;
+        cleanup();
         resolve(null);
       }
     }, 4500);
   });
+}
+
+// Handmatige live verversing van alle treinen en radarstatistieken
+async function forceRefreshTrains() {
+  const btn = document.getElementById('btnForceRefresh');
+  if (btn) btn.innerHTML = '<span>⏳ Laden...</span>';
+  try {
+    const data = await fetchLiveTrains();
+    if (data && data.features) {
+      appState.allLiveFeatures = data.features;
+      updateLineOverview();
+      playAuthenticNSChime();
+    }
+  } catch (e) {
+    console.warn('Ververs fout:', e);
+  } finally {
+    if (btn) btn.innerHTML = '🔄 Ververs Info';
+  }
 }
 
 export function parseTrain(raw) {
@@ -2354,25 +2381,25 @@ function findMyTrain() {
   }
 
   const btnHeader = document.getElementById('btnFindMyTrain');
-  const btnFloat = document.getElementById('btnFloatingFindTrain');
+  const btnPlanner = document.getElementById('btnImInTrainPlanner');
 
   if (btnHeader) btnHeader.innerHTML = '<span class="gps-icon-animated">📡</span> <span>GPS Zoeken...</span>';
-  if (btnFloat) btnFloat.textContent = '📡 GPS Zoeken...';
+  if (btnPlanner) btnPlanner.innerHTML = '<span>📡 GPS Zoeken...</span>';
 
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      if (btnHeader) btnHeader.innerHTML = '<span class="gps-icon-animated">📍</span> <span class="find-train-label">Waar ben ik? (Mijn Trein)</span>';
-      if (btnFloat) btnFloat.textContent = '📍 Waar ben ik?';
+      if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">Ik zit in de trein</span>';
+      if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!';
 
       const userLat = pos.coords.latitude;
       const userLon = pos.coords.longitude;
       const userAcc = Math.round(pos.coords.accuracy || 10);
       const userSpeedKmh = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : null;
 
-      // Update "U bent hier" pulserende marker op de kaart
+      // Update of maak "U bevindt zich hier" marker op de kaart
       if (!appState.userLocationMarker) {
         appState.userLocationMarker = L.circleMarker([userLat, userLon], {
-          radius: 10,
+          radius: 11,
           fillColor: '#38bdf8',
           color: '#ffffff',
           weight: 3,
@@ -2388,35 +2415,43 @@ function findMyTrain() {
         appState.userLocationMarker.setLatLng([userLat, userLon]);
       }
 
-      // Zoek dichtstbijzijnde trein uit live telemetrie
+      // Zoek dichtstbijzijnde trein uit alle actuele treinen
       const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
       if (allParsed.length === 0) {
-        alert('Momenteel worden treingegevens geladen. Probeer over 3 seconden opnieuw.');
+        alert('Treingegevens worden geladen van de radar. Probeer over 3 seconden opnieuw.');
         return;
       }
 
       let bestTrain = null;
-      let minDistanceKm = Infinity;
+      let bestScore = Infinity;
 
       allParsed.forEach(t => {
         const d = distanceKm(userLat, userLon, t.lat, t.lon);
-        if (d < minDistanceKm) {
-          minDistanceKm = d;
+        let score = d;
+
+        // Als gebruiker in een rijdende trein zit (>15 km/u), geef sterke voorkeur aan rijdende treinen!
+        if (userSpeedKmh && userSpeedKmh > 15) {
+          if (t.speed && t.speed > 15 && d < 3.5) {
+            const speedDiff = Math.abs(t.speed - userSpeedKmh);
+            score = d * 0.4 + (speedDiff * 0.01);
+          } else {
+            score = d + 5.0;
+          }
+        }
+
+        if (score < bestScore) {
+          bestScore = score;
           bestTrain = t;
         }
       });
 
       if (!bestTrain) return;
 
-      const distMeters = Math.round(minDistanceKm * 1000);
+      const distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
       appState.myTrain = bestTrain;
 
-      // Zoek stations
-      let allStations = [];
-      Object.values(CORRIDORS).forEach(c => {
-        if (c.stations) allStations.push(...c.stations);
-      });
-
+      // Zoek de dichtstbijzijnde stations uit álle 397 Nederlandse stations
+      const allStations = getAllStations().filter(s => s.sporen !== 'Goederen' && s.sporen !== 'DE Grens');
       allStations.sort((a, b) => {
         const da = distanceKm(bestTrain.lat, bestTrain.lon, a.lat, a.lon);
         const db = distanceKm(bestTrain.lat, bestTrain.lon, b.lat, b.lon);
@@ -2437,17 +2472,20 @@ function findMyTrain() {
       if (modal) {
         document.getElementById('myTrainOpBadge').className = `op-badge ${op.badgeClass}`;
         document.getElementById('myTrainOpBadge').textContent = `[${op.code}]`;
-        document.getElementById('myTrainTitle').textContent = `U zit in Trein #${bestTrain.trainNum}`;
+        document.getElementById('myTrainTitle').textContent = `U zit in ${op.name} Trein #${bestTrain.trainNum}`;
         document.getElementById('myTrainSpeed').textContent = bestTrain.speed || (userSpeedKmh || 0);
         document.getElementById('myTrainSpeedStatus').textContent = spdInfo.text;
         document.getElementById('myTrainSpeedStatus').className = `speed-status-pill ${spdInfo.cssClass}`;
 
-        document.getElementById('myTrainRoute').textContent = `Vervoerder: ${op.name}`;
+        document.getElementById('myTrainRoute').textContent = `${op.name} • Treinserie ${bestTrain.trainNum}`;
         document.getElementById('myTrainSegment').textContent = `Baanvak nabij ${closestStation.name} (richting ${nextStation.name})`;
-        document.getElementById('myTrainGpsMeta').textContent = `Afstand tot treinantenne: ${distMeters} meter • GPS nauwkeurigheid ±${userAcc}m`;
+        document.getElementById('myTrainGpsMeta').innerHTML = `
+          📍 <strong>Uw GPS:</strong> ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (±${userAcc}m)${userSpeedKmh ? ` &bull; Snelheid: ${userSpeedKmh} km/u` : ''}<br>
+          🚆 <strong>Trein GPS:</strong> ${bestTrain.lat.toFixed(5)}, ${bestTrain.lon.toFixed(5)} &bull; Afstand tot trein: <strong>${distMeters} meter</strong>
+        `;
 
         document.getElementById('myTrainOperator').textContent = `${op.name} (${bestTrain.matnummer || 'Standaard materieel'})`;
-        document.getElementById('myTrainMatnr').textContent = `Materieelcode: ${bestTrain.matnummer || 'NVT'} • Trein ${bestTrain.trainNum}`;
+        document.getElementById('myTrainMatnr').textContent = `Materieelcode: ${bestTrain.matnummer || 'NVT'} • Trein #${bestTrain.trainNum}`;
 
         const puncText = bestTrain.statusType === 'ontime' ? '🟢 Volgens schema op tijd' :
                          bestTrain.statusType === 'delayed' ? `🟡 +${bestTrain.delayMin || 2}m Vertraagd` : '🔴 Pech / Storing';
@@ -2482,12 +2520,12 @@ function findMyTrain() {
       }
     },
     (err) => {
-      if (btnHeader) btnHeader.innerHTML = '<span class="gps-icon-animated">📍</span> <span class="find-train-label">Waar ben ik? (Mijn Trein)</span>';
-      if (btnFloat) btnFloat.textContent = '📍 Waar ben ik?';
+      if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">Ik zit in de trein</span>';
+      if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!';
       console.warn('GPS error:', err);
       alert('Kon uw GPS-positie niet bepalen. Geef alstublieft toestemming voor locatie in uw browserinstellingen.');
     },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 3000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
 
@@ -2780,9 +2818,13 @@ function setupNavigation() {
     });
   });
 
-  // Live GPS Knoppen: Waar ben ik? (Mijn Trein)
+  // Live GPS Knoppen: Ik zit in de trein (vind exacte trein via GPS)
   document.getElementById('btnFindMyTrain')?.addEventListener('click', () => findMyTrain());
+  document.getElementById('btnImInTrainPlanner')?.addEventListener('click', () => findMyTrain());
   document.getElementById('btnFloatingFindTrain')?.addEventListener('click', () => findMyTrain());
+
+  // Knop: Handmatig geforceerd live verversen van de info
+  document.getElementById('btnForceRefresh')?.addEventListener('click', () => forceRefreshTrains());
 
   // Sluit Mijn Trein Modal
   document.getElementById('btnCloseMyTrain')?.addEventListener('click', () => {
@@ -2995,13 +3037,32 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Live Updates
 // =============================================================
-const APP_VERSION = '2.4.0';
+const APP_VERSION = '2.5.0';
 let appBuildMeta = { version: APP_VERSION, commit: 'latest', buildTime: '' };
 
 async function initVersionManagement() {
+  async function forcePurgeAndReload() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (e) {
+      console.warn('Fout bij leegmaken cache:', e);
+    }
+    const cleanUrl = window.location.href.split('?')[0];
+    window.location.replace(`${cleanUrl}?reload=${Date.now()}`);
+  }
+
   async function checkVersion() {
     try {
-      const res = await fetch(`./version.json?t=${Date.now()}`);
+      const res = await fetch(`./version.json?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         appBuildMeta = data;
@@ -3011,7 +3072,7 @@ async function initVersionManagement() {
         const badge = document.getElementById('appVersionBadge');
         if (badge) {
           badge.textContent = verStr;
-          badge.title = `Treinen ${verStr}${commitStr} - Tik voor versie-info`;
+          badge.title = `Treinen ${verStr}${commitStr} - Tik om cache te legen & te vernieuwen`;
         }
 
         const footerVer = document.getElementById('footerVersionText');
@@ -3032,43 +3093,32 @@ async function initVersionManagement() {
     }
   }
 
-  // Update Reload knoppen - Grondige cache & service worker purge voor iOS/iPad/Safari
-  document.getElementById('btnReloadUpdate')?.addEventListener('click', async () => {
-    try {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const reg of registrations) {
-          await reg.unregister();
-        }
-      }
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-    } catch (e) {
-      console.warn('Fout bij leegmaken cache:', e);
-    }
-    // Hard refresh met timestamp om Safari/Chrome mobiele disk cache te forceren
-    const cleanUrl = window.location.href.split('?')[0];
-    window.location.replace(`${cleanUrl}?reload=${Date.now()}`);
-  });
+  // Update Reload knoppen
+  document.getElementById('btnReloadUpdate')?.addEventListener('click', forcePurgeAndReload);
 
   document.getElementById('btnDismissUpdate')?.addEventListener('click', () => {
     const banner = document.getElementById('updateBanner');
     if (banner) banner.style.display = 'none';
   });
 
-  // Klik op de versietag toont een nette popup met build details
+  // Klik op de versietag geeft optie om direct cache te wissen en pagina te herladen
   document.getElementById('appVersionBadge')?.addEventListener('click', () => {
     const verStr = `v${appBuildMeta.version || APP_VERSION}`;
     const commitStr = appBuildMeta.commit || 'main';
     const buildTime = appBuildMeta.buildTime ? new Date(appBuildMeta.buildTime).toLocaleString('nl-NL') : 'Recent';
     playAuthenticNSChime();
-    alert(`🚆 Treinen — ProRail Live Satelliet Radar\n\nVersie: ${verStr}\nCommit: ${commitStr}\nLaatste build: ${buildTime}\nStatus: Alle systemen en services zijn actueel.`);
+    const shouldReload = confirm(
+      `🚆 Treinen — ProRail Live Satelliet Radar\n\n` +
+      `Versie: ${verStr}\nCommit: ${commitStr}\nLaatste build: ${buildTime}\n\n` +
+      `Wilt u de app nu direct geforceerd vernieuwen en alle tijdelijke cachebestanden wissen?`
+    );
+    if (shouldReload) {
+      forcePurgeAndReload();
+    }
   });
 
   checkVersion();
-  setInterval(checkVersion, 60000);
+  setInterval(checkVersion, 30000);
 }
 
 // =============================================================

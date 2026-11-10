@@ -1,7 +1,7 @@
 {
   "name": "treinen - WebAssembly Spoorwegsimulatie",
   "short_name": "treinen",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Cross platform WebAssembly treinsimulatie voor het Nederlandse spoornetwerk",
   "start_url": "./index.html",
   "display": "standalone",

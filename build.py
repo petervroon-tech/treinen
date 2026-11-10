@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.4.0"
+DEFAULT_VERSION = "2.5.0"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -256,7 +256,7 @@ def update_version_json(sha=None, build_num=None):
         except Exception: sha = "local"
 
     short_sha = sha[:7] if len(sha) >= 7 else sha
-    version = f"2.4.{build_num}" if build_num else DEFAULT_VERSION
+    version = f"2.5.{build_num}" if build_num else DEFAULT_VERSION
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     data["version"] = version
