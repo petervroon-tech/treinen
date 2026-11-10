@@ -7,22 +7,16 @@ on:
       - master
   workflow_dispatch:
 
-# Permissies vereist voor GitHub Pages deployment met OIDC id-token
+# Permissies om naar de gh-pages branch te kunnen schrijven
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Voorkom overlappende deployments
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -46,7 +40,7 @@ jobs:
           VERSION="1.0.${{ github.run_number }}"
           
           python3 -c "
-          import json, os
+          import json
           version_info = {
               'version': '${VERSION}',
               'commit': '${SHORT_SHA}',
@@ -62,14 +56,9 @@ jobs:
           print(json.dumps(version_info, indent=2))
           "
 
-      - name: Configureer GitHub Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy naar gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: './public'
-
-      - name: Deploy naar GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          folder: public
+          branch: gh-pages
+          commit-message: "Deploy Treinen v1.0.${{ github.run_number }} (${{ github.sha }})"
