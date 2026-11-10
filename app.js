@@ -2826,6 +2826,43 @@ function setupNavigation() {
   // Knop: Handmatig geforceerd live verversen van de info
   document.getElementById('btnForceRefresh')?.addEventListener('click', () => forceRefreshTrains());
 
+  // iPhone Bottom Quick Dock Knoppen (Speciaal voor éénhands duimbediening op de smartphone)
+  document.getElementById('btnDockInTrain')?.addEventListener('click', () => findMyTrain());
+  document.getElementById('btnDockPlanner')?.addEventListener('click', () => {
+    const bar = document.getElementById('routePlannerBar');
+    if (bar) {
+      const willShow = bar.style.display === 'none';
+      bar.style.display = willShow ? 'block' : 'none';
+      document.getElementById('btnToggleRoutePlanner')?.classList.toggle('active', willShow);
+      if (willShow) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  });
+  document.getElementById('btnDockRefresh')?.addEventListener('click', () => forceRefreshTrains());
+  document.getElementById('btnDockMap')?.addEventListener('click', () => {
+    const layout = document.getElementById('mainLayout');
+    if (layout) {
+      layout.classList.remove('view-list', 'view-split');
+      layout.classList.add('view-map');
+      document.querySelectorAll('.mobile-view-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-view') === 'map');
+      });
+      if (appState.map) {
+        setTimeout(() => appState.map.invalidateSize(), 100);
+      }
+    }
+  });
+  document.getElementById('btnDockComm')?.addEventListener('click', () => {
+    const screen = document.getElementById('commScreen');
+    if (screen) {
+      screen.style.display = 'flex';
+      appState.commUnreadCount = 0;
+      const badge = document.getElementById('commUnreadBadge');
+      if (badge) badge.style.display = 'none';
+    }
+  });
+
   // Sluit Mijn Trein Modal
   document.getElementById('btnCloseMyTrain')?.addEventListener('click', () => {
     const modal = document.getElementById('myTrainModal');
@@ -3037,7 +3074,7 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Live Updates
 // =============================================================
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';
 let appBuildMeta = { version: APP_VERSION, commit: 'latest', buildTime: '' };
 
 async function initVersionManagement() {

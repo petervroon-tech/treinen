@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.5.0">
-  <link rel="manifest" href="./manifest.json?v=2.5.0">
+  <link rel="stylesheet" href="./style.css?v=2.6.0">
+  <link rel="manifest" href="./manifest.json?v=2.6.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -29,7 +29,7 @@
       <div class="update-info">
         <span class="update-icon" aria-hidden="true">🔔</span>
         <span id="updateBannerText">
-          <strong>Nieuwe versie beschikbaar!</strong> Versie <code id="bannerVersionNum">v2.5.0</code> is zojuist gepubliceerd.
+          <strong>Nieuwe versie beschikbaar!</strong> Versie <code id="bannerVersionNum">v2.6.0</code> is zojuist gepubliceerd.
         </span>
       </div>
       <div class="update-actions">
@@ -46,7 +46,7 @@
       <div class="brand-box">
         <div class="ns-badge">PRO-RAIL</div>
         <h1 class="brand-heading">&lt;treinen&gt;</h1>
-        <span id="appVersionBadge" class="app-version-badge" title="Treinen Versie v2.5.0 - Tik voor versie-info">v2.5.0</span>
+        <span id="appVersionBadge" class="app-version-badge" title="Treinen Versie v2.6.0 - Tik voor versie-info">v2.6.0</span>
       </div>
 
       <!-- Centraal Traject Dropdown Menu (Geen rijen vol knoppen meer) -->
@@ -221,7 +221,7 @@
             <div class="corridor-info-sub">
               <span id="corridorRouteMeta">Lengte: 185 km &bull; NS</span> &bull; 
               <span id="corridorLiveCount">Laden...</span> &bull;
-              <span class="version-tag-sub">v2.5.0</span>
+              <span class="version-tag-sub">v2.6.0</span>
             </div>
           </div>
           <div class="corridor-header-actions">
@@ -338,10 +338,10 @@
       <div class="map-status-footer">
         <div>
           <span class="live-dot">●</span> 
-          <span id="mapStatusText">ProRail &bull; Treinen v2.5.0 &bull; Echte satellietbeelden</span>
+          <span id="mapStatusText">ProRail &bull; Treinen v2.6.0 &bull; Echte satellietbeelden</span>
         </div>
         <div>
-          <span>Bron: ProRail / NDOV Open Data &bull; GPS Real-time &bull; <strong id="footerVersionText">v2.5.0</strong></span>
+          <span>Bron: ProRail / NDOV Open Data &bull; GPS Real-time &bull; <strong id="footerVersionText">v2.6.0</strong></span>
         </div>
       </div>
     </section>
@@ -351,11 +351,12 @@
   <!-- MIJN TREIN & LIVE GPS LOCATIE DASHBOARD MODAL -->
   <aside id="myTrainModal" class="my-train-modal" role="dialog" aria-modal="true" aria-labelledby="myTrainTitle" style="display: none;">
     <div class="my-train-dialog">
+      <div class="ios-drag-handle" aria-hidden="true"></div>
       <div class="my-train-header">
         <div class="my-train-title-group">
           <span id="myTrainOpBadge" class="op-badge op-ns">[NS]</span>
           <h3 id="myTrainTitle" class="my-train-heading">U zit in Trein #1762</h3>
-          <span class="modal-version-tag">GPS v2.5.0</span>
+          <span class="modal-version-tag">GPS v2.6.0</span>
         </div>
         <button id="btnCloseMyTrain" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
       </div>
@@ -425,7 +426,7 @@
           <div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <h3 id="stModalTitle" class="st-modal-name">Utrecht Centraal</h3>
-              <span class="modal-version-tag">Perron v2.5.0</span>
+              <span class="modal-version-tag">Perron v2.6.0</span>
             </div>
             <span id="stModalSub" class="st-modal-sub">Code: UT &bull; 21 Perronsporen &bull; Knooppunt</span>
           </div>
@@ -479,7 +480,7 @@
             <div style="display: flex; align-items: center; gap: 8px;">
               <h3 id="commModalTitle" class="comm-modal-title">Live Spoor Communicatie &amp; Mededelingen</h3>
               <span class="comm-live-tag">● LIVE GSM-R</span>
-              <span class="modal-version-tag">TRDL v2.5.0</span>
+              <span class="modal-version-tag">TRDL v2.6.0</span>
             </div>
             <span class="comm-modal-sub">ProRail Verkeersleiding &bull; Kanaal 18 TRDL &bull; Machinisten &bull; Stationsomroep</span>
           </div>
@@ -518,7 +519,32 @@
     </div>
   </aside>
 
-  <script src="./stations.js?v=2.5.0"></script>
-  <script type="module" src="./app.js?v=2.5.0"></script>
+    <!-- iPhone Bottom Quick Dock (Speciaal voor één-hands smartphone bediening in de trein) -->
+  <nav class="iphone-bottom-dock" aria-label="Snelle iPhone bediening">
+    <button id="btnDockInTrain" class="dock-btn dock-btn-primary" type="button" title="Ik zit in de trein">
+      <span class="dock-beacon-dot"></span>
+      <span class="dock-icon">🚆</span>
+      <span class="dock-label">In Trein</span>
+    </button>
+    <button id="btnDockPlanner" class="dock-btn" type="button" title="Van / Naar stations kiezen">
+      <span class="dock-icon">🎯</span>
+      <span class="dock-label">Traject</span>
+    </button>
+    <button id="btnDockRefresh" class="dock-btn" type="button" title="Ververs live treingegevens">
+      <span class="dock-icon">🔄</span>
+      <span class="dock-label">Ververs</span>
+    </button>
+    <button id="btnDockMap" class="dock-btn" type="button" title="Satellietkaart groot">
+      <span class="dock-icon">🛰️</span>
+      <span class="dock-label">Kaart</span>
+    </button>
+    <button id="btnDockComm" class="dock-btn" type="button" title="Live Spoor Communicatie">
+      <span class="dock-icon">📻</span>
+      <span class="dock-label">Radio</span>
+    </button>
+  </nav>
+
+  <script src="./stations.js?v=2.6.0"></script>
+  <script type="module" src="./app.js?v=2.6.0"></script>
 </body>
 </html>

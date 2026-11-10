@@ -3062,3 +3062,181 @@ body {
   font-size: 0.65rem;
   animation: pulse-dot 1.2s infinite ease-in-out;
 }
+
+
+/* -------------------------------------------------------------
+   Specifieke iPhone & Smartphone Optimalisaties (iOS / Safari)
+   - Éénhands duimbediening tijdens treinreizen
+   - iOS Bottom Sheet voor live treininformatie
+   - Geen ongewenste Safari auto-zoom (16px minimum inputs)
+   - Ondersteuning voor iPhone Safe Area Insets (Notch & Home Bar)
+-------------------------------------------------------------- */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
+.iphone-bottom-dock {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  /* iPhone Safe Area Header */
+  .app-header {
+    padding-top: max(4px, env(safe-area-inset-top, 0px));
+    height: auto;
+    min-height: 48px;
+  }
+
+  /* iPhone Vaste Duimbalk onderaan */
+  .iphone-bottom-dock {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(58px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(6, 14, 34, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1.5px solid rgba(255, 201, 23, 0.4);
+    z-index: 2500;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.7);
+  }
+
+  body {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .main-layout {
+    height: calc(100vh - 160px - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - 160px - env(safe-area-inset-bottom, 0px));
+  }
+
+  .dock-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 8px;
+    min-width: 52px;
+    min-height: 48px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dock-btn:active {
+    transform: scale(0.92);
+  }
+
+  .dock-btn.dock-btn-primary {
+    background: linear-gradient(135deg, #003082 0%, #0284c7 100%);
+    border: 1.5px solid var(--ns-yellow);
+    border-radius: 14px;
+    color: #ffffff;
+    padding: 5px 12px;
+    box-shadow: 0 0 12px rgba(255, 201, 23, 0.4);
+  }
+
+  .dock-beacon-dot {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    width: 7px;
+    height: 7px;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #22c55e;
+    animation: beaconPulse 1.8s infinite;
+  }
+
+  .dock-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .dock-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
+
+  /* iPhone Native Bottom Sheet voor Mijn Trein Modal */
+  .my-train-modal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .my-train-dialog {
+    border-radius: 24px 24px 0 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 85vh !important;
+    max-height: 85dvh !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
+    animation: slideUpIosSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  @keyframes slideUpIosSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .ios-drag-handle {
+    width: 44px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.35);
+    border-radius: 3px;
+    margin: 8px auto 4px auto;
+  }
+
+  /* iPhone Safari No Auto-Zoom: velden minstens 16px */
+  select,
+  input,
+  button,
+  .rp-select,
+  .traject-select-dropdown {
+    font-size: 16px !important;
+  }
+
+  .rp-select,
+  .traject-select-dropdown {
+    min-height: 44px;
+  }
+
+  /* Vloeiend scrollen over de voorbeelden-chips */
+  .rp-quick-chips {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding: 6px 4px;
+    justify-content: flex-start;
+    scrollbar-width: none;
+  }
+
+  .rp-quick-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rp-chip-btn {
+    flex-shrink: 0;
+    min-height: 38px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    border-radius: 18px;
+  }
+}
