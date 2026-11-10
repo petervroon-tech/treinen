@@ -74,8 +74,12 @@
         </nav>
       </div>
 
-      <!-- Authentieke NS Audio Knoppen -->
+      <!-- Live GPS "In welke trein zit ik?" & Audio Knoppen -->
       <div class="header-audio-controls">
+        <button id="btnFindMyTrain" class="btn-find-my-train" type="button" title="Vind automatisch de trein waarin u nu zit met live GPS">
+          <span class="gps-icon-animated">📍</span>
+          <span class="find-train-label">Waar ben ik? (Mijn Trein)</span>
+        </button>
         <button id="btnPlayChime" class="btn-chime" type="button" title="Speel de authentieke 3-tonige NS stationsgong af">
           <span class="chime-icon">🔔</span>
           <span>NS Gong</span>
@@ -191,6 +195,7 @@
       <!-- Zwevende Kaartbalk -->
       <div class="map-floating-bar">
         <div class="map-type-buttons">
+          <button id="btnFloatingFindTrain" class="map-chip gps-chip" type="button" title="Vind live mijn trein via GPS">📍 Waar ben ik?</button>
           <button id="btnSatEsri" class="map-chip active" type="button">🛰️ Echte Satelliet (Esri)</button>
           <button id="btnSatPdok" class="map-chip" type="button">🇳🇱 Luchtfoto Nederland (PDOK)</button>
           <button id="btnMapDark" class="map-chip" type="button">🌙 Nacht Radar</button>
@@ -216,6 +221,73 @@
     </section>
 
   </div>
+
+  <!-- MIJN TREIN & LIVE GPS LOCATIE DASHBOARD MODAL -->
+  <aside id="myTrainModal" class="my-train-modal" role="dialog" aria-modal="true" aria-labelledby="myTrainTitle" style="display: none;">
+    <div class="my-train-dialog">
+      <div class="my-train-header">
+        <div class="my-train-title-group">
+          <span id="myTrainOpBadge" class="op-badge op-ns">[NS]</span>
+          <h3 id="myTrainTitle" class="my-train-heading">U zit in Trein #1762</h3>
+        </div>
+        <button id="btnCloseMyTrain" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
+      </div>
+
+      <div class="my-train-body">
+        <!-- Live GPS & Snelheid Banner -->
+        <div class="my-train-hero">
+          <div class="speed-dial-box">
+            <span class="speed-value" id="myTrainSpeed">134</span>
+            <span class="speed-unit">km/u</span>
+            <span class="speed-status-pill" id="myTrainSpeedStatus">⚡ Volle snelheid</span>
+          </div>
+          <div class="hero-details">
+            <div class="hero-line" id="myTrainRoute">Enschede ➔ Den Haag Centraal</div>
+            <div class="hero-segment" id="myTrainSegment">Tussen Amersfoort en Apeldoorn</div>
+            <div class="hero-gps-meta" id="myTrainGpsMeta">GPS afstand tot trein: 18m &bull; Nauwkeurigheid ±6m</div>
+          </div>
+        </div>
+
+        <!-- Reisinformatie Grid -->
+        <div class="my-train-grid">
+          <div class="my-train-card">
+            <span class="card-label">Vervoerder &amp; Materieel</span>
+            <strong class="card-val" id="myTrainOperator">NS Reizigers (VIRM-IV)</strong>
+            <span class="card-sub" id="myTrainMatnr">Materieelcode: 9524</span>
+          </div>
+
+          <div class="my-train-card">
+            <span class="card-label">Punctualiteit</span>
+            <strong class="card-val" id="myTrainPunctuality">🟢 Volgens schema op tijd</strong>
+            <span class="card-sub" id="myTrainDelay">Verwachte vertraging: 0 min</span>
+          </div>
+
+          <div class="my-train-card highlight">
+            <span class="card-label">Eerstvolgende Station</span>
+            <strong class="card-val highlight" id="myTrainNextStation">Apeldoorn</strong>
+            <span class="card-sub" id="myTrainNextEta">Afstand: ~7.2 km (ca. 3 minuten)</span>
+          </div>
+
+          <div class="my-train-card">
+            <span class="card-label">Vorig Gepasseerd Station</span>
+            <strong class="card-val" id="myTrainPrevStation">Amersfoort Centraal</strong>
+            <span class="card-sub" id="myTrainPrevDist">Afstand: ~14.8 km geleden</span>
+          </div>
+        </div>
+
+        <!-- Knoppen acties -->
+        <div class="my-train-actions">
+          <button id="btnFollowMyTrain" class="btn btn-follow" type="button">
+            <span id="followIcon">📡</span>
+            <span id="followText">Live Meereizen op Satelliet</span>
+          </button>
+          <button id="btnCenterMyTrain" class="btn btn-secondary" type="button">
+            🔍 Centreer op Kaart
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
 
   <script type="module" src="./app.js"></script>
 </body>
