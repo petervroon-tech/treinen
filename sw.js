@@ -1,11 +1,13 @@
 // Treinen Service Worker - Versiebeheer & Offline Cache
-const APP_VERSION = '2.3.0';
+const APP_VERSION = '2.4.0';
 const CACHE_NAME = `treinen-cache-v${APP_VERSION}`;
 
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './style.css',
+  './stations.js',
+  './stations.json',
   './app.js',
   './wasm_bridge.js',
   './treinen.wasm',

@@ -302,30 +302,60 @@ body {
 }
 
 /* -------------------------------------------------------------
-   Uitklapbare Trajectplanner (Kies Start & Aankomst Station)
-------------------------------------------------------------- */
+   Primaire Trajectplanner (Kies Start & Aankomst Station)
+   Direct als eerste zichtbaar voor een rustig, overzichtelijk scherm
+-------------------------------------------------------------- */
 .route-planner-bar {
   background: #060e22;
   border-bottom: 2px solid var(--ns-yellow);
   padding: 8px 14px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
   z-index: 190;
-  animation: slideDownPlanner 0.2s ease-out;
-}
-
-@keyframes slideDownPlanner {
-  from { transform: translateY(-30%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  transition: all 0.2s ease;
 }
 
 .route-planner-content {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.rp-header-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.rp-badge {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
+  font-weight: 900;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.rp-title-text {
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.rp-selectors-row {
+  display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 10px;
-  max-width: 980px;
-  margin: 0 auto;
+  gap: 8px;
+  width: 100%;
 }
 
 .rp-field-col {
@@ -351,8 +381,8 @@ body {
   font-weight: 700;
   outline: none;
   cursor: pointer;
-  min-width: 170px;
-  max-width: 250px;
+  min-width: 180px;
+  max-width: 270px;
   transition: all 0.15s ease;
 }
 
@@ -403,8 +433,57 @@ body {
   border-radius: 6px;
 }
 
+.rp-btn-min {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #94a3b8;
+  padding: 6px 9px;
+  font-size: 0.78rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rp-btn-min:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.rp-quick-chips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.rp-chips-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.rp-chip-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rp-chip-btn:hover {
+  background: rgba(255, 201, 23, 0.2);
+  border-color: var(--ns-yellow);
+  color: var(--ns-yellow);
+}
+
 .rp-route-summary {
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 0.75rem;
   color: #94a3b8;
   text-align: center;
@@ -1854,6 +1933,18 @@ body {
   }
 
   .route-planner-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .rp-header-title {
+    font-size: 0.72rem;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .rp-selectors-row {
     flex-direction: column;
     align-items: stretch;
     gap: 6px;

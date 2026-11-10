@@ -1675,10 +1675,21 @@ const EXTRA_STATIONS = [
   { code: 'ZH',   name: 'Zuidhorn',              lat: 53.2458, lon: 6.4258, sporen: '1-2', operator: 'Arriva' }
 ];
 
-// Vind station op code of naam door alle corridors en extra stations heen
+// Vind station op code of naam door alle 397 stations, corridors en extra stations heen
 function findStationByCode(codeOrName) {
   if (!codeOrName) return null;
   const target = String(codeOrName).trim().toLowerCase();
+
+  // 1. Eerst direct zoeken in alle 397 officiële Nederlandse stations
+  if (window.ALL_NL_STATIONS && Array.isArray(window.ALL_NL_STATIONS)) {
+    for (const st of window.ALL_NL_STATIONS) {
+      if (st.code.toLowerCase() === target || st.name.toLowerCase() === target) {
+        return { ...st, corridorName: st.name, operator: st.operator || 'NS / Regionaal' };
+      }
+    }
+  }
+
+  // 2. Corridors doorzoeken
   for (const cKey in CORRIDORS) {
     const corridor = CORRIDORS[cKey];
     for (const st of corridor.stations) {
@@ -1687,6 +1698,8 @@ function findStationByCode(codeOrName) {
       }
     }
   }
+
+  // 3. Extra stations doorzoeken
   for (const st of EXTRA_STATIONS) {
     if (st.code.toLowerCase() === target || st.name.toLowerCase() === target) {
       return { ...st, corridorName: st.name, operator: st.operator || 'NS Reizigers' };
@@ -1695,16 +1708,31 @@ function findStationByCode(codeOrName) {
   return null;
 }
 
-// Haal alle unieke stations op uit alle corridors en extra catalogus
+// Haal alle unieke stations op uit de complete Nederlandse stationscatalogus (397 stations)
 function getAllStations() {
   const map = new Map();
+
+  // 1. Alle 397 officiële Nederlandse stations (ProRail / NS / Regionaal)
+  if (window.ALL_NL_STATIONS && Array.isArray(window.ALL_NL_STATIONS)) {
+    for (const st of window.ALL_NL_STATIONS) {
+      map.set(st.code, { ...st, corridorName: st.name, operator: st.operator || 'NS / Regionaal' });
+    }
+  }
+
+  // 2. Aanvullen met specifieke corridor station metadata
   for (const cKey in CORRIDORS) {
     for (const st of CORRIDORS[cKey].stations) {
-      if (!map.has(st.code)) {
+      const existing = map.get(st.code);
+      if (existing) {
+        if (st.terminal) existing.terminal = true;
+        if (st.sporen) existing.sporen = st.sporen;
+      } else {
         map.set(st.code, { ...st, corridorName: CORRIDORS[cKey].name, operator: CORRIDORS[cKey].operator });
       }
     }
   }
+
+  // 3. Extra stations catalogus
   for (const st of EXTRA_STATIONS) {
     if (!map.has(st.code)) {
       map.set(st.code, { ...st, corridorName: st.name, operator: st.operator || 'NS Reizigers' });
@@ -1713,7 +1741,7 @@ function getAllStations() {
   return Array.from(map.values());
 }
 
-// Bouw een specifiek deeltraject tussen vertrek en aankomststation (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)
+// Bouw een specifiek deeltraject tussen vertrek- en aankomststation (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)
 function buildCustomRoute(fromCode, toCode) {
   const stA = findStationByCode(fromCode);
   const stB = findStationByCode(toCode);
@@ -1736,24 +1764,43 @@ function buildCustomRoute(fromCode, toCode) {
     }
   }
 
-  // 2. Als ze niet op dezelfde corridor liggen, vind stations die geometrisch op het traject liggen
+  // 2. Als ze niet op dezelfde corridor liggen, ontdek alle tussenstations via rail-geometrie
   if (intermediateStations.length < 2) {
     const dAB = distanceKm(stA.lat, stA.lon, stB.lat, stB.lon);
     const candidateStations = [];
 
+    // Perpendicular cross-track projectie berekening (nauwkeurige spooras)
+    const midLat = (stA.lat + stB.lat) / 2.0;
+    const kx = 111.320 * Math.cos(midLat * Math.PI / 180);
+    const ky = 110.574;
+    const ax = stA.lon * kx, ay = stA.lat * ky;
+    const bx = stB.lon * kx, by = stB.lat * ky;
+    const dx = bx - ax, dy = by - ay;
+    const segLenSq = dx * dx + dy * dy;
+
+    // Maximale afwijking van de spooras (corridor breedte)
+    const maxPerp = Math.min(4.0, Math.max(1.8, dAB * 0.05));
+
     const allStations = getAllStations();
     allStations.forEach(st => {
       if (st.code.toLowerCase() === stA.code.toLowerCase() || st.code.toLowerCase() === stB.code.toLowerCase()) return;
-      if (st.sporen === 'Goederen' || st.sporen === 'DE Grens' || st.name.includes('Goederen') || st.name.includes('Empl.')) return;
+      if (st.sporen === 'Goederen' || st.sporen === 'DE Grens' || st.name.includes('Goederen') || st.name.includes('Empl.') || st.name.includes('Aansluiting')) return;
 
-      const dA = distanceKm(stA.lat, stA.lon, st.lat, st.lon);
-      const dB = distanceKm(stB.lat, stB.lon, st.lat, st.lon);
-      if (dA + dB <= dAB + Math.max(6, dAB * 0.15)) {
-        candidateStations.push({ ...st, distFromA: dA });
+      if (segLenSq > 0) {
+        const px = st.lon * kx, py = st.lat * ky;
+        const t = ((px - ax) * dx + (py - ay) * dy) / segLenSq;
+        if (t > 0.02 && t < 0.98) {
+          const projX = ax + t * dx;
+          const projY = ay + t * dy;
+          const perpDist = Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
+          if (perpDist <= maxPerp) {
+            candidateStations.push({ ...st, t, perpDist });
+          }
+        }
       }
     });
 
-    candidateStations.sort((a, b) => a.distFromA - b.distFromA);
+    candidateStations.sort((a, b) => a.t - b.t);
     intermediateStations = [stA, ...candidateStations, stB];
   }
 
@@ -1783,6 +1830,12 @@ function applyCustomRoute(fromCode, toCode) {
   CORRIDORS[customCorridor.id] = customCorridor;
   appState.activeCorridorKey = customCorridor.id;
   appState.activeCategory = 'custom';
+
+  // Synchroniseer de van/naar dropdown selectoren
+  const fromSel = document.getElementById('routeFromSelect');
+  const toSel = document.getElementById('routeToSelect');
+  if (fromSel && fromSel.value !== fromCode) fromSel.value = fromCode;
+  if (toSel && toSel.value !== toCode) toSel.value = toCode;
 
   // Werk traject dropdown select bij
   const trajectSel = document.getElementById('trajectSelect');
@@ -1820,12 +1873,15 @@ function populateRoutePlannerDropdowns() {
   const toSel = document.getElementById('routeToSelect');
   if (!fromSel || !toSel) return;
 
+  const currentFrom = fromSel.value;
+  const currentTo = toSel.value;
+
   const allStations = getAllStations()
     .filter(s => s.sporen !== 'Goederen' && s.sporen !== 'DE Grens' && !s.name.includes('Goederen') && !s.name.includes('Empl.') && !s.name.includes('Rangeer'))
     .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
 
-  let htmlFrom = '<option value="">-- Kies vertrekstation --</option>';
-  let htmlTo = '<option value="">-- Kies aankomststation --</option>';
+  let htmlFrom = `<option value="">📍 Kies vertrekstation (${allStations.length} stations)...</option>`;
+  let htmlTo = `<option value="">🏁 Kies aankomststation (${allStations.length} stations)...</option>`;
 
   allStations.forEach(st => {
     htmlFrom += `<option value="${st.code}">${st.name} (${st.code})</option>`;
@@ -1835,9 +1891,9 @@ function populateRoutePlannerDropdowns() {
   fromSel.innerHTML = htmlFrom;
   toSel.innerHTML = htmlTo;
 
-  // Standaard suggestie
-  fromSel.value = 'BP'; // Buitenpost
-  toSel.value = 'LW';   // Leeuwarden
+  // Standaard suggestie (Buitenpost ➔ Leeuwarden)
+  fromSel.value = currentFrom || 'BP';
+  toSel.value = currentTo || 'LW';
 }
 
 // Bepaal een authentiek perronspoor (bv. 4a, 8b of 1)
@@ -2568,8 +2624,17 @@ function setupNavigation() {
     }
   }
 
+  // Trajectplanner standaard open en actief tonen
+  const pBar = document.getElementById('routePlannerBar');
+  if (pBar) pBar.style.display = 'block';
+  document.getElementById('btnToggleRoutePlanner')?.classList.add('active');
+
   document.getElementById('btnToggleRoutePlanner')?.addEventListener('click', () => {
     toggleRoutePlannerBar();
+  });
+
+  document.getElementById('btnMinimizePlanner')?.addEventListener('click', () => {
+    toggleRoutePlannerBar(false);
   });
 
   // Weergavekeuze: Alle Treinen in Heel NL
@@ -2602,16 +2667,29 @@ function setupNavigation() {
   document.getElementById('btnApplyRoute')?.addEventListener('click', () => {
     const fromSel = document.getElementById('routeFromSelect');
     const toSel = document.getElementById('routeToSelect');
-    if (fromSel && toSel) {
+    if (fromSel && toSel && fromSel.value && toSel.value) {
       applyCustomRoute(fromSel.value, toSel.value);
     }
   });
 
+  // Knop: Bekijk alle treinen in heel Nederland
   document.getElementById('btnClearRoute')?.addEventListener('click', () => {
-    toggleRoutePlannerBar(false);
-    const summaryEl = document.getElementById('rpRouteSummary');
-    if (summaryEl) summaryEl.style.display = 'none';
-    switchCorridor('enschede-denhaag');
+    switchCorridor('all');
+  });
+
+  // Snelle traject-knoppen (chips)
+  document.querySelectorAll('.rp-chip-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const from = e.currentTarget.getAttribute('data-from');
+      const to = e.currentTarget.getAttribute('data-to');
+      if (from && to) {
+        const fromSel = document.getElementById('routeFromSelect');
+        const toSel = document.getElementById('routeToSelect');
+        if (fromSel) fromSel.value = from;
+        if (toSel) toSel.value = to;
+        applyCustomRoute(from, to);
+      }
+    });
   });
 
   // Direct live updaten bij selectie
@@ -2917,7 +2995,7 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Live Updates
 // =============================================================
-const APP_VERSION = '2.3.0';
+const APP_VERSION = '2.4.0';
 let appBuildMeta = { version: APP_VERSION, commit: 'latest', buildTime: '' };
 
 async function initVersionManagement() {
@@ -2993,8 +3071,8 @@ async function init() {
   initVersionManagement();
 
   populateLineButtons('ns');
-  const defaultCorridor = CORRIDORS['enschede-denhaag'];
-  renderCorridorOnMap(defaultCorridor);
+  // Start direct met de primaire trajectselectie (Buitenpost ➔ Leeuwarden)
+  applyCustomRoute('BP', 'LW');
 
   await appState.bridge.loadWasm('./treinen.wasm');
 
