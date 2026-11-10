@@ -269,6 +269,26 @@ def update_version_json(sha=None, build_num=None):
     with open(version_file, "w") as f: json.dump(data, f, indent=2)
     print(f"📦 version.json bijgewerkt naar v{version} ({short_sha})")
 
+    # Werk ook app.js en sw.js bij zodat de client runtime versie 100% klopt met CI buildnummer
+    import re
+    app_js_path = os.path.join(os.path.dirname(__file__), "app.js")
+    if os.path.exists(app_js_path):
+        with open(app_js_path, "r", encoding="utf-8") as f:
+            app_code = f.read()
+        app_code = re.sub(r"const APP_VERSION = '[^']+';", f"const APP_VERSION = '{version}';", app_code)
+        with open(app_js_path, "w", encoding="utf-8") as f:
+            f.write(app_code)
+        print(f"📦 app.js APP_VERSION bijgewerkt naar {version}")
+
+    sw_js_path = os.path.join(os.path.dirname(__file__), "sw.js")
+    if os.path.exists(sw_js_path):
+        with open(sw_js_path, "r", encoding="utf-8") as f:
+            sw_code = f.read()
+        sw_code = re.sub(r"const APP_VERSION = '[^']+';", f"const APP_VERSION = '{version}';", sw_code)
+        with open(sw_js_path, "w", encoding="utf-8") as f:
+            f.write(sw_code)
+        print(f"📦 sw.js APP_VERSION bijgewerkt naar {version}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Treinen WASM Builder")

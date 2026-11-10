@@ -134,25 +134,36 @@ body {
 }
 
 .app-version-badge {
-  background: rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--ns-yellow) !important;
+  color: #001948 !important;
+  border: 1.5px solid #b45309 !important;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: 0.74rem !important;
+  font-weight: 900 !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
   cursor: pointer;
-  transition: all 0.15s ease;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(255, 201, 23, 0.45);
   user-select: none;
   -webkit-user-select: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  line-height: 1.2;
 }
 
-.app-version-badge:hover {
-  background: rgba(255, 201, 23, 0.18);
-  color: var(--ns-yellow);
-  border-color: var(--ns-yellow);
-  transform: translateY(-1px);
+.app-version-badge:hover, .app-version-badge:active {
+  background: #fde047 !important;
+  transform: scale(0.96);
+  box-shadow: 0 0 14px rgba(255, 201, 23, 0.8);
+}
+
+.badge-refresh-icon {
+  font-size: 0.7rem;
+  opacity: 0.85;
 }
 
 .modal-version-tag, .version-tag-sub {
@@ -1992,8 +2003,21 @@ body {
     height: 44px;
   }
 
+  .brand-box {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
   .brand-heading {
     display: none;
+  }
+
+  .app-version-badge {
+    display: inline-flex !important;
+    font-size: 0.72rem !important;
+    padding: 2px 6px !important;
   }
 
   .btn-label-text {

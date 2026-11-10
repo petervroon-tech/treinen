@@ -3108,8 +3108,8 @@ async function initVersionManagement() {
 
         const badge = document.getElementById('appVersionBadge');
         if (badge) {
-          badge.textContent = verStr;
-          badge.title = `Treinen ${verStr}${commitStr} - Tik om cache te legen & te vernieuwen`;
+          badge.innerHTML = `<span>${verStr}</span> <span class="badge-refresh-icon">🔄</span>`;
+          badge.title = `Gele versieknop: Treinen ${verStr}${commitStr} - Tik om cache te wissen & te herladen`;
         }
 
         const footerVer = document.getElementById('footerVersionText');
@@ -3117,12 +3117,17 @@ async function initVersionManagement() {
           footerVer.textContent = `${verStr}${commitStr}`;
         }
 
-        // Als er een nieuwere versie op de server staat
+        // Alleen tonen als er daadwerkelijk een andere versie op de server staat
+        const banner = document.getElementById('updateBanner');
         if (data.version && data.version !== APP_VERSION) {
-          const banner = document.getElementById('updateBanner');
-          const verCode = document.getElementById('bannerVersionNum');
-          if (verCode) verCode.textContent = `v${data.version}`;
-          if (banner) banner.style.display = 'block';
+          const dismissedVer = sessionStorage.getItem('dismissed_version');
+          if (dismissedVer !== data.version) {
+            const verCode = document.getElementById('bannerVersionNum');
+            if (verCode) verCode.textContent = `v${data.version}`;
+            if (banner) banner.style.display = 'block';
+          }
+        } else {
+          if (banner) banner.style.display = 'none';
         }
       }
     } catch (e) {
@@ -3131,9 +3136,15 @@ async function initVersionManagement() {
   }
 
   // Update Reload knoppen
-  document.getElementById('btnReloadUpdate')?.addEventListener('click', forcePurgeAndReload);
+  document.getElementById('btnReloadUpdate')?.addEventListener('click', () => {
+    sessionStorage.removeItem('dismissed_version');
+    forcePurgeAndReload();
+  });
 
   document.getElementById('btnDismissUpdate')?.addEventListener('click', () => {
+    if (appBuildMeta && appBuildMeta.version) {
+      sessionStorage.setItem('dismissed_version', appBuildMeta.version);
+    }
     const banner = document.getElementById('updateBanner');
     if (banner) banner.style.display = 'none';
   });
