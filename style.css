@@ -351,13 +351,277 @@ body {
   color: #fde68a;
 }
 
-/* Lijnstrip Diagram */
-.line-diagram-container {
+/* -------------------------------------------------------------
+   Aparte Knoppen: Op tijd, Vertraagd, Pech & Lijnoverzicht
+------------------------------------------------------------- */
+.status-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(0, 25, 72, 0.4);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.status-filter-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  color: var(--text-sub);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.status-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.status-filter-btn.active {
+  background: #ffffff;
+  color: var(--ns-dark);
+  border-color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.25);
+}
+
+.status-filter-btn.btn-ontime.active {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #34d399;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
+}
+
+.status-filter-btn.btn-delayed.active {
+  background: #f59e0b;
+  color: #1e1b4b;
+  border-color: #fbbf24;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+}
+
+.status-filter-btn.btn-pech.active {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #f87171;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);
+  animation: pulsePechBtn 1.8s infinite;
+}
+
+@keyframes pulsePechBtn {
+  0%, 100% { box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 2px 16px rgba(239, 68, 68, 0.85); }
+}
+
+.status-indicator-dot {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.status-indicator-dot.ontime { color: #10b981; }
+.status-indicator-dot.delayed { color: #f59e0b; }
+.status-indicator-dot.pech { color: #ef4444; }
+.status-indicator-dot.all { color: #38bdf8; }
+
+.status-filter-btn.active .status-indicator-dot {
+  color: inherit;
+}
+
+.status-btn-text {
   flex: 1;
-  overflow-y: auto;
-  padding: 12px 18px;
+  text-align: left;
+  font-size: 0.72rem;
+}
+
+.status-pill-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.status-filter-btn.active .status-pill-badge {
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffffff;
+}
+
+/* -------------------------------------------------------------
+   1 Overzicht van Alle Maatschappijen (Gegroepeerd per Status)
+------------------------------------------------------------- */
+.unified-status-view {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  padding-bottom: 24px;
+}
+
+.unified-header-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.unified-header-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.unified-header-summary {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+}
+
+.op-group-card {
+  background: rgba(19, 27, 46, 0.95);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.op-group-header {
+  background: rgba(0, 25, 72, 0.5);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.op-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #ffffff;
+}
+
+.op-count-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.op-trains-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.unified-train-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+}
+
+.unified-train-item:last-child {
+  border-bottom: none;
+}
+
+.unified-train-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateX(3px);
+}
+
+.unified-train-item.on-time {
+  border-left-color: #10b981;
+}
+
+.unified-train-item.delayed {
+  border-left-color: #f59e0b;
+}
+
+.unified-train-item.halted, .unified-train-item.pech {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.ut-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ut-num-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ut-num {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 0.84rem;
+  color: #ffffff;
+}
+
+.ut-mat {
+  font-size: 0.7rem;
+  color: var(--text-sub);
+}
+
+.ut-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+}
+
+.ut-loc {
+  color: var(--text-sub);
+  font-size: 0.7rem;
+}
+
+.ut-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.unified-empty-state {
+  text-align: center;
+  padding: 36px 16px;
+  color: var(--text-sub);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.unified-empty-state h4 {
+  font-size: 0.95rem;
+  color: #ffffff;
+}
+
+.unified-empty-state p {
+  font-size: 0.78rem;
+  max-width: 340px;
 }
 
 .diagram-legend {

@@ -28,11 +28,21 @@ export class TreinenWasmBridge {
 
   // 0 = Op tijd (groen), 1 = Kleine vertraging / afremmend (geel), 2 = Grote vertraging / stilstaand (rood)
   calculatePunctuality(speedKmh, delaySeconds = 0) {
-    if (this.isLoaded) {
+    if (this.isLoaded && this.wasmInstance.exports.calculate_punctuality) {
       return this.wasmInstance.exports.calculate_punctuality(speedKmh, delaySeconds);
     }
     if (delaySeconds > 300) return 2;
     if (delaySeconds > 60 || speedKmh < 1.0) return 1;
+    return 0;
+  }
+
+  // 0: Op tijd, 1: Vertraagd, 2: Pech / Gestrand / Defect
+  classifyStatus(speedKmh, delayMin = 0, isPechFlag = 0) {
+    if (this.isLoaded && this.wasmInstance.exports.classify_status) {
+      return this.wasmInstance.exports.classify_status(speedKmh, delayMin, isPechFlag);
+    }
+    if (isPechFlag !== 0 || delayMin >= 10) return 2;
+    if (delayMin >= 3 || (speedKmh < 1.0 && delayMin >= 1)) return 1;
     return 0;
   }
 

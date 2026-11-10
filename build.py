@@ -221,6 +221,27 @@ def generate_treinen_wasm() -> bytes:
     heading_body += local_get(0) + f32_const(0.00001) + bytes([OP_F32_ADD, OP_F32_DIV])
     builder.add_function("calculate_heading_deg", [F32, F32], [F32], [], bytes(heading_body))
 
+    # 6. classify_status(speed_kmh: f32, delay_min: i32, is_pech_flag: i32) -> i32
+    # 0 = Op tijd, 1 = Vertraagd, 2 = Pech / Gestrand
+    status_body = bytearray()
+    # Als is_pech_flag != 0 -> 2 (pech)
+    status_body += local_get(2) + bytes([OP_I32_EQZ, OP_I32_EQZ])
+    status_body += bytes([OP_IF, EMPTY_BLOCK, OP_I32_CONST, 0x02, OP_RETURN, OP_END])
+    # Als delay_min >= 10 -> 2 (pech)
+    status_body += local_get(1) + i32_const(10) + bytes([OP_I32_GE_S])
+    status_body += bytes([OP_IF, EMPTY_BLOCK, OP_I32_CONST, 0x02, OP_RETURN, OP_END])
+    # Als delay_min >= 3 -> 1 (vertraagd)
+    status_body += local_get(1) + i32_const(3) + bytes([OP_I32_GE_S])
+    status_body += bytes([OP_IF, EMPTY_BLOCK, OP_I32_CONST, 0x01, OP_RETURN, OP_END])
+    # Als speed < 1.0 EN delay_min >= 1 -> 1 (vertraagd / stilstaand)
+    status_body += local_get(0) + f32_const(1.0) + bytes([OP_F32_LT])
+    status_body += local_get(1) + i32_const(1) + bytes([OP_I32_GE_S])
+    status_body += bytes([OP_I32_MUL])
+    status_body += bytes([OP_IF, EMPTY_BLOCK, OP_I32_CONST, 0x01, OP_RETURN, OP_END])
+    # Anders 0 (op tijd)
+    status_body += i32_const(0)
+    builder.add_function("classify_status", [F32, I32, I32], [I32], [], bytes(status_body))
+
     return builder.build()
 
 

@@ -482,6 +482,7 @@ const appState = {
   map: null,
   activeCategory: 'ns',
   activeCorridorKey: 'enschede-denhaag',
+  activeStatusFilter: 'all', // 'all' | 'ontime' | 'delayed' | 'pech'
   baseLayer: 'esri',
   layers: {},
   routePolyline: null,
@@ -513,7 +514,6 @@ export function playAuthenticNSChime() {
   if (!ctx) return;
 
   const now = ctx.currentTime;
-  // De drie authentieke akkoorden: F4 (349.23 Hz), A4 (440.00 Hz), C5 (523.25 Hz)
   const notes = [
     { freq: 349.23, time: 0.00 },
     { freq: 440.00, time: 0.28 },
@@ -533,7 +533,6 @@ export function playAuthenticNSChime() {
     osc1.connect(gain1);
     gain1.connect(ctx.destination);
 
-    // Harmonische belboventoon (2x frequentie)
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.type = 'sine';
@@ -554,7 +553,7 @@ export function playAuthenticNSChime() {
 }
 
 // =============================================================
-// 4. Operator & Snelheidsherkenning per Trein
+// 4. Operator, Punctualiteit & Snelheidsherkenning per Trein
 // =============================================================
 export function detectOperator(train) {
   const rawMat = (train.matnummer || '').toLowerCase();
@@ -766,7 +765,7 @@ function renderCorridorOnMap(corridor) {
 }
 
 // =============================================================
-// 6. Live Treinen Ophalen & Filteren
+// 6. Live Treinen Ophalen, Parsen & Status Classificeren
 // =============================================================
 function fetchLiveTrains() {
   return new Promise((resolve) => {
@@ -811,16 +810,45 @@ export function parseTrain(raw) {
   const matnummer = props.matnummer || '';
   const color = props.color || '';
 
+  // Snelheid detectie
   let speed = 0;
   const spdMatch = matnrString.match(/@\s*(\d+)\s*km\/h/i);
   if (spdMatch) speed = parseInt(spdMatch[1], 10);
 
+  // Treinnummer detectie
   let trainNum = '';
   const trMatch = matnrString.match(/trein\s+(\d+)/i);
   if (trMatch) trainNum = trMatch[1];
   else trainNum = matnummer.replace(/\D/g, '') || '0';
 
-  const puncScore = appState.bridge.calculatePunctuality(speed, speed === 0 ? 120 : 0);
+  // Vertraging & Pech analyse
+  let delayMin = 0;
+  if (typeof props.vertraging === 'number') {
+    delayMin = props.vertraging > 60 ? Math.round(props.vertraging / 60) : props.vertraging;
+  } else if (typeof props.vertraging === 'string') {
+    const m = props.vertraging.match(/\+?(\d+)/);
+    if (m) delayMin = parseInt(m[1], 10);
+  } else if (typeof props.delay === 'number') {
+    delayMin = props.delay > 60 ? Math.round(props.delay / 60) : props.delay;
+  }
+
+  const allText = `${matnrString} ${props.info || ''} ${props.status || ''}`;
+  const delMatch = allText.match(/\+(\d+)\s*m/i) || allText.match(/\+(\d+)/);
+  if (delMatch && delayMin === 0) {
+    delayMin = parseInt(delMatch[1], 10);
+  }
+
+  // Pech / Gestrand / Defect detectie
+  const isPechText = /pech|defect|gestrand|storing|kapot|ongeval|brand|aanrijding/i.test(allText);
+  let isPechFlag = isPechText ? 1 : 0;
+  if (delayMin >= 10) isPechFlag = 1;
+  if (speed === 0 && delayMin >= 5) isPechFlag = 1;
+
+  // WASM status classificatie: 0 = ontime, 1 = delayed, 2 = pech
+  const statusCode = appState.bridge.classifyStatus(speed, delayMin, isPechFlag);
+  const statusType = statusCode === 2 ? 'pech' : (statusCode === 1 ? 'delayed' : 'ontime');
+
+  const puncScore = appState.bridge.calculatePunctuality(speed, delayMin * 60);
 
   const train = {
     id: `${matnummer}_${trainNum}`,
@@ -831,6 +859,9 @@ export function parseTrain(raw) {
     lat,
     lon,
     speed,
+    delayMin,
+    statusType, // 'ontime' | 'delayed' | 'pech'
+    isPech: statusCode === 2,
     puncScore,
     gpsdata: props.gpsdata || 'Zojuist'
   };
@@ -852,12 +883,10 @@ function distanceKm(lat1, lon1, lat2, lon2) {
 function matchTrainToCorridor(train, corridor) {
   if (!corridor) return true;
 
-  // A. Match op serie
   if (corridor.seriesPattern && corridor.seriesPattern.test(train.trainNum)) {
     return true;
   }
 
-  // B. Match op geografische nabijheid van baanvaksegmenten
   for (let i = 0; i < corridor.stations.length - 1; i++) {
     const s1 = corridor.stations[i];
     const s2 = corridor.stations[i + 1];
@@ -892,12 +921,26 @@ function findNearestSegment(train, corridor) {
 }
 
 // =============================================================
-// 7. Update het Overzichtelijke Lijnoverzicht (Lijnstrip)
+// 7. Update het Overzicht (Statusknoppen & 1 Overzicht Alle Maatschappijen)
 // =============================================================
 function updateLineOverview() {
-  const corridorKey = appState.activeCorridorKey;
-  const isAllMode = corridorKey === 'all' || appState.activeCategory === 'all';
-  const corridor = isAllMode ? null : CORRIDORS[corridorKey];
+  const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+
+  // Tel landelijk aantal treinen per status
+  const ontimeTrains = allParsed.filter(t => t.statusType === 'ontime');
+  const delayedTrains = allParsed.filter(t => t.statusType === 'delayed');
+  const pechTrains = allParsed.filter(t => t.statusType === 'pech');
+
+  // Update de badges op de 4 aparte knoppen
+  const badgeAll = document.getElementById('badgeCountAll');
+  const badgeOntime = document.getElementById('badgeCountOntime');
+  const badgeDelayed = document.getElementById('badgeCountDelayed');
+  const badgePech = document.getElementById('badgeCountPech');
+
+  if (badgeAll) badgeAll.textContent = allParsed.length;
+  if (badgeOntime) badgeOntime.textContent = ontimeTrains.length;
+  if (badgeDelayed) badgeDelayed.textContent = delayedTrains.length;
+  if (badgePech) badgePech.textContent = pechTrains.length;
 
   const titleEl = document.getElementById('corridorTitle');
   const metaEl = document.getElementById('corridorRouteMeta');
@@ -905,15 +948,25 @@ function updateLineOverview() {
   const diagramEl = document.getElementById('lineDiagram');
   const statusFooterEl = document.getElementById('mapStatusText');
 
+  // ALS EEN APARTE STATUS KNOP IS AANGEKLIKT (Op tijd, Vertraagd, Pech)
+  // Toon het gevraagde "1 overzicht van alle maatschappijen onder deze knoppen"
+  if (appState.activeStatusFilter !== 'all') {
+    renderUnifiedStatusView(allParsed, appState.activeStatusFilter);
+    return;
+  }
+
+  // ANDERS: Normale lijn- of landelijke radar modus
+  const corridorKey = appState.activeCorridorKey;
+  const isAllMode = corridorKey === 'all' || appState.activeCategory === 'all';
+  const corridor = isAllMode ? null : CORRIDORS[corridorKey];
+
   if (isAllMode) {
     if (titleEl) titleEl.textContent = 'Landelijke Satelliet Radar (Heel Nederland)';
     if (metaEl) metaEl.textContent = 'Toont alle actuele treinen, alle maatschappijen & goederenvervoer';
-    const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
     if (countEl) countEl.innerHTML = `Totaal aantal treinen in beeld: <strong>${allParsed.length}</strong>`;
     if (statusFooterEl) statusFooterEl.textContent = `Landelijke radar &bull; ${allParsed.length} treinen &bull; Alle vervoerders`;
 
     if (diagramEl) {
-      // Toon een compact overzicht van actieve maatschappijen
       const opCounts = {};
       allParsed.forEach(t => {
         const c = t.operator.code;
@@ -936,7 +989,7 @@ function updateLineOverview() {
       overviewHtml += `
           </div>
           <p style="margin-top: 16px; font-size: 0.78rem; color: var(--text-sub);">
-            Klik op een tabblad hierboven (bijv. <strong>NS Reizigers</strong>, <strong>Regionaal</strong>, <strong>Internationaal</strong> of <strong>Goederenvervoer</strong>) voor het rustige station-voor-station lijnoverzicht.
+            Klik op een statusknop hierboven (<strong>Op tijd</strong>, <strong>Vertraagd</strong> of <strong>Pech / Gestrand</strong>) voor het overzicht van alle maatschappijen.
           </p>
         </div>
       `;
@@ -957,10 +1010,7 @@ function updateLineOverview() {
   const matchedTrains = [];
   const segmentTrainsMap = new Map();
 
-  appState.allLiveFeatures.forEach(raw => {
-    const t = parseTrain(raw);
-    if (!t) return;
-
+  allParsed.forEach(t => {
     const match = matchTrainToCorridor(t, corridor);
     if (match) {
       const segIdx = typeof match === 'object' ? match.segmentIndex : findNearestSegment(t, corridor);
@@ -1000,8 +1050,9 @@ function updateLineOverview() {
         trainsOnSegment.forEach(t => {
           const spdInfo = getSpeedBadgeInfo(t.speed);
           const op = t.operator;
-          const puncClass = t.puncScore === 0 ? 'on-time' : t.puncScore === 1 ? 'delayed' : 'halted';
-          const puncText = t.puncScore === 0 ? 'Op tijd' : t.puncScore === 1 ? '+2m Vertraging' : 'Stilstaand';
+          const puncClass = t.statusType === 'ontime' ? 'on-time' : t.statusType === 'delayed' ? 'delayed' : 'halted';
+          const puncText = t.statusType === 'ontime' ? 'Op tijd' :
+                           t.statusType === 'delayed' ? `+${t.delayMin || 2}m Vertraagd` : '🚨 Pech / Gestrand';
 
           html += `
             <div class="train-corridor-card ${puncClass}" onclick="window.selectTrain('${t.id}')">
@@ -1029,7 +1080,141 @@ function updateLineOverview() {
 }
 
 // =============================================================
-// 8. Teken Treinen op de Satellietkaart (Rustig & Schoon)
+// 8. Het Gevraagde "1 Overzicht van Alle Maatschappijen"
+// =============================================================
+function renderUnifiedStatusView(allTrains, statusFilter) {
+  const titleEl = document.getElementById('corridorTitle');
+  const metaEl = document.getElementById('corridorRouteMeta');
+  const countEl = document.getElementById('corridorLiveCount');
+  const diagramEl = document.getElementById('lineDiagram');
+  const statusFooterEl = document.getElementById('mapStatusText');
+
+  // Filter treinen die voldoen aan de status
+  const matchedTrains = allTrains.filter(t => t.statusType === statusFilter);
+
+  let filterTitle = '';
+  let filterColor = '';
+  if (statusFilter === 'ontime') {
+    filterTitle = '🟢 1 Overzicht: Treinen die Op Tijd Rijden';
+    filterColor = '#10b981';
+  } else if (statusFilter === 'delayed') {
+    filterTitle = '🟡 1 Overzicht: Vertraagde Treinen in Nederland';
+    filterColor = '#f59e0b';
+  } else if (statusFilter === 'pech') {
+    filterTitle = '🔴 1 Overzicht: Treinen met Pech, Storing & Stilstand';
+    filterColor = '#ef4444';
+  }
+
+  if (titleEl) titleEl.textContent = filterTitle;
+  if (metaEl) metaEl.textContent = `Alle spoorwegmaatschappijen van Nederland &bull; Live GPS telemetrie`;
+  if (countEl) countEl.innerHTML = `Totaal aantal treinen onder dit filter: <strong>${matchedTrains.length}</strong>`;
+  if (statusFooterEl) statusFooterEl.textContent = `Status: ${filterTitle} &bull; ${matchedTrains.length} treinen in beeld`;
+
+  if (!diagramEl) return;
+
+  if (matchedTrains.length === 0) {
+    diagramEl.innerHTML = `
+      <div class="unified-empty-state">
+        <span style="font-size: 2.4rem;">🎉</span>
+        <h4>Geen treinen gevonden met deze status</h4>
+        <p>Er zijn op dit moment geen treinen gemeld die onder dit criterium vallen op het Nederlandse spoorwegnet.</p>
+      </div>
+    `;
+    renderMapTrains([]);
+    return;
+  }
+
+  // Groepeer treinen per maatschappij
+  const opGroups = new Map();
+  matchedTrains.forEach(t => {
+    const opKey = t.operator.code;
+    if (!opGroups.has(opKey)) {
+      opGroups.set(opKey, {
+        operator: t.operator,
+        trains: []
+      });
+    }
+    opGroups.get(opKey).trains.push(t);
+  });
+
+  // Bouw het complete 1-overzicht
+  let html = `
+    <div class="unified-status-view">
+      <div class="unified-header-box" style="border-left: 4px solid ${filterColor};">
+        <div>
+          <div class="unified-header-title">${filterTitle}</div>
+          <div class="unified-header-summary">
+            Weergegeven over <strong>${opGroups.size} spoorwegmaatschappijen</strong> &bull; Totaal <strong>${matchedTrains.length} treinen</strong>
+          </div>
+        </div>
+      </div>
+  `;
+
+  // Toon elke maatschappij als een duidelijke sectie
+  for (const [opCode, group] of opGroups.entries()) {
+    const op = group.operator;
+    const trains = group.trains;
+
+    html += `
+      <div class="op-group-card">
+        <div class="op-group-header">
+          <div class="op-group-title">
+            <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
+            <span class="op-name">${op.name}</span>
+          </div>
+          <span class="op-count-badge">${trains.length} ${trains.length === 1 ? 'trein' : 'treinen'}</span>
+        </div>
+        <div class="op-trains-list">
+    `;
+
+    trains.forEach(t => {
+      const spdInfo = getSpeedBadgeInfo(t.speed);
+      const puncClass = t.statusType === 'ontime' ? 'on-time' : t.statusType === 'delayed' ? 'delayed' : 'pech';
+
+      let statusPillText = '';
+      if (t.statusType === 'pech') {
+        statusPillText = t.speed === 0 ? '🔴 Gestrand / Stilstaand' : '🚨 Pech / Defect';
+      } else if (t.statusType === 'delayed') {
+        statusPillText = `+${t.delayMin || 2}m Vertraagd`;
+      } else {
+        statusPillText = '🟢 Op tijd';
+      }
+
+      html += `
+        <div class="unified-train-item ${puncClass}" onclick="window.selectTrain('${t.id}')">
+          <div class="ut-left">
+            <div class="ut-num-row">
+              <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
+              <span class="ut-num">Trein #${t.trainNum}</span>
+              <span class="ut-mat">${t.matnummer || op.name}</span>
+            </div>
+            <div class="ut-status-row">
+              <span class="status-pill ${puncClass}">${statusPillText}</span>
+              <span class="ut-loc">GPS: ${t.lat.toFixed(3)}, ${t.lon.toFixed(3)}</span>
+            </div>
+          </div>
+          <div class="ut-right">
+            <span class="t-speed-badge ${spdInfo.cssClass}">${spdInfo.icon} ${spdInfo.label}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+  diagramEl.innerHTML = html;
+
+  // Filter ook de kaart om ALLEEN deze treinen met opvallende gloed te tonen
+  renderMapTrains(matchedTrains);
+}
+
+// =============================================================
+// 9. Teken Treinen op de Satellietkaart (Rustig & Schoon)
 // =============================================================
 function renderMapTrains(trainList) {
   const map = appState.map;
@@ -1039,7 +1224,8 @@ function renderMapTrains(trainList) {
     currentIds.add(t.id);
     const op = t.operator;
     const spdInfo = getSpeedBadgeInfo(t.speed);
-    const statusBorder = t.puncScore === 0 ? '#10b981' : t.puncScore === 1 ? '#f59e0b' : '#ef4444';
+    const statusBorder = t.statusType === 'ontime' ? '#10b981' :
+                         t.statusType === 'delayed' ? '#f59e0b' : '#ef4444';
 
     if (appState.trainMarkers.has(t.id)) {
       const m = appState.trainMarkers.get(t.id);
@@ -1057,7 +1243,7 @@ function renderMapTrains(trainList) {
       }
     } else {
       const html = `
-        <div class="clean-train-marker" title="[${op.code}] Trein ${t.trainNum} - ${t.speed} km/u">
+        <div class="clean-train-marker" title="[${op.code}] Trein ${t.trainNum} - ${t.speed} km/u (${t.statusType})">
           <div class="clean-train-tag" style="border-color: ${op.border};">
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
             <span class="tag-num">${t.trainNum}</span>
@@ -1113,12 +1299,22 @@ window.selectTrain = (trainId) => {
       badgeEl.textContent = `[${op.code}]`;
     }
 
+    let statusPillClass = 'green';
+    let statusPillLabel = 'Op tijd';
+    if (train.statusType === 'pech') {
+      statusPillClass = 'halted';
+      statusPillLabel = '🚨 Pech / Gestrand';
+    } else if (train.statusType === 'delayed') {
+      statusPillClass = 'yellow';
+      statusPillLabel = `+${train.delayMin || 2}m vertraagd`;
+    }
+
     document.getElementById('inspTitle').textContent = `Trein #${train.trainNum}`;
     document.getElementById('inspOperator').textContent = `${op.name} (${op.code})`;
     document.getElementById('inspSpeed').innerHTML = `<span class="t-speed-badge ${spdInfo.cssClass}">${spdInfo.icon} ${train.speed} km/u</span>`;
     document.getElementById('inspMat').textContent = train.matnummer || 'Standaard materieel';
-    document.getElementById('inspPunc').textContent = train.puncScore === 0 ? 'Op tijd' : '+2m vertraagd';
-    document.getElementById('inspPunc').className = `status-pill ${train.puncScore === 0 ? 'green' : 'yellow'}`;
+    document.getElementById('inspPunc').textContent = statusPillLabel;
+    document.getElementById('inspPunc').className = `status-pill ${statusPillClass}`;
     document.getElementById('inspStatus').textContent = spdInfo.text;
     document.getElementById('inspGps').textContent = train.gpsdata;
   }
@@ -1127,7 +1323,7 @@ window.selectTrain = (trainId) => {
 };
 
 // =============================================================
-// 9. Categorieën & Navigatie
+// 10. Knoppen, Filters & Navigatie
 // =============================================================
 function populateLineButtons(category) {
   const nav = document.getElementById('lineSelectorNav');
@@ -1160,7 +1356,6 @@ function populateLineButtons(category) {
 
   nav.innerHTML = html;
 
-  // Bind click events op de knoppen
   nav.querySelectorAll('.line-nav-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       nav.querySelectorAll('.line-nav-btn').forEach(b => b.classList.remove('active'));
@@ -1169,6 +1364,11 @@ function populateLineButtons(category) {
 
       const lineKey = target.getAttribute('data-line');
       appState.activeCorridorKey = lineKey;
+
+      // Als de gebruiker een lijn kiest, zet de status filter terug naar 'all' (lijnoverzicht)
+      appState.activeStatusFilter = 'all';
+      document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('btnFilterAll')?.classList.add('active');
 
       const corridor = CORRIDORS[lineKey];
       renderCorridorOnMap(corridor);
@@ -1180,6 +1380,21 @@ function populateLineButtons(category) {
 }
 
 function setupNavigation() {
+  // Aparte Knoppen: Op tijd, Vertraagd, Pech & Lijnoverzicht
+  document.querySelectorAll('.status-filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
+      const target = e.currentTarget;
+      target.classList.add('active');
+
+      const filter = target.getAttribute('data-filter');
+      appState.activeStatusFilter = filter;
+
+      updateLineOverview();
+      playAuthenticNSChime();
+    });
+  });
+
   // Categorie Tabs
   document.querySelectorAll('.cat-tab-btn').forEach(tab => {
     tab.addEventListener('click', (e) => {
@@ -1190,11 +1405,15 @@ function setupNavigation() {
       const cat = target.getAttribute('data-category');
       appState.activeCategory = cat;
 
+      // Zet status filter terug naar 'all' bij categoriewissel
+      appState.activeStatusFilter = 'all';
+      document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('btnFilterAll')?.classList.add('active');
+
       if (cat === 'all') {
         appState.activeCorridorKey = 'all';
         renderCorridorOnMap(null);
       } else {
-        // Activeer eerste corridor van deze categorie
         const first = Object.values(CORRIDORS).find(c => c.category === cat);
         if (first) {
           appState.activeCorridorKey = first.id;
@@ -1235,21 +1454,18 @@ function setupNavigation() {
 }
 
 // =============================================================
-// 10. Start Applicatie
+// 11. Start Applicatie
 // =============================================================
 async function init() {
   initMap();
   setupNavigation();
 
-  // Stel standaard de NS categorie en Enschede tot Den Haag in
   populateLineButtons('ns');
   const defaultCorridor = CORRIDORS['enschede-denhaag'];
   renderCorridorOnMap(defaultCorridor);
 
-  // Laad WebAssembly
   await appState.bridge.loadWasm('./treinen.wasm');
 
-  // Live polling loop (elke 4.5 seconden)
   async function poll() {
     try {
       const data = await fetchLiveTrains();

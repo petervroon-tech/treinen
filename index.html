@@ -100,6 +100,30 @@
         </div>
       </div>
 
+      <!-- APARTE STATUS KNOPPEN: Op tijd, Vertraagd, Pech & Lijnoverzicht (Alle Maatschappijen in 1 Overzicht) -->
+      <div class="status-filter-bar" role="toolbar" aria-label="Statusoverzicht alle maatschappijen">
+        <button id="btnFilterAll" class="status-filter-btn active" data-filter="all" type="button" title="Toon het rustige station-voor-station lijnoverzicht">
+          <span class="status-indicator-dot all">●</span>
+          <span class="status-btn-text">Lijnoverzicht</span>
+          <span id="badgeCountAll" class="status-pill-badge">0</span>
+        </button>
+        <button id="btnFilterOntime" class="status-filter-btn btn-ontime" data-filter="ontime" type="button" title="Toon alle treinen die op tijd rijden van alle maatschappijen">
+          <span class="status-indicator-dot ontime">●</span>
+          <span class="status-btn-text">Op tijd</span>
+          <span id="badgeCountOntime" class="status-pill-badge">0</span>
+        </button>
+        <button id="btnFilterDelayed" class="status-filter-btn btn-delayed" data-filter="delayed" type="button" title="Toon alle vertraagde treinen van alle maatschappijen in 1 overzicht">
+          <span class="status-indicator-dot delayed">●</span>
+          <span class="status-btn-text">Vertraagd</span>
+          <span id="badgeCountDelayed" class="status-pill-badge">0</span>
+        </button>
+        <button id="btnFilterPech" class="status-filter-btn btn-pech" data-filter="pech" type="button" title="Toon alle treinen met pech, storing of stilstand van alle maatschappijen">
+          <span class="status-indicator-dot pech">●</span>
+          <span class="status-btn-text">Pech / Gestrand</span>
+          <span id="badgeCountPech" class="status-pill-badge">0</span>
+        </button>
+      </div>
+
       <!-- Meldingen/Storingen op dit traject -->
       <div id="corridorAlertBox" class="corridor-alert-box ok">
         <span class="alert-icon">ℹ️</span>
