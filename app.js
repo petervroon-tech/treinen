@@ -483,6 +483,7 @@ const appState = {
   activeCategory: 'ns',
   activeCorridorKey: 'enschede-denhaag',
   activeStatusFilter: 'all', // 'all' | 'ontime' | 'delayed' | 'pech'
+  labelMode: 'smart', // 'smart' (anti-chaos) | 'compact' | 'full'
   baseLayer: 'esri',
   layers: {},
   routePolyline: null,
@@ -491,6 +492,7 @@ const appState = {
   soundEnabled: true,
   audioCtx: null,
   allLiveFeatures: [],
+  lastRenderedTrains: [],
   selectedTrainId: null
 };
 
@@ -739,6 +741,13 @@ function initMap() {
     if (nearestStation && minStationDist <= 3.8) {
       window.selectStation(nearestStation.code);
       return;
+    }
+  });
+
+  // Herschik en declutter labels bij zoomen om overlappende treinnummers te voorkomen
+  map.on('zoomend', () => {
+    if (appState.lastRenderedTrains && appState.lastRenderedTrains.length > 0) {
+      renderMapTrains(appState.lastRenderedTrains);
     }
   });
 
@@ -1297,11 +1306,24 @@ function renderUnifiedStatusView(allTrains, statusFilter) {
 }
 
 // =============================================================
-// 9. Teken Treinen op de Satellietkaart (Rustig & Schoon)
+// 9. Teken Treinen op de Satellietkaart (Rustig, Schoon & Anti-Chaos)
 // =============================================================
 function renderMapTrains(trainList) {
   const map = appState.map;
+  if (!map) return;
+  appState.lastRenderedTrains = trainList;
+
   const currentIds = new Set();
+  const zoom = map.getZoom();
+  const isAllMode = appState.activeCorridorKey === 'all' || appState.activeCategory === 'all';
+  const densityMode = appState.labelMode || 'smart';
+
+  // Bepaal of compacte tags gebruikt moeten worden om overlappende teksten te voorkomen
+  const useCompact = densityMode === 'compact' || (densityMode === 'smart' && (isAllMode || zoom < 11));
+  const compactClass = useCompact ? 'compact' : '';
+
+  // Houd bij waar tags op het scherm worden geplaatst voor slimme botsingdetectie
+  const placedTagBoxes = [];
 
   trainList.forEach(t => {
     currentIds.add(t.id);
@@ -1310,6 +1332,61 @@ function renderMapTrains(trainList) {
     const statusBorder = t.statusType === 'ontime' ? '#10b981' :
                          t.statusType === 'delayed' ? '#f59e0b' : '#ef4444';
 
+    // Bereken pixelpositie op het scherm
+    let pt = null;
+    try {
+      pt = map.latLngToLayerPoint([t.lat, t.lon]);
+    } catch (e) {
+      pt = null;
+    }
+
+    // Bepaal tag positie (boven, onder, rechts of links) zodat treinnummers nooit over elkaar vallen
+    let posClass = 'tag-pos-top';
+    if (pt) {
+      const boxW = useCompact ? 48 : 100;
+      const boxH = 24;
+      let collidesTop = false;
+      let collidesBottom = false;
+      let collidesRight = false;
+
+      for (const p of placedTagBoxes) {
+        if (Math.abs(pt.x - p.x) < boxW && Math.abs((pt.y - 20) - p.y) < boxH) {
+          collidesTop = true;
+          break;
+        }
+      }
+
+      if (collidesTop) {
+        // Probeer onder
+        for (const p of placedTagBoxes) {
+          if (Math.abs(pt.x - p.x) < boxW && Math.abs((pt.y + 28) - p.y) < boxH) {
+            collidesBottom = true;
+            break;
+          }
+        }
+        if (!collidesBottom) {
+          posClass = 'tag-pos-bottom';
+        } else {
+          // Probeer rechts
+          for (const p of placedTagBoxes) {
+            if (Math.abs((pt.x + 36) - p.x) < boxW && Math.abs(pt.y - p.y) < boxH) {
+              collidesRight = true;
+              break;
+            }
+          }
+          if (!collidesRight) {
+            posClass = 'tag-pos-right';
+          } else {
+            posClass = 'tag-pos-left';
+          }
+        }
+      }
+
+      const tagX = posClass === 'tag-pos-right' ? pt.x + 36 : (posClass === 'tag-pos-left' ? pt.x - 36 : pt.x);
+      const tagY = posClass === 'tag-pos-bottom' ? pt.y + 28 : pt.y - 20;
+      placedTagBoxes.push({ x: tagX, y: tagY });
+    }
+
     if (appState.trainMarkers.has(t.id)) {
       const m = appState.trainMarkers.get(t.id);
       m.setLatLng([t.lat, t.lon]);
@@ -1317,6 +1394,8 @@ function renderMapTrains(trainList) {
       if (el) {
         const tag = el.querySelector('.clean-train-tag');
         if (tag) {
+          tag.className = `clean-train-tag ${compactClass} ${posClass}`;
+          tag.style.borderColor = op.border;
           tag.innerHTML = `
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
             <span class="tag-num">${t.trainNum}</span>
@@ -1327,7 +1406,7 @@ function renderMapTrains(trainList) {
     } else {
       const html = `
         <div class="clean-train-marker" title="[${op.code}] Trein ${t.trainNum} - ${t.speed} km/u (${t.statusType})">
-          <div class="clean-train-tag" style="border-color: ${op.border};">
+          <div class="clean-train-tag ${compactClass} ${posClass}" style="border-color: ${op.border};">
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
             <span class="tag-num">${t.trainNum}</span>
             <span class="tag-spd ${spdInfo.cssClass}">${spdInfo.label}</span>
@@ -1745,6 +1824,72 @@ function findMyTrain() {
 // =============================================================
 // 11. Knoppen, Filters & Navigatie
 // =============================================================
+function switchCorridor(corridorId) {
+  appState.activeCorridorKey = corridorId;
+
+  // Sync de dropdown select
+  const select = document.getElementById('trajectSelect');
+  if (select && select.value !== corridorId) {
+    select.value = corridorId;
+  }
+
+  const btnAllNL = document.getElementById('btnViewAllNL');
+
+  if (corridorId === 'all') {
+    appState.activeCategory = 'all';
+    if (btnAllNL) btnAllNL.classList.add('active');
+    document.querySelectorAll('.cat-tab-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-category') === 'all');
+    });
+    populateLineButtons('all');
+    renderCorridorOnMap(null);
+  } else {
+    if (btnAllNL) btnAllNL.classList.remove('active');
+    const corridor = CORRIDORS[corridorId];
+    if (corridor) {
+      appState.activeCategory = corridor.category;
+      document.querySelectorAll('.cat-tab-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-category') === corridor.category);
+      });
+      populateLineButtons(corridor.category);
+      renderCorridorOnMap(corridor);
+    }
+  }
+
+  // Zet statusfilter terug naar lijnoverzicht
+  appState.activeStatusFilter = 'all';
+  document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btnFilterAll')?.classList.add('active');
+
+  updateLineOverview();
+  playAuthenticNSChime();
+}
+
+function toggleLabelDensity() {
+  const modes = ['smart', 'compact', 'full'];
+  const curIdx = modes.indexOf(appState.labelMode || 'smart');
+  const nextMode = modes[(curIdx + 1) % modes.length];
+  appState.labelMode = nextMode;
+
+  const btn = document.getElementById('btnToggleLabelDensity');
+  if (btn) {
+    if (nextMode === 'smart') {
+      btn.textContent = '🏷️ Labels: Slim (Anti-Chaos)';
+      btn.classList.remove('active');
+    } else if (nextMode === 'compact') {
+      btn.textContent = '🏷️ Labels: Compact (Alleen Nr)';
+      btn.classList.add('active');
+    } else {
+      btn.textContent = '🏷️ Labels: Uitgebreid (Alles)';
+      btn.classList.add('active');
+    }
+  }
+
+  if (appState.lastRenderedTrains && appState.lastRenderedTrains.length > 0) {
+    renderMapTrains(appState.lastRenderedTrains);
+  }
+}
+
 function populateLineButtons(category) {
   const nav = document.getElementById('lineSelectorNav');
   if (!nav) return;
@@ -1778,28 +1923,27 @@ function populateLineButtons(category) {
 
   nav.querySelectorAll('.line-nav-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      nav.querySelectorAll('.line-nav-btn').forEach(b => b.classList.remove('active'));
-      const target = e.currentTarget;
-      target.classList.add('active');
-
-      const lineKey = target.getAttribute('data-line');
-      appState.activeCorridorKey = lineKey;
-
-      // Als de gebruiker een lijn kiest, zet de status filter terug naar 'all' (lijnoverzicht)
-      appState.activeStatusFilter = 'all';
-      document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('btnFilterAll')?.classList.add('active');
-
-      const corridor = CORRIDORS[lineKey];
-      renderCorridorOnMap(corridor);
-      updateLineOverview();
-
-      playAuthenticNSChime();
+      const lineKey = e.currentTarget.getAttribute('data-line');
+      switchCorridor(lineKey);
     });
   });
 }
 
 function setupNavigation() {
+  // Weergavekeuze: Alle Treinen in Heel NL
+  document.getElementById('btnViewAllNL')?.addEventListener('click', () => {
+    switchCorridor('all');
+  });
+
+  // Trajectkeuze Dropdown
+  document.getElementById('trajectSelect')?.addEventListener('change', (e) => {
+    switchCorridor(e.target.value);
+  });
+
+  // Label Density Knop op Kaart (Anti-Chaos toggle)
+  document.getElementById('btnToggleLabelDensity')?.addEventListener('click', () => {
+    toggleLabelDensity();
+  });
   // Mobiele & iPad Weergave Schakelaar (Split Screen, Alleen Lijst, Alleen Kaart)
   document.querySelectorAll('.mobile-view-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1855,32 +1999,15 @@ function setupNavigation() {
   // Categorie Tabs
   document.querySelectorAll('.cat-tab-btn').forEach(tab => {
     tab.addEventListener('click', (e) => {
-      document.querySelectorAll('.cat-tab-btn').forEach(t => t.classList.remove('active'));
-      const target = e.currentTarget;
-      target.classList.add('active');
-
-      const cat = target.getAttribute('data-category');
-      appState.activeCategory = cat;
-
-      // Zet status filter terug naar 'all' bij categoriewissel
-      appState.activeStatusFilter = 'all';
-      document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('btnFilterAll')?.classList.add('active');
-
+      const cat = e.currentTarget.getAttribute('data-category');
       if (cat === 'all') {
-        appState.activeCorridorKey = 'all';
-        renderCorridorOnMap(null);
+        switchCorridor('all');
       } else {
         const first = Object.values(CORRIDORS).find(c => c.category === cat);
         if (first) {
-          appState.activeCorridorKey = first.id;
-          renderCorridorOnMap(first);
+          switchCorridor(first.id);
         }
       }
-
-      populateLineButtons(cat);
-      updateLineOverview();
-      playAuthenticNSChime();
     });
   });
 

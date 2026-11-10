@@ -49,6 +49,45 @@
 
       <!-- Navigatie: Categorieën en Lijnkiezer -->
       <div class="header-nav-container">
+        <!-- Weergavekeuze: Alle Treinen in Heel NL vs Traject per Maatschappij -->
+        <div class="view-mode-bar" role="toolbar" aria-label="Weergavekeuze spoornet">
+          <button id="btnViewAllNL" class="view-mode-btn" type="button" title="Toon alle treinen in heel Nederland van alle maatschappijen tegelijk">
+            <span>🌐 Alle Treinen (Heel Nederland)</span>
+          </button>
+
+          <div class="traject-dropdown-container">
+            <label for="trajectSelect" class="traject-select-label">📍 Trajectkeuze:</label>
+            <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject">
+              <option value="all">🌐 Heel Nederland (Alle treinen &amp; alle maatschappijen)</option>
+              <optgroup label="🚆 NS Reizigers Hoofdlijnen">
+                <option value="enschede-denhaag" selected>NS &bull; Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag C</option>
+                <option value="amsterdam-maastricht">NS &bull; Amsterdam C ➔ Utrecht ➔ Eindhoven ➔ Maastricht</option>
+                <option value="rotterdam-amsterdam">NS &bull; Rotterdam C ➔ Schiphol ➔ Amsterdam C</option>
+                <option value="groningen-utrecht">NS &bull; Groningen / Leeuwarden ➔ Zwolle ➔ Utrecht C</option>
+                <option value="vlissingen-eindhoven">NS &bull; Vlissingen ➔ Breda ➔ Tilburg ➔ Eindhoven C</option>
+              </optgroup>
+              <optgroup label="🚊 Regionaal (Arriva &bull; Blauwnet &bull; Qbuzz &bull; Keolis)">
+                <option value="arriva-vechtdal">Arriva &bull; Vechtdallijnen (Zwolle ➔ Emmen)</option>
+                <option value="arriva-noord">Arriva &bull; Noordelijke Lijnen (Leeuwarden ➔ Groningen)</option>
+                <option value="arriva-maaslijn">Arriva &bull; Maaslijn (Nijmegen ➔ Venlo ➔ Roermond)</option>
+                <option value="arriva-drielanden">Arriva &bull; Drielandentrein (Luik ➔ Maastricht ➔ Aken)</option>
+                <option value="keolis-zwolle">Blauwnet / Keolis &bull; Enschede ➔ Almelo ➔ Zwolle</option>
+                <option value="qbuzz-merwede">Qbuzz &bull; MerwedeLingelijn (Dordrecht ➔ Geldermalsen)</option>
+              </optgroup>
+              <optgroup label="⚡ Internationaal (Eurostar &bull; ICE &bull; Intercity Berlijn)">
+                <option value="eurostar-hsl">Eurostar HSL &bull; Amsterdam ➔ Brussel / Parijs</option>
+                <option value="ice-international">ICE International &bull; Amsterdam ➔ Frankfurt</option>
+                <option value="ic-berlijn">Intercity Berlijn &bull; Amsterdam ➔ Berlijn</option>
+              </optgroup>
+              <optgroup label="🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; Rail Force One &bull; Lineas)">
+                <option value="betuweroute">Betuweroute &bull; Rotterdam Haven ➔ Kijfhoek ➔ Zevenaar</option>
+                <option value="brabant-goederen">Brabantroute Goederen &bull; Kijfhoek ➔ Venlo Grens</option>
+                <option value="havenlijn-twente">Havenspoorlijn &bull; Waalhaven ➔ Bad Bentheim</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+
         <!-- Categorie Tabs -->
         <div class="category-tabs" role="tablist" aria-label="Spoorwegcategorieën">
           <button class="cat-tab-btn active" data-category="ns" type="button" role="tab">
@@ -196,6 +235,7 @@
       <div class="map-floating-bar">
         <div class="map-type-buttons">
           <button id="btnFloatingFindTrain" class="map-chip gps-chip" type="button" title="Vind live mijn trein via GPS">📍 Waar ben ik?</button>
+          <button id="btnToggleLabelDensity" class="map-chip" type="button" title="Wissel labelweergave om overlappende teksten van treinen te voorkomen">🏷️ Labels: Slim (Anti-Chaos)</button>
           <button id="btnSatEsri" class="map-chip active" type="button">🛰️ Echte Satelliet (Esri)</button>
           <button id="btnSatPdok" class="map-chip" type="button">🇳🇱 Luchtfoto Nederland (PDOK)</button>
           <button id="btnMapDark" class="map-chip" type="button">🌙 Nacht Radar</button>

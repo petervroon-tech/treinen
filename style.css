@@ -128,7 +128,97 @@ body {
   flex-direction: column;
   gap: 8px;
   flex: 1;
-  max-width: 900px;
+  max-width: 960px;
+}
+
+/* Weergavekeuze balk: Alle Treinen vs Traject Dropdown */
+.view-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.view-mode-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.view-mode-btn:hover {
+  background: rgba(255, 201, 23, 0.2);
+  border-color: var(--ns-yellow);
+  color: var(--ns-yellow);
+}
+
+.view-mode-btn.active {
+  background: var(--ns-yellow);
+  color: #001948;
+  border-color: var(--ns-yellow);
+  box-shadow: 0 2px 8px rgba(255, 201, 23, 0.45);
+}
+
+.traject-dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.traject-select-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ns-yellow);
+  white-space: nowrap;
+}
+
+.traject-select-dropdown {
+  flex: 1;
+  background: rgba(9, 14, 26, 0.95);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 201, 23, 0.5);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.traject-select-dropdown:hover,
+.traject-select-dropdown:focus {
+  border-color: var(--ns-yellow);
+  box-shadow: 0 0 12px rgba(255, 201, 23, 0.4);
+}
+
+.traject-select-dropdown optgroup {
+  background: #090e1a;
+  color: var(--ns-yellow);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.traject-select-dropdown option {
+  background: #0d1527;
+  color: #ffffff;
+  padding: 6px;
+  font-weight: 600;
 }
 
 .category-tabs {
@@ -1186,7 +1276,7 @@ body {
 
 .clean-train-tag {
   position: absolute;
-  top: -20px;
+  top: -22px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(9, 14, 26, 0.94);
@@ -1204,6 +1294,53 @@ body {
   align-items: center;
   gap: 4px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+  z-index: 250;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Slimme Anti-Botsing Posities (voorkomt dat treinnummers over elkaar heen vallen) */
+.clean-train-tag.tag-pos-bottom {
+  top: 30px;
+  bottom: auto;
+}
+
+.clean-train-tag.tag-pos-right {
+  top: 4px;
+  left: 32px;
+  transform: none;
+}
+
+.clean-train-tag.tag-pos-left {
+  top: 4px;
+  left: auto;
+  right: 32px;
+  transform: none;
+}
+
+/* Compacte Anti-Chaos Modus (voor Landelijke Radar & overzicht) */
+.clean-train-tag.compact {
+  padding: 1px 5px;
+  font-size: 9px;
+  gap: 3px;
+  background: rgba(9, 14, 26, 0.88);
+}
+
+.clean-train-tag.compact .tag-spd {
+  display: none; /* Verberg snelheid in compacte modus om overlap te voorkomen */
+}
+
+/* Bij aanwijzen of aantikken van een trein toont de compacte tag direct de volledige info */
+.clean-train-marker:hover .clean-train-tag,
+.clean-train-marker:active .clean-train-tag {
+  z-index: 999 !important;
+  background: rgba(9, 14, 26, 0.98);
+  border-color: var(--ns-yellow) !important;
+  box-shadow: 0 4px 14px rgba(255, 201, 23, 0.4);
+}
+
+.clean-train-marker:hover .clean-train-tag.compact .tag-spd,
+.clean-train-marker:active .clean-train-tag.compact .tag-spd {
+  display: inline-block;
 }
 
 .clean-train-tag .tag-op {
@@ -1376,6 +1513,32 @@ body {
 
 /* Smartphones (tot 600px - iPhone, Samsung, Pixel) */
 @media (max-width: 600px) {
+  .view-mode-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .view-mode-btn {
+    justify-content: center;
+    width: 100%;
+    padding: 8px 12px;
+  }
+
+  .traject-dropdown-container {
+    width: 100%;
+    min-width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .traject-select-dropdown {
+    width: 100%;
+    min-height: 40px;
+    font-size: 0.8rem;
+  }
+
   .app-header {
     padding: 6px 10px;
   }
