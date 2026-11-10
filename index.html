@@ -289,6 +289,56 @@
     </div>
   </aside>
 
+  <!-- STATION VERTREKSTAAT & PERRONBORD MODAL (Aanklikbaar Station met alle treinen) -->
+  <aside id="stationModal" class="station-modal" role="dialog" aria-modal="true" aria-labelledby="stModalTitle" style="display: none;">
+    <div class="station-dialog">
+      <div class="station-modal-header">
+        <div class="station-header-left">
+          <div class="st-icon-badge">🚉 STATION</div>
+          <div>
+            <h3 id="stModalTitle" class="st-modal-name">Utrecht Centraal</h3>
+            <span id="stModalSub" class="st-modal-sub">Code: UT &bull; 21 Perronsporen &bull; Knooppunt</span>
+          </div>
+        </div>
+        <button id="btnCloseStationModal" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
+      </div>
+
+      <div class="station-modal-body">
+        <div class="station-meta-strip">
+          <div>
+            <span class="st-label">Treinen in Nadering / Vertrek:</span>
+            <strong id="stModalLiveTrainCount" class="st-highlight">Laden...</strong>
+          </div>
+          <div>
+            <span class="st-label">Status Baanvak:</span>
+            <span id="stModalTrackStatus" class="status-pill green">🟢 Normaal treinverkeer</span>
+          </div>
+        </div>
+
+        <!-- De Live Vertrekstaat Tabel / Perronbord -->
+        <div class="station-board-header">
+          <span>Tijd</span>
+          <span>Trein &amp; Richting</span>
+          <span>Vervoerder</span>
+          <span>Spoor</span>
+          <span>Live Radar &amp; ETA</span>
+        </div>
+        <div id="stationBoardList" class="station-board-list">
+          <!-- Dynamisch gevuld met stoppende treinen, perronsporen en snelheden -->
+        </div>
+
+        <div class="station-actions-footer">
+          <button id="btnZoomStationMap" class="btn btn-secondary" type="button">
+            🔍 Zoom in op Satelliet
+          </button>
+          <span style="font-size: 0.72rem; color: var(--text-sub);">
+            Tik met je vinger op een trein om deze direct live op de satelliet te volgen.
+          </span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
   <script type="module" src="./app.js"></script>
 </body>
 </html>

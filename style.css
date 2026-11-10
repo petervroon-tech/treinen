@@ -685,12 +685,52 @@ body {
   position: relative;
 }
 
-/* Station Item in Lijnstrip */
+/* Station Item in Lijnstrip (Aanklikbaar met je vinger!) */
 .station-node {
   display: flex;
   align-items: flex-start;
   position: relative;
   min-height: 48px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.station-node:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.station-node:active {
+  transform: scale(0.98);
+  background: rgba(255, 201, 23, 0.18);
+}
+
+.station-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.st-tap-hint {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ns-yellow);
+  background: rgba(255, 201, 23, 0.12);
+  border: 1px solid rgba(255, 201, 23, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.station-node:hover .st-tap-hint {
+  opacity: 1;
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
 }
 
 .station-track-col {
@@ -1714,5 +1754,298 @@ body {
   .my-train-actions {
     flex-direction: column;
     padding: 12px 14px 16px;
+  }
+}
+
+/* -------------------------------------------------------------
+   Station Vertrekstaat & Perronbord Modal (Aanklikbaar Station)
+------------------------------------------------------------- */
+.station-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  background: rgba(4, 8, 18, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.station-dialog {
+  background: #0b1329;
+  border: 2px solid var(--ns-yellow);
+  border-radius: 14px;
+  max-width: 720px;
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 24px rgba(0, 48, 130, 0.5);
+  overflow: hidden;
+  animation: popInDialog 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.station-modal-header {
+  background: var(--ns-dark);
+  padding: 14px 18px;
+  border-bottom: 2px solid var(--ns-yellow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.station-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.st-icon-badge {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 5px;
+  letter-spacing: 0.5px;
+}
+
+.st-modal-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+
+.st-modal-sub {
+  font-size: 0.74rem;
+  color: var(--text-sub);
+}
+
+.station-modal-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.station-meta-strip {
+  background: rgba(0, 48, 130, 0.25);
+  border-bottom: 1px solid var(--border-light);
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.st-label {
+  color: var(--text-sub);
+  margin-right: 6px;
+}
+
+.st-highlight {
+  color: var(--ns-yellow);
+  font-weight: 800;
+}
+
+.station-board-header {
+  display: grid;
+  grid-template-columns: 80px 1fr 95px 75px 125px;
+  gap: 8px;
+  padding: 8px 18px;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-light);
+  letter-spacing: 0.4px;
+}
+
+.station-board-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+
+.st-board-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 95px 75px 125px;
+  gap: 8px;
+  padding: 11px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.st-board-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.st-board-row:active {
+  background: rgba(255, 201, 23, 0.2);
+  transform: scale(0.99);
+}
+
+.st-col-time {
+  display: flex;
+  flex-direction: column;
+}
+
+.st-time {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+.st-delay {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #10b981;
+}
+
+.st-delay.delayed {
+  color: #f59e0b;
+}
+
+.st-col-dest {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.st-dest-name {
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #ffffff;
+}
+
+.st-dest-via {
+  font-size: 0.7rem;
+  color: var(--text-sub);
+}
+
+.ns-platform-badge {
+  background: #003082;
+  color: #ffffff;
+  border: 1.5px solid var(--ns-yellow);
+  font-family: var(--font-mono);
+  font-weight: 900;
+  font-size: 0.84rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-align: center;
+  display: inline-block;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.st-col-radar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.st-radar-pill {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.st-radar-pill.nearing {
+  background: rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+  border: 1px solid #0284c7;
+}
+
+.st-radar-pill.at-station {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+  border: 1px solid #10b981;
+}
+
+.st-radar-eta {
+  font-size: 0.68rem;
+  color: var(--text-sub);
+}
+
+.station-actions-footer {
+  padding: 10px 18px;
+  background: rgba(0, 0, 0, 0.35);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.station-pill-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 201, 23, 0.4);
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.station-pill-btn:hover {
+  background: var(--ns-yellow);
+  color: #001948;
+  border-color: var(--ns-yellow);
+  transform: translateY(-1px);
+}
+
+.station-pill-btn:active {
+  transform: scale(0.96);
+  background: #eab308;
+  color: #001948;
+}
+
+@media (max-width: 600px) {
+  .station-board-header {
+    display: none;
+  }
+  .st-board-row {
+    grid-template-columns: 65px 1fr 50px;
+    grid-template-rows: auto auto;
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .st-col-radar {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 4px 6px;
+    border-radius: 4px;
+  }
+  .st-modal-name {
+    font-size: 1.05rem;
   }
 }

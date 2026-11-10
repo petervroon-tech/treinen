@@ -701,6 +701,47 @@ function initMap() {
   appState.map = map;
   appState.layers = { esri, pdok, dark };
 
+  // Vingeraanraking op de satellietkaart: activeer direct station of trein onder je vinger
+  map.on('click', (e) => {
+    const clickLat = e.latlng.lat;
+    const clickLon = e.latlng.lng;
+
+    // 1. Zoek dichtstbijzijnde live trein onder de vingertop (binnen 2.8 km)
+    const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+    let nearestTrain = null;
+    let minTrainDist = Infinity;
+    allParsed.forEach(t => {
+      const d = distanceKm(clickLat, clickLon, t.lat, t.lon);
+      if (d < minTrainDist) {
+        minTrainDist = d;
+        nearestTrain = t;
+      }
+    });
+
+    // 2. Zoek dichtstbijzijnde station onder de vingertop (binnen 3.8 km)
+    const stations = getAllStations();
+    let nearestStation = null;
+    let minStationDist = Infinity;
+    stations.forEach(st => {
+      const d = distanceKm(clickLat, clickLon, st.lat, st.lon);
+      if (d < minStationDist) {
+        minStationDist = d;
+        nearestStation = st;
+      }
+    });
+
+    // Prioriteer de actie die het dichtst bij de vingeraanraking ligt
+    if (nearestTrain && minTrainDist <= 2.8 && minTrainDist <= minStationDist) {
+      window.selectTrain(nearestTrain.id);
+      return;
+    }
+
+    if (nearestStation && minStationDist <= 3.8) {
+      window.selectStation(nearestStation.code);
+      return;
+    }
+  });
+
   document.getElementById('btnSatEsri')?.addEventListener('click', () => switchLayer('esri'));
   document.getElementById('btnSatPdok')?.addEventListener('click', () => switchLayer('pdok'));
   document.getElementById('btnMapDark')?.addEventListener('click', () => switchLayer('dark'));
@@ -756,18 +797,25 @@ function renderCorridorOnMap(corridor) {
   corridor.stations.forEach((st, i) => {
     const isTerm = st.terminal;
     const marker = L.circleMarker([st.lat, st.lon], {
-      radius: isTerm ? 8 : 5,
+      radius: isTerm ? 11 : 8,
       fillColor: isTerm ? '#ffffff' : lineColor,
       color: '#001948',
-      weight: 2.5,
+      weight: 3,
       fillOpacity: 1.0
     }).addTo(map);
 
-    marker.bindTooltip(`<strong>${st.name}</strong><br><small>Spoor ${st.sporen} &bull; ${corridor.operator}</small>`, {
+    marker.bindTooltip(`<strong>${st.name}</strong><br><small>Spoor ${st.sporen} &bull; 👉 Tik voor treinen</small>`, {
       permanent: isTerm,
       direction: 'top',
-      offset: [0, -6],
+      offset: [0, -8],
       className: 'station-map-tooltip'
+    });
+
+    marker.on('click', (e) => {
+      if (e && e.originalEvent) {
+        e.originalEvent.stopPropagation();
+      }
+      window.selectStation(st.code);
     });
 
     appState.stationMarkers.push(marker);
@@ -1001,6 +1049,25 @@ function updateLineOverview() {
       }
       overviewHtml += `
           </div>
+
+          <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.12);">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--ns-yellow); margin-bottom: 8px;">
+              🚉 Tik op een station voor actuele vertrektijden &amp; perrons:
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <button class="station-pill-btn" onclick="window.selectStation('UT')" type="button">Utrecht C</button>
+              <button class="station-pill-btn" onclick="window.selectStation('ASD')" type="button">Amsterdam C</button>
+              <button class="station-pill-btn" onclick="window.selectStation('RSD')" type="button">Rotterdam C</button>
+              <button class="station-pill-btn" onclick="window.selectStation('GVC')" type="button">Den Haag C</button>
+              <button class="station-pill-btn" onclick="window.selectStation('ES')" type="button">Enschede</button>
+              <button class="station-pill-btn" onclick="window.selectStation('ZL')" type="button">Zwolle</button>
+              <button class="station-pill-btn" onclick="window.selectStation('EHV')" type="button">Eindhoven C</button>
+              <button class="station-pill-btn" onclick="window.selectStation('ARN')" type="button">Arnhem C</button>
+              <button class="station-pill-btn" onclick="window.selectStation('GN')" type="button">Groningen</button>
+              <button class="station-pill-btn" onclick="window.selectStation('BD')" type="button">Breda</button>
+            </div>
+          </div>
+
           <p style="margin-top: 16px; font-size: 0.78rem; color: var(--text-sub);">
             Klik op een statusknop hierboven (<strong>Op tijd</strong>, <strong>Vertraagd</strong> of <strong>Pech / Gestrand</strong>) voor het overzicht van alle maatschappijen.
           </p>
@@ -1043,13 +1110,16 @@ function updateLineOverview() {
     const isTerminal = st.terminal || idx === 0 || idx === corridor.stations.length - 1;
 
     html += `
-      <div class="station-node ${isTerminal ? 'terminal' : ''}">
+      <div class="station-node ${isTerminal ? 'terminal' : ''}" onclick="window.selectStation('${st.code}')" role="button" tabindex="0" title="Tik om alle stoppende treinen en perrons te zien">
         <div class="station-track-col">
           <div class="station-bullet"></div>
           ${idx < corridor.stations.length - 1 ? '<div class="track-line"></div>' : ''}
         </div>
         <div class="station-details">
-          <div class="station-name">${st.name}</div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;">
+            <div class="station-name">${st.name}</div>
+            <span class="st-tap-hint">👉 Tik voor treinen</span>
+          </div>
           <div class="station-sub">Spoor ${st.sporen} &bull; Code: ${st.code}</div>
         </div>
       </div>
@@ -1346,6 +1416,183 @@ window.selectTrain = (trainId) => {
   }
 
   appState.map.flyTo([train.lat, train.lon], 14, { duration: 1.2 });
+};
+
+// =============================================================
+// 9b. Station Vertrekstaat & Perronbord (Interactief aanklikbaar)
+// =============================================================
+
+// Vind station op code of naam door alle corridors heen
+function findStationByCode(codeOrName) {
+  if (!codeOrName) return null;
+  const target = String(codeOrName).trim().toLowerCase();
+  for (const cKey in CORRIDORS) {
+    const corridor = CORRIDORS[cKey];
+    for (const st of corridor.stations) {
+      if (st.code.toLowerCase() === target || st.name.toLowerCase() === target) {
+        return { ...st, corridorName: corridor.name, operator: corridor.operator };
+      }
+    }
+  }
+  return null;
+}
+
+// Haal alle unieke stations op uit alle corridors
+function getAllStations() {
+  const map = new Map();
+  for (const cKey in CORRIDORS) {
+    for (const st of CORRIDORS[cKey].stations) {
+      if (!map.has(st.code)) {
+        map.set(st.code, { ...st, corridorName: CORRIDORS[cKey].name, operator: CORRIDORS[cKey].operator });
+      }
+    }
+  }
+  return Array.from(map.values());
+}
+
+// Bepaal een authentiek perronspoor (bv. 4a, 8b of 1)
+function assignPlatform(sporenStr, trainNum) {
+  if (!sporenStr || sporenStr === 'Empl.' || sporenStr === 'Goederen' || sporenStr === 'DE Grens') {
+    return sporenStr || '1';
+  }
+  const tNum = parseInt(trainNum, 10) || 1;
+  const matchRange = sporenStr.match(/^(\d+)-(\d+)$/);
+  if (matchRange) {
+    const min = parseInt(matchRange[1], 10);
+    const max = parseInt(matchRange[2], 10);
+    const range = max - min + 1;
+    const pNum = min + (tNum % range);
+    const sub = (tNum % 3 === 0) ? 'a' : (tNum % 3 === 1 ? 'b' : '');
+    return `${pNum}${sub}`;
+  }
+  return sporenStr;
+}
+
+// Selecteer een station en open het interactieve perronbord
+window.selectStation = (stationCode) => {
+  const station = findStationByCode(stationCode);
+  if (!station) return;
+  appState.activeStation = station;
+
+  playAuthenticNSChime();
+
+  const modal = document.getElementById('stationModal');
+  const titleEl = document.getElementById('stModalTitle');
+  const subEl = document.getElementById('stModalSub');
+  const countEl = document.getElementById('stModalLiveTrainCount');
+  const trackStatusEl = document.getElementById('stModalTrackStatus');
+  const listEl = document.getElementById('stationBoardList');
+
+  if (titleEl) titleEl.textContent = station.name;
+  if (subEl) {
+    subEl.innerHTML = `Code: <strong>${station.code}</strong> &bull; Perrons: <strong>Spoor ${station.sporen}</strong> &bull; ${station.operator || 'NS & Regionaal'}`;
+  }
+
+  // Zoek alle naderende en vertrekkende live treinen binnen een straal van 40 km
+  const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+  const nearbyTrains = [];
+
+  allParsed.forEach(t => {
+    const dist = distanceKm(station.lat, station.lon, t.lat, t.lon);
+    if (dist <= 40) {
+      const spd = t.speed > 5 ? t.speed : 80;
+      const etaMin = Math.max(1, Math.round((dist / spd) * 60));
+      nearbyTrains.push({
+        ...t,
+        dist: Math.round(dist * 10) / 10,
+        etaMin
+      });
+    }
+  });
+
+  // Sorteer op nadering (dichtstbijzijnde eerst)
+  nearbyTrains.sort((a, b) => a.dist - b.dist);
+
+  if (countEl) countEl.textContent = `${nearbyTrains.length} treinen in nadering / op het baanvak`;
+
+  // Status van baanvak bepalen
+  const hasPech = nearbyTrains.some(t => t.statusType === 'pech' || t.delayMin >= 15);
+  const hasDelay = nearbyTrains.some(t => t.statusType === 'delayed');
+  if (trackStatusEl) {
+    if (hasPech) {
+      trackStatusEl.className = 'status-pill red';
+      trackStatusEl.innerHTML = '🚨 Baanvakstoring / Gestrande trein';
+    } else if (hasDelay) {
+      trackStatusEl.className = 'status-pill yellow';
+      trackStatusEl.innerHTML = '⚠️ Enkele vertragingen';
+    } else {
+      trackStatusEl.className = 'status-pill green';
+      trackStatusEl.innerHTML = '🟢 Normaal treinverkeer (Op tijd)';
+    }
+  }
+
+  // Bouw de live vertrekstaat
+  if (listEl) {
+    if (nearbyTrains.length === 0) {
+      listEl.innerHTML = `
+        <div style="padding: 28px 16px; text-align: center; color: var(--text-sub);">
+          <div style="font-size: 2rem; margin-bottom: 8px;">🚉</div>
+          <strong style="color: var(--text-main); font-size: 0.95rem;">Geen actieve treinen binnen 40 km van dit station.</strong><br>
+          <span style="font-size: 0.8rem;">Kijk op de landelijke satellietradar of schakel naar een andere hoofdlijn.</span>
+        </div>
+      `;
+    } else {
+      const now = new Date();
+      let html = '';
+
+      nearbyTrains.slice(0, 16).forEach(t => {
+        const depTime = new Date(now.getTime() + t.etaMin * 60000);
+        const hh = String(depTime.getHours()).padStart(2, '0');
+        const mm = String(depTime.getMinutes()).padStart(2, '0');
+        const timeStr = `${hh}:${mm}`;
+
+        const spoor = assignPlatform(station.sporen, t.trainNum);
+        const spdInfo = getSpeedBadgeInfo(t.speed);
+        const op = t.operator;
+
+        let delayTag = '';
+        if (t.statusType === 'delayed') {
+          delayTag = `<span class="st-delay delayed">+${t.delayMin || 2}m</span>`;
+        } else if (t.statusType === 'pech') {
+          delayTag = `<span class="st-delay" style="color: #ef4444;">🚨 Pech</span>`;
+        } else {
+          delayTag = `<span class="st-delay">Op tijd</span>`;
+        }
+
+        html += `
+          <div class="st-board-row" onclick="window.selectTrainAndCloseStation('${t.id}')" role="button" tabindex="0" title="Tik om trein ${t.trainNum} live op satelliet te volgen">
+            <div class="st-col-time">
+              <span class="st-time">${timeStr}</span>
+              ${delayTag}
+            </div>
+            <div class="st-col-dest">
+              <span class="st-dest-name">Trein #${t.trainNum}</span>
+              <span class="st-dest-via">${t.matnummer || op.name} &bull; Richting ${station.corridorName ? station.corridorName.split('➔').pop().trim() : 'Baanvak'}</span>
+            </div>
+            <div>
+              <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
+            </div>
+            <div>
+              <span class="ns-platform-badge">${spoor}</span>
+            </div>
+            <div class="st-col-radar">
+              <span class="st-radar-pill ${t.dist <= 1.0 ? 'at-station' : 'nearing'}">${spdInfo.icon} ${t.speed} km/u</span>
+              <span class="st-radar-eta">~${t.dist} km (${t.etaMin}m)</span>
+            </div>
+          </div>
+        `;
+      });
+      listEl.innerHTML = html;
+    }
+  }
+
+  if (modal) modal.style.display = 'flex';
+};
+
+window.selectTrainAndCloseStation = (trainId) => {
+  const modal = document.getElementById('stationModal');
+  if (modal) modal.style.display = 'none';
+  window.selectTrain(trainId);
 };
 
 // =============================================================
@@ -1709,6 +1956,49 @@ function setupNavigation() {
     btn.classList.toggle('active', appState.soundEnabled);
     document.getElementById('audioStatusText').textContent = appState.soundEnabled ? '🔊 Geluid: Aan' : '🔇 Geluid: Uit';
     if (appState.soundEnabled) playAuthenticNSChime();
+  });
+
+  // Station Vertrekstaat Modal Sluiten
+  document.getElementById('btnCloseStationModal')?.addEventListener('click', () => {
+    const modal = document.getElementById('stationModal');
+    if (modal) modal.style.display = 'none';
+  });
+
+  // Sluit Station Modal bij tikken op de donkere achtergrond (buiten de dialog)
+  document.getElementById('stationModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'stationModal') {
+      e.target.style.display = 'none';
+    }
+  });
+
+  // Zoom in op Station op de Satellietkaart
+  document.getElementById('btnZoomStationMap')?.addEventListener('click', () => {
+    const modal = document.getElementById('stationModal');
+    if (modal) modal.style.display = 'none';
+
+    if (appState.activeStation && appState.map) {
+      // Schakel op mobiel/iPad naar satellietkaart indien nodig
+      const layout = document.getElementById('mainLayout');
+      if (layout && layout.classList.contains('view-list')) {
+        layout.classList.remove('view-list');
+        layout.classList.add('view-map');
+        document.querySelectorAll('.mobile-view-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-view') === 'map');
+        });
+        setTimeout(() => appState.map.invalidateSize(), 100);
+      }
+      appState.map.flyTo([appState.activeStation.lat, appState.activeStation.lon], 15, { duration: 1.2 });
+    }
+  });
+
+  // ESC toets sluit modals
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const stModal = document.getElementById('stationModal');
+      if (stModal) stModal.style.display = 'none';
+      const myTrainModal = document.getElementById('myTrainModal');
+      if (myTrainModal) myTrainModal.style.display = 'none';
+    }
   });
 
   // Zoekveld
