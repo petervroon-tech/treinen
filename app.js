@@ -3032,15 +3032,25 @@ async function initVersionManagement() {
     }
   }
 
-  // Update Reload knoppen
-  document.getElementById('btnReloadUpdate')?.addEventListener('click', () => {
-    if ('caches' in window) {
-      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-        window.location.reload(true);
-      });
-    } else {
-      window.location.reload(true);
+  // Update Reload knoppen - Grondige cache & service worker purge voor iOS/iPad/Safari
+  document.getElementById('btnReloadUpdate')?.addEventListener('click', async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (e) {
+      console.warn('Fout bij leegmaken cache:', e);
     }
+    // Hard refresh met timestamp om Safari/Chrome mobiele disk cache te forceren
+    const cleanUrl = window.location.href.split('?')[0];
+    window.location.replace(`${cleanUrl}?reload=${Date.now()}`);
   });
 
   document.getElementById('btnDismissUpdate')?.addEventListener('click', () => {
