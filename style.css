@@ -2167,14 +2167,16 @@ body {
   }
 
   .route-planner-bar {
-    padding: 4px 8px;
-    border-bottom: 1.5px solid var(--ns-yellow);
+    padding: 5px 8px;
+    background: #081226;
+    border-bottom: 2px solid var(--ns-yellow);
+    z-index: 100;
   }
 
   .route-planner-content {
     flex-direction: column;
     align-items: stretch;
-    gap: 4px;
+    gap: 0;
   }
 
   .rp-header-title {
@@ -2182,38 +2184,67 @@ body {
   }
 
   .rp-selectors-row {
+    display: flex;
     flex-direction: row;
-    align-items: center;
-    gap: 4px;
+    align-items: flex-end;
+    gap: 6px;
     width: 100%;
+    margin: 0;
   }
 
   .rp-field-col {
     flex: 1;
     min-width: 0;
-    gap: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
   }
 
   .rp-label {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
     white-space: nowrap;
+    padding-left: 1px;
+    color: var(--ns-yellow);
+  }
+
+  .rp-field-col:last-of-type .rp-label {
+    color: #38bdf8; /* Helder cyaanblauw voor TOT-station */
   }
 
   .rp-select {
     width: 100%;
     min-width: 0;
     max-width: none;
-    font-size: 0.74rem;
-    padding: 4px 6px;
-    min-height: 32px;
+    font-size: 16px !important;
+    padding: 6px 6px;
+    min-height: 38px;
+    height: 38px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    box-sizing: border-box;
   }
 
   .rp-swap-btn {
-    padding: 2px 7px;
-    font-size: 0.85rem;
+    height: 38px;
+    width: 32px;
+    padding: 0;
+    font-size: 1rem;
     flex-shrink: 0;
-    align-self: center;
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: var(--ns-yellow);
+    margin-bottom: 0;
   }
 
   .rp-actions-col {

@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.6.0_fc2481c">
-  <link rel="manifest" href="./manifest.json?v=2.6.0_fc2481c">
+  <link rel="stylesheet" href="./style.css?v=2.6.0_c032696">
+  <link rel="manifest" href="./manifest.json?v=2.6.0_c032696">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -124,10 +124,10 @@
           <span class="btn-label-text">Heel NL</span>
         </button>
 
-        <!-- Eigen Traject (Van ➔ Naar) Knop (klein) -->
-        <button id="btnToggleRoutePlanner" class="header-action-btn planner-btn" type="button" title="Kies specifiek vertrek- en aankomststation (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)">
+        <!-- Eigen Traject (Van ➔ Tot) Knop (klein) -->
+        <button id="btnToggleRoutePlanner" class="header-action-btn planner-btn" type="button" title="Kies specifiek vertrek- en tot-station (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)">
           <span class="btn-icon">🎯</span>
-          <span class="btn-label-text">Van / Naar</span>
+          <span class="btn-label-text">Van / Tot</span>
         </button>
 
         <!-- Live Vervoersinformatie & Spoor Communicatie Knop (klein) -->
@@ -180,7 +180,7 @@
       <div class="rp-selectors-row">
         <div class="rp-field-col">
           <label for="routeFromSelect" class="rp-label">📍 Van:</label>
-          <select id="routeFromSelect" class="rp-select" aria-label="Vertrekstation">
+          <select id="routeFromSelect" class="rp-select" aria-label="Vertrekstation (van-station)">
             <option value="">Laden van 397 stations...</option>
           </select>
         </div>
@@ -191,7 +191,7 @@
 
         <div class="rp-field-col">
           <label for="routeToSelect" class="rp-label">🏁 Tot:</label>
-          <select id="routeToSelect" class="rp-select" aria-label="Aankomststation (tot station)">
+          <select id="routeToSelect" class="rp-select" aria-label="Tot-station (aankomst)">
             <option value="">Laden van 397 stations...</option>
           </select>
         </div>
@@ -571,7 +571,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.6.0_fc2481c"></script>
-  <script type="module" src="./app.js?v=2.6.0_fc2481c"></script>
+  <script src="./stations.js?v=2.6.0_c032696"></script>
+  <script type="module" src="./app.js?v=2.6.0_c032696"></script>
 </body>
 </html>

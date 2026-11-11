@@ -1906,8 +1906,8 @@ function populateRoutePlannerDropdowns() {
     .filter(s => s.sporen !== 'Goederen' && s.sporen !== 'DE Grens' && !s.name.includes('Goederen') && !s.name.includes('Empl.') && !s.name.includes('Rangeer'))
     .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
 
-  let htmlFrom = `<option value="">📍 Kies vertrekstation (${allStations.length} stations)...</option>`;
-  let htmlTo = `<option value="">🏁 Kies aankomststation (${allStations.length} stations)...</option>`;
+  let htmlFrom = `<option value="">📍 Kies Van-station (${allStations.length} st.)...</option>`;
+  let htmlTo = `<option value="">🏁 Kies Tot-station (${allStations.length} st.)...</option>`;
 
   allStations.forEach(st => {
     htmlFrom += `<option value="${st.code}">${st.name} (${st.code})</option>`;
@@ -3136,7 +3136,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = 'fc2481c';
+const APP_BUILD_COMMIT = 'c032696';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
