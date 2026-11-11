@@ -269,16 +269,17 @@ def update_version_json(sha=None, build_num=None):
     with open(version_file, "w") as f: json.dump(data, f, indent=2)
     print(f"📦 version.json bijgewerkt naar v{version} ({short_sha})")
 
-    # Werk ook app.js en sw.js bij zodat de client runtime versie 100% klopt met CI buildnummer
+    # Werk ook app.js, sw.js en index.html bij zodat de client runtime versie 100% klopt met CI buildnummer
     import re
     app_js_path = os.path.join(os.path.dirname(__file__), "app.js")
     if os.path.exists(app_js_path):
         with open(app_js_path, "r", encoding="utf-8") as f:
             app_code = f.read()
         app_code = re.sub(r"const APP_VERSION = '[^']+';", f"const APP_VERSION = '{version}';", app_code)
+        app_code = re.sub(r"const APP_BUILD_COMMIT = '[^']+';", f"const APP_BUILD_COMMIT = '{short_sha}';", app_code)
         with open(app_js_path, "w", encoding="utf-8") as f:
             f.write(app_code)
-        print(f"📦 app.js APP_VERSION bijgewerkt naar {version}")
+        print(f"📦 app.js APP_VERSION bijgewerkt naar {version} ({short_sha})")
 
     sw_js_path = os.path.join(os.path.dirname(__file__), "sw.js")
     if os.path.exists(sw_js_path):
@@ -288,6 +289,18 @@ def update_version_json(sha=None, build_num=None):
         with open(sw_js_path, "w", encoding="utf-8") as f:
             f.write(sw_code)
         print(f"📦 sw.js APP_VERSION bijgewerkt naar {version}")
+
+    index_html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(index_html_path):
+        with open(index_html_path, "r", encoding="utf-8") as f:
+            index_code = f.read()
+        asset_v = f"{version}_{short_sha}"
+        index_code = re.sub(r"(\.css\?v=)[^\"']+", f"\\g<1>{asset_v}", index_code)
+        index_code = re.sub(r"(\.js\?v=)[^\"']+", f"\\g<1>{asset_v}", index_code)
+        index_code = re.sub(r"(manifest\.json\?v=)[^\"']+", f"\\g<1>{asset_v}", index_code)
+        with open(index_html_path, "w", encoding="utf-8") as f:
+            f.write(index_code)
+        print(f"📦 index.html asset hash bijgewerkt naar {asset_v}")
 
 
 def main():

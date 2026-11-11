@@ -3125,10 +3125,11 @@ function setupNavigation() {
 }
 
 // =============================================================
-// 12. Versiebeheer & Live Updates
+// 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-let appBuildMeta = { version: APP_VERSION, commit: 'latest', buildTime: '' };
+const APP_BUILD_COMMIT = '18d1aa3';
+let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
   async function forcePurgeAndReload() {
@@ -3147,22 +3148,24 @@ async function initVersionManagement() {
       console.warn('Fout bij leegmaken cache:', e);
     }
     const cleanUrl = window.location.href.split('?')[0];
-    window.location.replace(`${cleanUrl}?reload=${Date.now()}`);
+    window.location.replace(`${cleanUrl}?v=${Date.now()}`);
   }
 
-  async function checkVersion() {
+  async function checkVersion(isAuto = true) {
     try {
       const res = await fetch(`./version.json?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         appBuildMeta = data;
-        const verStr = `v${data.version || APP_VERSION}`;
-        const commitStr = data.commit ? ` (${data.commit})` : '';
+        const serverVersion = data.version || APP_VERSION;
+        const serverCommit = data.commit || '';
+        const verStr = `v${serverVersion}`;
+        const commitStr = serverCommit ? ` (${serverCommit})` : '';
 
         const badge = document.getElementById('appVersionBadge');
         if (badge) {
           badge.innerHTML = `<span>${verStr}</span> <span class="badge-refresh-icon">🔄</span>`;
-          badge.title = `Gele versieknop: Treinen ${verStr}${commitStr} - Tik om cache te wissen & te herladen`;
+          badge.title = `Gele versieknop: Treinen ${verStr}${commitStr} - Tik om cache te wissen & direct te herladen`;
         }
 
         const footerVer = document.getElementById('footerVersionText');
@@ -3170,17 +3173,41 @@ async function initVersionManagement() {
           footerVer.textContent = `${verStr}${commitStr}`;
         }
 
-        // Alleen tonen als er daadwerkelijk een andere versie op de server staat
-        const banner = document.getElementById('updateBanner');
-        if (data.version && data.version !== APP_VERSION) {
-          const dismissedVer = sessionStorage.getItem('dismissed_version');
-          if (dismissedVer !== data.version) {
-            const verCode = document.getElementById('bannerVersionNum');
-            if (verCode) verCode.textContent = `v${data.version}`;
-            if (banner) banner.style.display = 'block';
+        // Bepaal of er een nieuwere versie of commit op de server staat
+        const activeCommit = localStorage.getItem('treinen_active_commit') || APP_BUILD_COMMIT;
+        const isNewCommit = serverCommit && activeCommit && serverCommit !== 'latest' && activeCommit !== 'latest' && serverCommit !== activeCommit;
+        const isNewVersion = serverVersion && serverVersion !== APP_VERSION;
+
+        if (isNewCommit || isNewVersion) {
+          console.log(`🚀 Nieuwe versie beschikbaar: v${serverVersion} (${serverCommit}) vs lokaal ${APP_VERSION} (${activeCommit})`);
+          localStorage.setItem('treinen_active_commit', serverCommit);
+          localStorage.setItem('treinen_active_version', serverVersion);
+
+          // Cooldown check ter voorkoming van reload-loop
+          const lastReload = parseInt(sessionStorage.getItem('treinen_last_auto_reload') || '0', 10);
+          if (Date.now() - lastReload > 5000) {
+            sessionStorage.setItem('treinen_last_auto_reload', Date.now());
+
+            const banner = document.getElementById('updateBanner');
+            if (banner) {
+              banner.style.display = 'block';
+              const text = document.getElementById('updateBannerText');
+              if (text) {
+                text.innerHTML = `<strong>Nieuwe versie v${serverVersion} (${serverCommit}) gedetecteerd!</strong> Bezig met automatisch verversen...`;
+              }
+            }
+
+            // Automatisch verversen naar de nieuwste versie
+            setTimeout(() => {
+              forcePurgeAndReload();
+            }, 600);
+            return;
           }
         } else {
-          if (banner) banner.style.display = 'none';
+          // Versie is actueel: onthoud actieve commit
+          if (serverCommit) {
+            localStorage.setItem('treinen_active_commit', serverCommit);
+          }
         }
       }
     } catch (e) {
@@ -3195,17 +3222,14 @@ async function initVersionManagement() {
   });
 
   document.getElementById('btnDismissUpdate')?.addEventListener('click', () => {
-    if (appBuildMeta && appBuildMeta.version) {
-      sessionStorage.setItem('dismissed_version', appBuildMeta.version);
-    }
     const banner = document.getElementById('updateBanner');
     if (banner) banner.style.display = 'none';
   });
 
-  // Klik op de versietag geeft optie om direct cache te wissen en pagina te herladen
+  // Klik op de gele versietag geeft optie om direct cache te wissen en pagina te herladen
   document.getElementById('appVersionBadge')?.addEventListener('click', () => {
     const verStr = `v${appBuildMeta.version || APP_VERSION}`;
-    const commitStr = appBuildMeta.commit || 'main';
+    const commitStr = appBuildMeta.commit || APP_BUILD_COMMIT;
     const buildTime = appBuildMeta.buildTime ? new Date(appBuildMeta.buildTime).toLocaleString('nl-NL') : 'Recent';
     playAuthenticNSChime();
     const shouldReload = confirm(
@@ -3218,8 +3242,22 @@ async function initVersionManagement() {
     }
   });
 
+  // Controleer direct bij het laden
   checkVersion();
-  setInterval(checkVersion, 30000);
+
+  // Automatisch direct controleren wanneer de gebruiker terugkeert naar Safari/browser tab
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkVersion();
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    checkVersion();
+  });
+
+  // Periodiek elke 15 seconden op de achtergrond
+  setInterval(checkVersion, 15000);
 }
 
 // =============================================================
