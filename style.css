@@ -1945,6 +1945,17 @@ body {
   max-height: 100% !important;
 }
 
+/* Weergave Modus: Alleen Satellietkaart (volledig scherm, stationspaneel verborgen) */
+.main-layout.view-map .corridor-panel {
+  display: none !important;
+}
+.main-layout.view-map .map-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
 .corridor-map-peek-bar {
   padding: 6px 12px;
   background: rgba(0, 25, 72, 0.95);
@@ -2253,6 +2264,14 @@ body {
 
   .rp-quick-chips {
     display: none;
+  }
+
+  .floating-expand-btn {
+    top: 8px;
+    left: 8px;
+    padding: 5px 10px;
+    font-size: 0.72rem;
+    z-index: 500;
   }
 
   .map-floating-bar {

@@ -2764,46 +2764,56 @@ function setupNavigation() {
     toggleLabelDensity();
   });
   // =============================================================
-  // Weergave Wisselaar: Satellietkaart beneden standaard INGEKLAPT
-  // Compacte knop direct in de bovenbalk & onderaan de lijnstrip
+  // Weergave Wisselaar: Strikt 'map' (alleen satelliet) OF 'list' (alleen treinen op station)
+  // Geen split weergave zodat er nooit een station (zoals Buitenpost) onder de kaart blijft hangen
   // =============================================================
   let currentAppViewMode = 'list';
 
   window.setAppViewMode = function(mode) {
-    currentAppViewMode = mode;
+    const effectiveMode = (mode === 'map' || mode === 'split') ? 'map' : 'list';
+    currentAppViewMode = effectiveMode;
     const layout = document.getElementById('mainLayout');
     const btnSplit = document.getElementById('btnHeaderSplit');
     const peekText = document.getElementById('corridorMapPeekText');
+    const btnFloating = document.getElementById('btnFloatingExpandPanel');
     if (!layout) return;
 
     layout.classList.remove('view-list', 'view-map', 'view-split', 'panel-collapsed');
 
-    if (mode === 'split' || mode === 'map') {
-      layout.classList.add(mode === 'map' ? 'view-map' : 'view-split');
+    if (effectiveMode === 'map') {
+      // Modus 1: ALLEEN DE SATELLIETBEELDEN (schermvullend)
+      layout.classList.add('view-map');
       if (btnSplit) {
-        btnSplit.innerHTML = '<span class="btn-icon">🌓</span><span class="btn-label-text">Kaart</span>';
+        btnSplit.innerHTML = '<span class="btn-icon">📋</span><span class="btn-label-text">Treinen</span>';
         btnSplit.classList.add('active');
-        btnSplit.setAttribute('title', 'Benedengedeelte (satellietkaart) is uitgeklapt. Tik om weer in te klappen');
+        btnSplit.setAttribute('title', 'Schakel terug naar treinen op een station');
+      }
+      if (btnFloating) {
+        btnFloating.style.display = 'inline-flex';
+        btnFloating.innerHTML = '<span>📋 Treinen op station</span>';
       }
       if (peekText) {
-        peekText.textContent = '▼ Satellietkaart inklappen';
+        peekText.textContent = '📋 Terug naar treinenlijst';
       }
     } else {
-      // Inklappen (standaard rustige modus)
+      // Modus 2: ALLEEN DE TREINEN OP EEN STATION (schermvullend)
       layout.classList.add('view-list');
       if (btnSplit) {
         btnSplit.innerHTML = '<span class="btn-icon">🛰️</span><span class="btn-label-text">Kaart</span>';
         btnSplit.classList.remove('active');
-        btnSplit.setAttribute('title', 'Klap het benedengedeelte (satellietkaart) uit');
+        btnSplit.setAttribute('title', 'Toon alleen de satellietbeelden (schermvullend)');
+      }
+      if (btnFloating) {
+        btnFloating.style.display = 'none';
       }
       if (peekText) {
-        peekText.textContent = '🛰️ Satellietkaart uitklappen ▲';
+        peekText.textContent = '🛰️ Toon alleen satellietbeelden ▲';
       }
     }
 
     // Sync eventuele verborgen mobiele weergaveknoppen
     document.querySelectorAll('.mobile-view-btn').forEach(b => {
-      b.classList.toggle('active', b.getAttribute('data-view') === mode);
+      b.classList.toggle('active', b.getAttribute('data-view') === effectiveMode);
     });
 
     // Ververs Leaflet kaartafmetingen na CSS layout-transitie
@@ -2812,10 +2822,10 @@ function setupNavigation() {
     }
   };
 
-  // Klik op compacte Kaart-knop bovenaan: wisselt direct tussen ingeklapt en uitgeklapt
+  // Klik op compacte Kaart-knop bovenaan: wisselt direct tussen alleen satelliet of alleen treinen
   document.getElementById('btnHeaderSplit')?.addEventListener('click', () => {
     if (currentAppViewMode === 'list') {
-      window.setAppViewMode('split');
+      window.setAppViewMode('map');
     } else {
       window.setAppViewMode('list');
     }
@@ -2823,11 +2833,7 @@ function setupNavigation() {
 
   // Klik op de uitklapbalk onderaan het lijnoverzicht
   document.getElementById('btnCorridorExpandMap')?.addEventListener('click', () => {
-    if (currentAppViewMode === 'list') {
-      window.setAppViewMode('split');
-    } else {
-      window.setAppViewMode('list');
-    }
+    window.setAppViewMode('map');
   });
 
   // Ondersteun ook mobiele weergaveknoppen
@@ -3023,7 +3029,7 @@ function setupNavigation() {
   });
 
   document.getElementById('btnFloatingExpandPanel')?.addEventListener('click', () => {
-    toggleCorridorPanel(false);
+    window.setAppViewMode('list');
   });
 
   // Station Vertrekstaat Modal Sluiten
@@ -3136,7 +3142,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = 'da8fcfe';
+const APP_BUILD_COMMIT = 'eba75d4';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
