@@ -91,12 +91,18 @@
         </div>
       </div>
 
-      <!-- Rechter Bediening: Compacte Knoppen bovenaan (Split screen, In trein, Vervoersinfo, etc.) -->
+      <!-- Rechter Bediening: Compacte Knoppen bovenaan (Split screen, Toon treinen, In trein, Ververs, Heel NL, etc.) -->
       <div class="header-tools-row">
         <!-- Split Screen Knop (klein) -->
         <button id="btnHeaderSplit" class="header-action-btn split-btn active" type="button" title="Wissel weergave: Split Screen (Lijn &amp; Kaart), Alleen Lijn of Alleen Satelliet">
           <span class="btn-icon">🌓</span>
           <span class="btn-label-text">Split</span>
+        </button>
+
+        <!-- Toon Treinen Knop (klein) -->
+        <button id="btnHeaderApplyRoute" class="header-action-btn apply-btn" type="button" title="Toon treinen op het gekozen traject">
+          <span class="btn-icon">🔍</span>
+          <span class="btn-label-text">Toon</span>
         </button>
 
         <!-- Ik zit in de trein: Compacte GPS Knop (klein) -->
@@ -106,17 +112,29 @@
           <span class="btn-label-text">In Trein</span>
         </button>
 
-        <!-- Live Vervoersinformatie & Spoor Communicatie Knop (klein) -->
-        <button id="btnOpenCommScreen" class="header-action-btn comm-btn" type="button" title="Live Vervoersinformatie &amp; Spoor Communicatie (GSM-R)">
-          <span class="btn-icon">📻</span>
-          <span class="btn-label-text">Vervoersinfo</span>
-          <span id="commUnreadBadge" class="comm-unread-badge">3</span>
+        <!-- Ververs Info Knop (klein) -->
+        <button id="btnHeaderForceRefresh" class="header-action-btn refresh-btn" type="button" title="Ververs direct alle live treingegevens en GPS posities">
+          <span class="btn-icon">🔄</span>
+          <span class="btn-label-text">Ververs</span>
+        </button>
+
+        <!-- Heel Nederland Knop (klein) -->
+        <button id="btnHeaderClearRoute" class="header-action-btn nl-btn" type="button" title="Bekijk alle treinen in heel Nederland">
+          <span class="btn-icon">🌐</span>
+          <span class="btn-label-text">Heel NL</span>
         </button>
 
         <!-- Eigen Traject (Van ➔ Naar) Knop (klein) -->
         <button id="btnToggleRoutePlanner" class="header-action-btn planner-btn" type="button" title="Kies specifiek vertrek- en aankomststation (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)">
           <span class="btn-icon">🎯</span>
           <span class="btn-label-text">Van / Naar</span>
+        </button>
+
+        <!-- Live Vervoersinformatie & Spoor Communicatie Knop (klein) -->
+        <button id="btnOpenCommScreen" class="header-action-btn comm-btn" type="button" title="Live Vervoersinformatie &amp; Spoor Communicatie (GSM-R)">
+          <span class="btn-icon">📻</span>
+          <span class="btn-label-text">Vervoersinfo</span>
+          <span id="commUnreadBadge" class="comm-unread-badge">3</span>
         </button>
 
         <!-- NS Gong Knop -->
@@ -151,12 +169,12 @@
     </div>
   </header>
 
-  <!-- PRIMAIRE TRAJECTPLANNER (Kies Vertrek- en Aankomststation - Direct als eerste zichtbaar) -->
-  <aside id="routePlannerBar" class="route-planner-bar">
+  <!-- PRIMAIRE TRAJECTPLANNER (Kies Vertrek- en Aankomststation - Standaard ingeklapt voor maximale schermruimte) -->
+  <aside id="routePlannerBar" class="route-planner-bar" style="display: none;">
     <div class="route-planner-content">
       <div class="rp-header-title">
         <span class="rp-badge">🎯 TRAJECT KIEZEN</span>
-        <span class="rp-title-text">Kies tussen welke stations je treinen wilt zien (inclusief alle 397 stations):</span>
+        <span class="rp-title-text">Kies vertrek- en aankomststation (397 stations):</span>
       </div>
 
       <div class="rp-selectors-row">
@@ -182,17 +200,8 @@
           <button id="btnApplyRoute" class="btn btn-primary rp-btn-apply" type="button" title="Toon alleen treinen op dit traject">
             🔍 Toon Treinen
           </button>
-          <button id="btnImInTrainPlanner" class="btn btn-in-train-glow" type="button" title="Vind direct de trein waarin u nu reist via GPS">
-            <span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!
-          </button>
-          <button id="btnForceRefresh" class="btn btn-refresh-live" type="button" title="Ververs direct alle live treingegevens en GPS posities">
-            🔄 Ververs Info
-          </button>
-          <button id="btnClearRoute" class="btn btn-secondary rp-btn-clear" type="button" title="Bekijk alle treinen in heel Nederland">
-            🌐 Heel NL
-          </button>
-          <button id="btnMinimizePlanner" class="btn btn-secondary rp-btn-min" type="button" title="Minimaliseer paneel voor rustiger scherm">
-            ➖
+          <button id="btnMinimizePlanner" class="btn btn-secondary rp-btn-min" type="button" title="Sluit paneel">
+            ✕ Sluiten
           </button>
         </div>
       </div>

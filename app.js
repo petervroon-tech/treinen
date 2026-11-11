@@ -2662,10 +2662,10 @@ function setupNavigation() {
     }
   }
 
-  // Trajectplanner standaard open en actief tonen
+  // Trajectplanner standaard ingeklapt tonen voor maximale schermruimte
   const pBar = document.getElementById('routePlannerBar');
-  if (pBar) pBar.style.display = 'block';
-  document.getElementById('btnToggleRoutePlanner')?.classList.add('active');
+  if (pBar) pBar.style.display = 'none';
+  document.getElementById('btnToggleRoutePlanner')?.classList.remove('active');
 
   document.getElementById('btnToggleRoutePlanner')?.addEventListener('click', () => {
     toggleRoutePlannerBar();
@@ -2702,18 +2702,30 @@ function setupNavigation() {
     }
   });
 
-  document.getElementById('btnApplyRoute')?.addEventListener('click', () => {
+  function triggerApplyRoute() {
     const fromSel = document.getElementById('routeFromSelect');
     const toSel = document.getElementById('routeToSelect');
-    if (fromSel && toSel && fromSel.value && toSel.value) {
+    if (fromSel && toSel && fromSel.value && toSel.value && fromSel.value.toLowerCase() !== toSel.value.toLowerCase()) {
       applyCustomRoute(fromSel.value, toSel.value);
+    } else {
+      toggleRoutePlannerBar(true);
     }
-  });
+  }
 
-  // Knop: Bekijk alle treinen in heel Nederland
+  document.getElementById('btnApplyRoute')?.addEventListener('click', triggerApplyRoute);
+  document.getElementById('btnHeaderApplyRoute')?.addEventListener('click', triggerApplyRoute);
+
+  // Knoppen: Bekijk alle treinen in heel Nederland (zowel in planner als in bovenbalk)
   document.getElementById('btnClearRoute')?.addEventListener('click', () => {
     switchCorridor('all');
   });
+  document.getElementById('btnHeaderClearRoute')?.addEventListener('click', () => {
+    switchCorridor('all');
+  });
+
+  // Knoppen: Forceer live verversing (zowel in planner als in bovenbalk)
+  document.getElementById('btnForceRefresh')?.addEventListener('click', () => forceRefreshTrains());
+  document.getElementById('btnHeaderForceRefresh')?.addEventListener('click', () => forceRefreshTrains());
 
   // Snelle traject-knoppen (chips)
   document.querySelectorAll('.rp-chip-btn').forEach(btn => {
