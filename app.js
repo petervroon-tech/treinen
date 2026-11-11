@@ -3136,7 +3136,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = 'de47b32';
+const APP_BUILD_COMMIT = '7cc9362';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
