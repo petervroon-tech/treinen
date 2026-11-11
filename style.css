@@ -2166,49 +2166,62 @@ body {
     height: calc(100dvh - 84px);
   }
 
+  .route-planner-bar {
+    padding: 4px 8px;
+    border-bottom: 1.5px solid var(--ns-yellow);
+  }
+
   .route-planner-content {
     flex-direction: column;
     align-items: stretch;
-    gap: 6px;
+    gap: 4px;
   }
 
   .rp-header-title {
-    font-size: 0.72rem;
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    display: none;
   }
 
   .rp-selectors-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
   }
 
   .rp-field-col {
-    width: 100%;
-    justify-content: space-between;
+    flex: 1;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .rp-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    white-space: nowrap;
   }
 
   .rp-select {
-    flex: 1;
+    width: 100%;
     min-width: 0;
     max-width: none;
-    font-size: 0.76rem;
-    padding: 5px 8px;
+    font-size: 0.74rem;
+    padding: 4px 6px;
+    min-height: 32px;
   }
 
   .rp-swap-btn {
+    padding: 2px 7px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
     align-self: center;
-    padding: 3px 12px;
   }
 
   .rp-actions-col {
-    width: 100%;
-    justify-content: space-between;
+    display: none;
   }
 
-  .rp-btn-apply {
-    flex: 1;
+  .rp-quick-chips {
+    display: none;
   }
 
   .map-floating-bar {

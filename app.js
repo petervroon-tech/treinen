@@ -2662,10 +2662,10 @@ function setupNavigation() {
     }
   }
 
-  // Trajectplanner standaard ingeklapt tonen voor maximale schermruimte
+  // Trajectplanner (Van ➔ Tot) standaard direct zichtbaar
   const pBar = document.getElementById('routePlannerBar');
-  if (pBar) pBar.style.display = 'none';
-  document.getElementById('btnToggleRoutePlanner')?.classList.remove('active');
+  if (pBar) pBar.style.display = 'block';
+  document.getElementById('btnToggleRoutePlanner')?.classList.add('active');
 
   document.getElementById('btnToggleRoutePlanner')?.addEventListener('click', () => {
     toggleRoutePlannerBar();
@@ -3136,7 +3136,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '7cc9362';
+const APP_BUILD_COMMIT = '2622519';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
