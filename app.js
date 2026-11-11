@@ -1850,6 +1850,12 @@ function buildCustomRoute(fromCode, toCode) {
 }
 
 function applyCustomRoute(fromCode, toCode) {
+  // Sla altijd direct op in localStorage zodat het laatst gekozen (Tot/Van) station als standaard behouden blijft
+  try {
+    if (fromCode) localStorage.setItem('treinen_last_from', fromCode);
+    if (toCode) localStorage.setItem('treinen_last_to', toCode);
+  } catch (e) {}
+
   const customCorridor = buildCustomRoute(fromCode, toCode);
   if (!customCorridor) return;
 
@@ -1917,9 +1923,19 @@ function populateRoutePlannerDropdowns() {
   fromSel.innerHTML = htmlFrom;
   toSel.innerHTML = htmlTo;
 
-  // Standaard suggestie (Buitenpost ➔ Leeuwarden)
-  fromSel.value = currentFrom || 'BP';
-  toSel.value = currentTo || 'LW';
+  // Onthoud laatst gekozen Van & Tot stations uit localStorage (zodat de keuze van Tot standaard blijft staan)
+  let savedFrom = 'BP';
+  let savedTo = 'LW';
+  try {
+    const lsFrom = localStorage.getItem('treinen_last_from');
+    const lsTo = localStorage.getItem('treinen_last_to');
+    const stationCodes = new Set(allStations.map(s => s.code));
+    if (lsFrom && stationCodes.has(lsFrom)) savedFrom = lsFrom;
+    if (lsTo && stationCodes.has(lsTo)) savedTo = lsTo;
+  } catch (e) {}
+
+  fromSel.value = currentFrom || savedFrom;
+  toSel.value = currentTo || savedTo;
 }
 
 // Bepaal een authentiek perronspoor (bv. 4a, 8b of 1)
@@ -2742,10 +2758,13 @@ function setupNavigation() {
     });
   });
 
-  // Direct live updaten bij selectie
+  // Direct live updaten bij selectie en direct opslaan
   document.getElementById('routeFromSelect')?.addEventListener('change', () => {
     const fromVal = document.getElementById('routeFromSelect')?.value;
     const toVal = document.getElementById('routeToSelect')?.value;
+    if (fromVal) {
+      try { localStorage.setItem('treinen_last_from', fromVal); } catch (e) {}
+    }
     if (fromVal && toVal && fromVal.toLowerCase() !== toVal.toLowerCase()) {
       applyCustomRoute(fromVal, toVal);
     }
@@ -2754,6 +2773,9 @@ function setupNavigation() {
   document.getElementById('routeToSelect')?.addEventListener('change', () => {
     const fromVal = document.getElementById('routeFromSelect')?.value;
     const toVal = document.getElementById('routeToSelect')?.value;
+    if (toVal) {
+      try { localStorage.setItem('treinen_last_to', toVal); } catch (e) {}
+    }
     if (fromVal && toVal && fromVal.toLowerCase() !== toVal.toLowerCase()) {
       applyCustomRoute(fromVal, toVal);
     }
@@ -3142,7 +3164,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '069bd3b';
+const APP_BUILD_COMMIT = 'deeca43';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -3285,8 +3307,16 @@ async function init() {
   initVersionManagement();
 
   populateLineButtons('ns');
-  // Start direct met de primaire trajectselectie (Buitenpost ➔ Leeuwarden)
-  applyCustomRoute('BP', 'LW');
+  // Start direct met het laatst opgezochte Van ➔ Tot traject (zodat de keuze voor Tot behouden blijft als standaard)
+  let initialFrom = 'BP';
+  let initialTo = 'LW';
+  try {
+    const lsFrom = localStorage.getItem('treinen_last_from');
+    const lsTo = localStorage.getItem('treinen_last_to');
+    if (lsFrom) initialFrom = lsFrom;
+    if (lsTo) initialTo = lsTo;
+  } catch (e) {}
+  applyCustomRoute(initialFrom, initialTo);
 
   await appState.bridge.loadWasm('./treinen.wasm');
 
