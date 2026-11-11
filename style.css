@@ -1934,6 +1934,52 @@ body {
   display: none;
 }
 
+/* Standaard Inklappen van het Benedengedeelte (Satellietkaart) */
+.main-layout.view-list .map-panel {
+  display: none !important;
+}
+.main-layout.view-list .corridor-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+.corridor-map-peek-bar {
+  padding: 6px 12px;
+  background: rgba(0, 25, 72, 0.95);
+  border-top: 1px solid rgba(255, 201, 23, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.corridor-map-peek-btn {
+  background: rgba(255, 201, 23, 0.16);
+  border: 1.5px solid var(--ns-yellow);
+  color: var(--ns-yellow);
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.corridor-map-peek-btn:hover,
+.corridor-map-peek-btn:active {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
+  box-shadow: 0 0 14px rgba(255, 201, 23, 0.6);
+  transform: translateY(-1px);
+}
+
 /* -------------------------------------------------------------
    Geavanceerde Responsive Aanpassingen (Smartphones, iPads & Laptops)
 ------------------------------------------------------------- */

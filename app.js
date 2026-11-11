@@ -2764,43 +2764,44 @@ function setupNavigation() {
     toggleLabelDensity();
   });
   // =============================================================
-  // Weergave Wisselaar: Split Screen (Lijn & Kaart), Alleen Lijn of Alleen Satelliet
-  // Compacte knop direct in de bovenbalk
+  // Weergave Wisselaar: Satellietkaart beneden standaard INGEKLAPT
+  // Compacte knop direct in de bovenbalk & onderaan de lijnstrip
   // =============================================================
-  let currentAppViewMode = 'split';
+  let currentAppViewMode = 'list';
 
   window.setAppViewMode = function(mode) {
     currentAppViewMode = mode;
     const layout = document.getElementById('mainLayout');
     const btnSplit = document.getElementById('btnHeaderSplit');
+    const peekText = document.getElementById('corridorMapPeekText');
     if (!layout) return;
 
     layout.classList.remove('view-list', 'view-map', 'view-split', 'panel-collapsed');
 
-    if (mode === 'list') {
-      layout.classList.add('view-list');
+    if (mode === 'split' || mode === 'map') {
+      layout.classList.add(mode === 'map' ? 'view-map' : 'view-split');
       if (btnSplit) {
-        btnSplit.innerHTML = '<span class="btn-icon">📋</span><span class="btn-label-text">Lijn</span>';
+        btnSplit.innerHTML = '<span class="btn-icon">🌓</span><span class="btn-label-text">Kaart</span>';
         btnSplit.classList.add('active');
-        btnSplit.setAttribute('title', 'Weergave: Alleen Lijnoverzicht (tik voor Kaart)');
+        btnSplit.setAttribute('title', 'Benedengedeelte (satellietkaart) is uitgeklapt. Tik om weer in te klappen');
       }
-    } else if (mode === 'map') {
-      layout.classList.add('view-map');
-      if (btnSplit) {
-        btnSplit.innerHTML = '<span class="btn-icon">🛰️</span><span class="btn-label-text">Kaart</span>';
-        btnSplit.classList.add('active');
-        btnSplit.setAttribute('title', 'Weergave: Alleen Satellietkaart (tik voor Split Screen)');
+      if (peekText) {
+        peekText.textContent = '▼ Satellietkaart inklappen';
       }
     } else {
-      layout.classList.add('view-split');
+      // Inklappen (standaard rustige modus)
+      layout.classList.add('view-list');
       if (btnSplit) {
-        btnSplit.innerHTML = '<span class="btn-icon">🌓</span><span class="btn-label-text">Split</span>';
-        btnSplit.classList.add('active');
-        btnSplit.setAttribute('title', 'Weergave: Split Screen (Lijn & Kaart, tik voor Lijn)');
+        btnSplit.innerHTML = '<span class="btn-icon">🛰️</span><span class="btn-label-text">Kaart</span>';
+        btnSplit.classList.remove('active');
+        btnSplit.setAttribute('title', 'Klap het benedengedeelte (satellietkaart) uit');
+      }
+      if (peekText) {
+        peekText.textContent = '🛰️ Satellietkaart uitklappen ▲';
       }
     }
 
-    // Sync legacy/verborgen weergaveknoppen
+    // Sync eventuele verborgen mobiele weergaveknoppen
     document.querySelectorAll('.mobile-view-btn').forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-view') === mode);
     });
@@ -2811,14 +2812,21 @@ function setupNavigation() {
     }
   };
 
-  // Klik op compacte Split-knop bovenaan wisselt tussen Split -> Lijn -> Kaart -> Split
+  // Klik op compacte Kaart-knop bovenaan: wisselt direct tussen ingeklapt en uitgeklapt
   document.getElementById('btnHeaderSplit')?.addEventListener('click', () => {
-    if (currentAppViewMode === 'split') {
-      window.setAppViewMode('list');
-    } else if (currentAppViewMode === 'list') {
-      window.setAppViewMode('map');
-    } else {
+    if (currentAppViewMode === 'list') {
       window.setAppViewMode('split');
+    } else {
+      window.setAppViewMode('list');
+    }
+  });
+
+  // Klik op de uitklapbalk onderaan het lijnoverzicht
+  document.getElementById('btnCorridorExpandMap')?.addEventListener('click', () => {
+    if (currentAppViewMode === 'list') {
+      window.setAppViewMode('split');
+    } else {
+      window.setAppViewMode('list');
     }
   });
 
@@ -3128,7 +3136,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = 'e4d988b';
+const APP_BUILD_COMMIT = 'de47b32';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -3266,6 +3274,7 @@ async function initVersionManagement() {
 async function init() {
   initMap();
   setupNavigation();
+  window.setAppViewMode('list');
   initCommunicationEngine();
   initVersionManagement();
 

@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.6.0_e4d988b">
-  <link rel="manifest" href="./manifest.json?v=2.6.0_e4d988b">
+  <link rel="stylesheet" href="./style.css?v=2.6.0_de47b32">
+  <link rel="manifest" href="./manifest.json?v=2.6.0_de47b32">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -93,10 +93,10 @@
 
       <!-- Rechter Bediening: Compacte Knoppen bovenaan (Split screen, Toon treinen, In trein, Ververs, Heel NL, etc.) -->
       <div class="header-tools-row">
-        <!-- Split Screen Knop (klein) -->
-        <button id="btnHeaderSplit" class="header-action-btn split-btn active" type="button" title="Wissel weergave: Split Screen (Lijn &amp; Kaart), Alleen Lijn of Alleen Satelliet">
-          <span class="btn-icon">🌓</span>
-          <span class="btn-label-text">Split</span>
+        <!-- Satellietkaart / Split Knop (klein) - Standaard ingeklapt -->
+        <button id="btnHeaderSplit" class="header-action-btn split-btn" type="button" title="Klap het benedengedeelte (satellietkaart) uit of in">
+          <span class="btn-icon">🛰️</span>
+          <span class="btn-label-text">Kaart</span>
         </button>
 
         <!-- Toon Treinen Knop (klein) -->
@@ -230,8 +230,8 @@
     </button>
   </nav>
 
-  <!-- Hoofdvenster: Split Screen (Lijnstrip links & Echte Satelliet rechts) -->
-  <div id="mainLayout" class="main-layout">
+  <!-- Hoofdvenster: Standaard alleen Lijn (Satellietkaart beneden ingeklapt voor maximale rust) -->
+  <div id="mainLayout" class="main-layout view-list">
 
     <!-- LINKERPANEEL: Het Overzichtelijke Lijnoverzicht (Minimaliseerbaar) -->
     <section class="corridor-panel" aria-label="Lijnoverzicht">
@@ -311,6 +311,12 @@
           <div><label>Status Baanvak:</label> <span id="inspStatus">Rijdend op schema</span></div>
           <div><label>Laatste GPS:</label> <span id="inspGps">Zojuist</span></div>
         </div>
+      </div>
+      <!-- Snelle knop onderaan om de satellietkaart uit of in te klappen -->
+      <div id="corridorMapPeekBar" class="corridor-map-peek-bar">
+        <button id="btnCorridorExpandMap" class="corridor-map-peek-btn" type="button" title="Klap het benedengedeelte (satellietkaart) uit of in">
+          <span id="corridorMapPeekText">🛰️ Satellietkaart uitklappen ▲</span>
+        </button>
       </div>
     </section>
 
@@ -565,7 +571,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.6.0_e4d988b"></script>
-  <script type="module" src="./app.js?v=2.6.0_e4d988b"></script>
+  <script src="./stations.js?v=2.6.0_de47b32"></script>
+  <script type="module" src="./app.js?v=2.6.0_de47b32"></script>
 </body>
 </html>
