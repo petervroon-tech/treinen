@@ -1617,13 +1617,12 @@ window.selectTrain = (trainId) => {
   // Mobiele & iPad optimalisatie: als de gebruiker in lijstmodus zat, toon de kaart
   const layout = document.getElementById('mainLayout');
   if (layout && layout.classList.contains('view-list')) {
-    layout.classList.remove('view-list');
-    layout.classList.add('view-map');
-    document.querySelectorAll('.mobile-view-btn').forEach(b => {
-      b.classList.toggle('active', b.getAttribute('data-view') === 'map');
-    });
-    if (appState.map) {
-      setTimeout(() => appState.map.invalidateSize(), 100);
+    if (window.setAppViewMode) {
+      window.setAppViewMode('map');
+    } else {
+      layout.classList.remove('view-list');
+      layout.classList.add('view-map');
+      if (appState.map) setTimeout(() => appState.map.invalidateSize(), 100);
     }
   }
 
@@ -2383,12 +2382,12 @@ function findMyTrain() {
   const btnHeader = document.getElementById('btnFindMyTrain');
   const btnPlanner = document.getElementById('btnImInTrainPlanner');
 
-  if (btnHeader) btnHeader.innerHTML = '<span class="gps-icon-animated">📡</span> <span>GPS Zoeken...</span>';
+  if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">📡</span> <span class="btn-label-text">Zoeken...</span>';
   if (btnPlanner) btnPlanner.innerHTML = '<span>📡 GPS Zoeken...</span>';
 
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">Ik zit in de trein</span>';
+      if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">In Trein</span>';
       if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!';
 
       const userLat = pos.coords.latitude;
@@ -2511,16 +2510,17 @@ function findMyTrain() {
       // Schakel naar kaart als de app op mobiel staat
       const layout = document.getElementById('mainLayout');
       if (layout && layout.classList.contains('view-list')) {
-        layout.classList.remove('view-list');
-        layout.classList.add('view-map');
-        document.querySelectorAll('.mobile-view-btn').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-view') === 'map');
-        });
-        setTimeout(() => appState.map.invalidateSize(), 150);
+        if (window.setAppViewMode) {
+          window.setAppViewMode('map');
+        } else {
+          layout.classList.remove('view-list');
+          layout.classList.add('view-map');
+          setTimeout(() => appState.map?.invalidateSize(), 150);
+        }
       }
     },
     (err) => {
-      if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">Ik zit in de trein</span>';
+      if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">In Trein</span>';
       if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!';
       console.warn('GPS error:', err);
       alert('Kon uw GPS-positie niet bepalen. Geef alstublieft toestemming voor locatie in uw browserinstellingen.');
@@ -2751,30 +2751,70 @@ function setupNavigation() {
   document.getElementById('btnToggleLabelDensity')?.addEventListener('click', () => {
     toggleLabelDensity();
   });
-  // Mobiele & iPad Weergave Schakelaar (Split Screen, Alleen Lijst, Alleen Kaart)
+  // =============================================================
+  // Weergave Wisselaar: Split Screen (Lijn & Kaart), Alleen Lijn of Alleen Satelliet
+  // Compacte knop direct in de bovenbalk
+  // =============================================================
+  let currentAppViewMode = 'split';
+
+  window.setAppViewMode = function(mode) {
+    currentAppViewMode = mode;
+    const layout = document.getElementById('mainLayout');
+    const btnSplit = document.getElementById('btnHeaderSplit');
+    if (!layout) return;
+
+    layout.classList.remove('view-list', 'view-map', 'view-split', 'panel-collapsed');
+
+    if (mode === 'list') {
+      layout.classList.add('view-list');
+      if (btnSplit) {
+        btnSplit.innerHTML = '<span class="btn-icon">📋</span><span class="btn-label-text">Lijn</span>';
+        btnSplit.classList.add('active');
+        btnSplit.setAttribute('title', 'Weergave: Alleen Lijnoverzicht (tik voor Kaart)');
+      }
+    } else if (mode === 'map') {
+      layout.classList.add('view-map');
+      if (btnSplit) {
+        btnSplit.innerHTML = '<span class="btn-icon">🛰️</span><span class="btn-label-text">Kaart</span>';
+        btnSplit.classList.add('active');
+        btnSplit.setAttribute('title', 'Weergave: Alleen Satellietkaart (tik voor Split Screen)');
+      }
+    } else {
+      layout.classList.add('view-split');
+      if (btnSplit) {
+        btnSplit.innerHTML = '<span class="btn-icon">🌓</span><span class="btn-label-text">Split</span>';
+        btnSplit.classList.add('active');
+        btnSplit.setAttribute('title', 'Weergave: Split Screen (Lijn & Kaart, tik voor Lijn)');
+      }
+    }
+
+    // Sync legacy/verborgen weergaveknoppen
+    document.querySelectorAll('.mobile-view-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-view') === mode);
+    });
+
+    // Ververs Leaflet kaartafmetingen na CSS layout-transitie
+    if (appState.map) {
+      setTimeout(() => appState.map.invalidateSize(), 150);
+    }
+  };
+
+  // Klik op compacte Split-knop bovenaan wisselt tussen Split -> Lijn -> Kaart -> Split
+  document.getElementById('btnHeaderSplit')?.addEventListener('click', () => {
+    if (currentAppViewMode === 'split') {
+      window.setAppViewMode('list');
+    } else if (currentAppViewMode === 'list') {
+      window.setAppViewMode('map');
+    } else {
+      window.setAppViewMode('split');
+    }
+  });
+
+  // Ondersteun ook mobiele weergaveknoppen
   document.querySelectorAll('.mobile-view-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.mobile-view-btn').forEach(b => b.classList.remove('active'));
-      const target = e.currentTarget;
-      target.classList.add('active');
-
-      const viewMode = target.getAttribute('data-view');
-      const layout = document.getElementById('mainLayout');
-      if (layout) {
-        layout.classList.remove('view-list', 'view-map', 'view-split');
-        if (viewMode === 'list') {
-          layout.classList.add('view-list');
-        } else if (viewMode === 'map') {
-          layout.classList.add('view-map');
-        } else {
-          layout.classList.add('view-split');
-        }
-      }
-
-      // Ververs Leaflet kaartafmetingen na CSS layout-transitie
-      if (appState.map) {
-        setTimeout(() => appState.map.invalidateSize(), 150);
-      }
+      const viewMode = e.currentTarget.getAttribute('data-view') || 'split';
+      window.setAppViewMode(viewMode);
     });
   });
 
@@ -2988,12 +3028,13 @@ function setupNavigation() {
       // Schakel op mobiel/iPad naar satellietkaart indien nodig
       const layout = document.getElementById('mainLayout');
       if (layout && layout.classList.contains('view-list')) {
-        layout.classList.remove('view-list');
-        layout.classList.add('view-map');
-        document.querySelectorAll('.mobile-view-btn').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-view') === 'map');
-        });
-        setTimeout(() => appState.map.invalidateSize(), 100);
+        if (window.setAppViewMode) {
+          window.setAppViewMode('map');
+        } else {
+          layout.classList.remove('view-list');
+          layout.classList.add('view-map');
+          setTimeout(() => appState.map?.invalidateSize(), 100);
+        }
       }
       appState.map.flyTo([appState.activeStation.lat, appState.activeStation.lon], 15, { duration: 1.2 });
     }

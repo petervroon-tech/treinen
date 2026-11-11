@@ -108,6 +108,14 @@ body {
   width: 100%;
 }
 
+.header-top-subrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
 .brand-box {
   display: flex;
   align-items: center;
@@ -249,6 +257,20 @@ body {
 .header-action-btn:hover {
   background: rgba(255, 255, 255, 0.16);
   border-color: var(--ns-yellow);
+}
+
+.header-action-btn.split-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #f1f5f9;
+}
+
+.header-action-btn.split-btn:hover,
+.header-action-btn.split-btn.active {
+  background: rgba(255, 201, 23, 0.2);
+  border-color: var(--ns-yellow);
+  color: var(--ns-yellow);
+  font-weight: 800;
 }
 
 .header-action-btn.planner-btn {
@@ -1903,45 +1925,14 @@ body {
 /* Smartphones & iPads in Portrait (tot 900px) */
 @media (max-width: 900px) {
   .mobile-view-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    background: #001235;
-    padding: 6px 14px;
-    border-bottom: 1px solid var(--border-light);
-    z-index: 150;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  }
-
-  .mobile-view-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid var(--border-light);
-    color: var(--text-sub);
-    font-size: 0.74rem;
-    font-weight: 700;
-    padding: 6px 14px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .mobile-view-btn.active {
-    background: var(--ns-yellow);
-    color: var(--ns-blue);
-    border-color: var(--ns-yellow);
-    font-weight: 800;
-    box-shadow: 0 2px 8px rgba(255, 201, 23, 0.3);
+    display: none !important;
   }
 
   /* Hoofd Layout in Kolom */
   .main-layout {
     flex-direction: column;
-    height: calc(100vh - 102px);
-    height: calc(100dvh - 102px);
+    height: calc(100vh - 50px);
+    height: calc(100dvh - 50px);
   }
 
   .corridor-panel {
@@ -1995,12 +1986,26 @@ body {
   }
 }
 
-/* Smartphones (tot 600px - iPhone, Samsung, Pixel) */
-@media (max-width: 600px) {
+/* Smartphones & Mobiele weergave (tot 680px - iPhone portrait, iPad mini smal) */
+@media (max-width: 680px) {
   .app-header {
-    padding: 4px 8px;
-    min-height: 44px;
-    height: 44px;
+    padding: 6px 8px;
+    height: auto;
+    min-height: unset;
+  }
+
+  .header-main-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .header-top-subrow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
   }
 
   .brand-box {
@@ -2020,23 +2025,63 @@ body {
     padding: 2px 6px !important;
   }
 
-  .btn-label-text {
-    display: none;
-  }
-
   .traject-dropdown-container {
-    margin: 0 4px;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
   }
 
   .traject-select-dropdown {
-    font-size: 0.74rem;
+    font-size: 0.76rem;
     padding: 4px 6px;
     min-height: 32px;
+    width: 100%;
+  }
+
+  /* Compacte knoppenbalk: alle knoppen (Split, In Trein, Vervoersinfo, etc.) zichtbaar en strak */
+  .header-tools-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .header-tools-row::-webkit-scrollbar {
+    display: none;
   }
 
   .header-action-btn {
-    padding: 4px 7px;
-    font-size: 0.72rem;
+    padding: 4px 6px;
+    font-size: 0.7rem;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    height: 32px;
+  }
+
+  .header-action-btn.chime-btn,
+  .header-action-btn.audio-btn {
+    flex: 0 0 28px;
+    padding: 4px 0;
+  }
+
+  .btn-label-text {
+    display: inline-block !important;
+    font-size: 0.65rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .main-layout {
+    height: calc(100vh - 84px);
+    height: calc(100dvh - 84px);
   }
 
   .route-planner-content {
@@ -3101,97 +3146,25 @@ body {
 }
 
 .iphone-bottom-dock {
-  display: none;
+  display: none !important;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 680px) {
   /* iPhone Safe Area Header */
   .app-header {
-    padding-top: max(4px, env(safe-area-inset-top, 0px));
+    padding-top: max(6px, env(safe-area-inset-top, 0px));
     height: auto;
-    min-height: 48px;
+    min-height: unset;
   }
 
-  /* iPhone Vaste Duimbalk onderaan */
-  .iphone-bottom-dock {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: calc(58px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: rgba(6, 14, 34, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1.5px solid rgba(255, 201, 23, 0.4);
-    z-index: 2500;
-    justify-content: space-around;
-    align-items: center;
-    box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.7);
-  }
-
+  /* Schermvullende weergave zonder lompe balken */
   body {
-    padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0 !important;
   }
 
   .main-layout {
-    height: calc(100vh - 160px - env(safe-area-inset-bottom, 0px));
-    height: calc(100dvh - 160px - env(safe-area-inset-bottom, 0px));
-  }
-
-  .dock-btn {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 6px 8px;
-    min-width: 52px;
-    min-height: 48px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    position: relative;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .dock-btn:active {
-    transform: scale(0.92);
-  }
-
-  .dock-btn.dock-btn-primary {
-    background: linear-gradient(135deg, #003082 0%, #0284c7 100%);
-    border: 1.5px solid var(--ns-yellow);
-    border-radius: 14px;
-    color: #ffffff;
-    padding: 5px 12px;
-    box-shadow: 0 0 12px rgba(255, 201, 23, 0.4);
-  }
-
-  .dock-beacon-dot {
-    position: absolute;
-    top: 4px;
-    right: 8px;
-    width: 7px;
-    height: 7px;
-    background: #22c55e;
-    border-radius: 50%;
-    box-shadow: 0 0 6px #22c55e;
-    animation: beaconPulse 1.8s infinite;
-  }
-
-  .dock-icon {
-    font-size: 1.25rem;
-    line-height: 1;
-  }
-
-  .dock-label {
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 0.2px;
+    height: calc(100vh - 84px - env(safe-area-inset-top, 0px));
+    height: calc(100dvh - 84px - env(safe-area-inset-top, 0px));
   }
 
   /* iPhone Native Bottom Sheet voor Mijn Trein Modal */
@@ -3228,10 +3201,9 @@ body {
     margin: 8px auto 4px auto;
   }
 
-  /* iPhone Safari No Auto-Zoom: velden minstens 16px */
+  /* iPhone Safari No Auto-Zoom: formuliervelden 16px om ongewenste zoom te voorkomen */
   select,
-  input,
-  button,
+  input[type="text"],
   .rp-select,
   .traject-select-dropdown {
     font-size: 16px !important;
@@ -3239,7 +3211,15 @@ body {
 
   .rp-select,
   .traject-select-dropdown {
-    min-height: 44px;
+    min-height: 40px;
+  }
+
+  /* Knoppen blijven compact en scherp */
+  .header-action-btn,
+  .btn,
+  .status-filter-btn {
+    font-size: 0.72rem !important;
+    touch-action: manipulation;
   }
 
   /* Vloeiend scrollen over de voorbeelden-chips */
@@ -3258,9 +3238,55 @@ body {
 
   .rp-chip-btn {
     flex-shrink: 0;
-    min-height: 38px;
-    padding: 6px 14px;
-    font-size: 0.8rem;
+    min-height: 34px;
+    padding: 5px 12px;
+    font-size: 0.76rem !important;
     border-radius: 18px;
+  }
+}
+
+/* Smartphone & iPad in Landscape weergave: 1 strakke rij met maximale kaarthoogte */
+@media (orientation: landscape) and (max-height: 540px) {
+  .app-header {
+    padding: 3px 8px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .header-main-row {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .header-top-subrow {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .brand-heading {
+    display: none;
+  }
+
+  .header-tools-row {
+    gap: 4px !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+  }
+
+  .header-action-btn {
+    padding: 3px 6px !important;
+    font-size: 0.68rem !important;
+    height: 30px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .btn-label-text {
+    display: inline-block !important;
+  }
+
+  .main-layout {
+    height: calc(100vh - 40px) !important;
+    height: calc(100dvh - 40px) !important;
   }
 }

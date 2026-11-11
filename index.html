@@ -42,72 +42,81 @@
   <!-- Hoofdbalk: Schoon, Compact & Overzichtelijk (Eén slanke werkbalk) -->
   <header class="app-header">
     <div class="header-main-row">
-      <!-- Brand Logo & Gele Versieknop linksboven -->
-      <div class="brand-box">
-        <div class="ns-badge">PRO-RAIL</div>
-        <h1 class="brand-heading">&lt;treinen&gt;</h1>
-        <button id="appVersionBadge" class="app-version-badge" type="button" title="Gele versieknop - Tik om direct cache te wissen en pagina te verversen">
-          <span id="versionBadgeText">v2.6.0</span>
-          <span class="badge-refresh-icon">🔄</span>
-        </button>
+      <!-- Linker sectie: Logo / Gele Versieknop + Traject Dropdown -->
+      <div class="header-top-subrow">
+        <!-- Brand Logo & Gele Versieknop linksboven -->
+        <div class="brand-box">
+          <div class="ns-badge">PRO-RAIL</div>
+          <h1 class="brand-heading">&lt;treinen&gt;</h1>
+          <button id="appVersionBadge" class="app-version-badge" type="button" title="Gele versieknop - Tik om direct cache te wissen en pagina te verversen">
+            <span id="versionBadgeText">v2.6.0</span>
+            <span class="badge-refresh-icon">🔄</span>
+          </button>
+        </div>
+
+        <!-- Centraal Traject Dropdown Menu (Geen rijen vol knoppen meer) -->
+        <div class="traject-dropdown-container">
+          <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject of heel Nederland">
+            <option value="all">🌐 Heel Nederland — Alle treinen van alle maatschappijen</option>
+            <optgroup label="🎯 Eigen Traject (Kies Start &amp; Aankomst)">
+              <option value="custom-route">🎯 Kies Eigen Traject (Van ➔ Naar, bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)...</option>
+            </optgroup>
+            <optgroup label="🚆 NS Reizigers Hoofdlijnen">
+              <option value="enschede-denhaag" selected>NS &bull; Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag C</option>
+              <option value="eindhoven-maastricht">NS &bull; Eindhoven C ➔ Weert ➔ Roermond ➔ Sittard ➔ Maastricht (Rustig)</option>
+              <option value="amsterdam-maastricht">NS &bull; Amsterdam C ➔ Utrecht ➔ Eindhoven ➔ Maastricht</option>
+              <option value="rotterdam-amsterdam">NS &bull; Rotterdam C ➔ Schiphol ➔ Amsterdam C</option>
+              <option value="groningen-utrecht">NS &bull; Groningen / Leeuwarden ➔ Zwolle ➔ Utrecht C</option>
+              <option value="vlissingen-eindhoven">NS &bull; Vlissingen ➔ Breda ➔ Tilburg ➔ Eindhoven C</option>
+            </optgroup>
+            <optgroup label="🚊 Regionaal (Arriva &bull; Blauwnet &bull; Qbuzz &bull; Keolis)">
+              <option value="arriva-vechtdal">Arriva &bull; Vechtdallijnen (Zwolle ➔ Emmen)</option>
+              <option value="arriva-noord">Arriva &bull; Noordelijke Lijnen (Leeuwarden ➔ Groningen)</option>
+              <option value="arriva-maaslijn">Arriva &bull; Maaslijn (Nijmegen ➔ Venlo ➔ Roermond)</option>
+              <option value="arriva-drielanden">Arriva &bull; Drielandentrein (Luik ➔ Maastricht ➔ Aken)</option>
+              <option value="keolis-zwolle">Blauwnet / Keolis &bull; Enschede ➔ Almelo ➔ Zwolle</option>
+              <option value="qbuzz-merwede">Qbuzz &bull; MerwedeLingelijn (Dordrecht ➔ Geldermalsen)</option>
+            </optgroup>
+            <optgroup label="⚡ Internationaal (Eurostar &bull; ICE &bull; Intercity Berlijn)">
+              <option value="eurostar-hsl">Eurostar HSL &bull; Amsterdam ➔ Brussel / Parijs</option>
+              <option value="ice-international">ICE International &bull; Amsterdam ➔ Frankfurt</option>
+              <option value="ic-berlijn">Intercity Berlijn &bull; Amsterdam ➔ Berlijn</option>
+            </optgroup>
+            <optgroup label="🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; Rail Force One &bull; Lineas)">
+              <option value="betuweroute">Betuweroute &bull; Rotterdam Haven ➔ Kijfhoek ➔ Zevenaar</option>
+              <option value="brabant-goederen">Brabantroute Goederen &bull; Kijfhoek ➔ Venlo Grens</option>
+              <option value="havenlijn-twente">Havenspoorlijn &bull; Waalhaven ➔ Bad Bentheim</option>
+            </optgroup>
+          </select>
+        </div>
       </div>
 
-      <!-- Centraal Traject Dropdown Menu (Geen rijen vol knoppen meer) -->
-      <div class="traject-dropdown-container">
-        <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject of heel Nederland">
-          <option value="all">🌐 Heel Nederland — Alle treinen van alle maatschappijen</option>
-          <optgroup label="🎯 Eigen Traject (Kies Start &amp; Aankomst)">
-            <option value="custom-route">🎯 Kies Eigen Traject (Van ➔ Naar, bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)...</option>
-          </optgroup>
-          <optgroup label="🚆 NS Reizigers Hoofdlijnen">
-            <option value="enschede-denhaag" selected>NS &bull; Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag C</option>
-            <option value="eindhoven-maastricht">NS &bull; Eindhoven C ➔ Weert ➔ Roermond ➔ Sittard ➔ Maastricht (Rustig)</option>
-            <option value="amsterdam-maastricht">NS &bull; Amsterdam C ➔ Utrecht ➔ Eindhoven ➔ Maastricht</option>
-            <option value="rotterdam-amsterdam">NS &bull; Rotterdam C ➔ Schiphol ➔ Amsterdam C</option>
-            <option value="groningen-utrecht">NS &bull; Groningen / Leeuwarden ➔ Zwolle ➔ Utrecht C</option>
-            <option value="vlissingen-eindhoven">NS &bull; Vlissingen ➔ Breda ➔ Tilburg ➔ Eindhoven C</option>
-          </optgroup>
-          <optgroup label="🚊 Regionaal (Arriva &bull; Blauwnet &bull; Qbuzz &bull; Keolis)">
-            <option value="arriva-vechtdal">Arriva &bull; Vechtdallijnen (Zwolle ➔ Emmen)</option>
-            <option value="arriva-noord">Arriva &bull; Noordelijke Lijnen (Leeuwarden ➔ Groningen)</option>
-            <option value="arriva-maaslijn">Arriva &bull; Maaslijn (Nijmegen ➔ Venlo ➔ Roermond)</option>
-            <option value="arriva-drielanden">Arriva &bull; Drielandentrein (Luik ➔ Maastricht ➔ Aken)</option>
-            <option value="keolis-zwolle">Blauwnet / Keolis &bull; Enschede ➔ Almelo ➔ Zwolle</option>
-            <option value="qbuzz-merwede">Qbuzz &bull; MerwedeLingelijn (Dordrecht ➔ Geldermalsen)</option>
-          </optgroup>
-          <optgroup label="⚡ Internationaal (Eurostar &bull; ICE &bull; Intercity Berlijn)">
-            <option value="eurostar-hsl">Eurostar HSL &bull; Amsterdam ➔ Brussel / Parijs</option>
-            <option value="ice-international">ICE International &bull; Amsterdam ➔ Frankfurt</option>
-            <option value="ic-berlijn">Intercity Berlijn &bull; Amsterdam ➔ Berlijn</option>
-          </optgroup>
-          <optgroup label="🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; Rail Force One &bull; Lineas)">
-            <option value="betuweroute">Betuweroute &bull; Rotterdam Haven ➔ Kijfhoek ➔ Zevenaar</option>
-            <option value="brabant-goederen">Brabantroute Goederen &bull; Kijfhoek ➔ Venlo Grens</option>
-            <option value="havenlijn-twente">Havenspoorlijn &bull; Waalhaven ➔ Bad Bentheim</option>
-          </optgroup>
-        </select>
-      </div>
-
-      <!-- Rechter Bediening: Compacte Knoppen -->
+      <!-- Rechter Bediening: Compacte Knoppen bovenaan (Split screen, In trein, Vervoersinfo, etc.) -->
       <div class="header-tools-row">
-        <!-- Eigen Traject (Van ➔ Naar) Knop -->
-        <button id="btnToggleRoutePlanner" class="header-action-btn planner-btn" type="button" title="Kies specifiek vertrek- en aankomststation (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)">
-          <span class="btn-icon">🎯</span>
-          <span class="btn-label-text">Van / Naar</span>
+        <!-- Split Screen Knop (klein) -->
+        <button id="btnHeaderSplit" class="header-action-btn split-btn active" type="button" title="Wissel weergave: Split Screen (Lijn &amp; Kaart), Alleen Lijn of Alleen Satelliet">
+          <span class="btn-icon">🌓</span>
+          <span class="btn-label-text">Split</span>
         </button>
 
-        <!-- Live Spoor Communicatie Knop -->
-        <button id="btnOpenCommScreen" class="header-action-btn comm-btn" type="button" title="Live Spoor Communicatie (GSM-R)">
-          <span class="btn-icon">📻</span>
-          <span class="btn-label-text">Radio</span>
-          <span id="commUnreadBadge" class="comm-unread-badge">3</span>
-        </button>
-
-        <!-- Ik zit in de trein: Prominente GPS Knop -->
+        <!-- Ik zit in de trein: Compacte GPS Knop (klein) -->
         <button id="btnFindMyTrain" class="header-action-btn in-train-btn" type="button" title="Ik zit in de trein: vind exact mijn trein via live GPS coördinaten">
           <span class="pulse-dot-beacon"></span>
           <span class="btn-icon">🚆</span>
-          <span class="btn-label-text">Ik zit in de trein</span>
+          <span class="btn-label-text">In Trein</span>
+        </button>
+
+        <!-- Live Vervoersinformatie & Spoor Communicatie Knop (klein) -->
+        <button id="btnOpenCommScreen" class="header-action-btn comm-btn" type="button" title="Live Vervoersinformatie &amp; Spoor Communicatie (GSM-R)">
+          <span class="btn-icon">📻</span>
+          <span class="btn-label-text">Vervoersinfo</span>
+          <span id="commUnreadBadge" class="comm-unread-badge">3</span>
+        </button>
+
+        <!-- Eigen Traject (Van ➔ Naar) Knop (klein) -->
+        <button id="btnToggleRoutePlanner" class="header-action-btn planner-btn" type="button" title="Kies specifiek vertrek- en aankomststation (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)">
+          <span class="btn-icon">🎯</span>
+          <span class="btn-label-text">Van / Naar</span>
         </button>
 
         <!-- NS Gong Knop -->
@@ -199,8 +208,8 @@
     <div id="rpRouteSummary" class="rp-route-summary" style="display: none;"></div>
   </aside>
 
-  <!-- Mobiele & iPad Weergave Schakelaar (Smartphones & Tablets) -->
-  <nav class="mobile-view-bar" role="tablist" aria-label="Weergave schakelaar">
+  <!-- Verborgen compatibiliteitsknoppen voor mobiele weergave & dock -->
+  <nav class="mobile-view-bar" role="tablist" aria-label="Weergave schakelaar" style="display: none;" aria-hidden="true">
     <button id="btnMobileSplit" class="mobile-view-btn active" data-view="split" type="button">
       <span>🌓 Split Screen</span>
     </button>
@@ -522,8 +531,8 @@
     </div>
   </aside>
 
-    <!-- iPhone Bottom Quick Dock (Speciaal voor één-hands smartphone bediening in de trein) -->
-  <nav class="iphone-bottom-dock" aria-label="Snelle iPhone bediening">
+  <!-- Verborgen iPhone Dock compatibiliteitsknoppen -->
+  <nav class="iphone-bottom-dock" aria-label="Snelle iPhone bediening" style="display: none;" aria-hidden="true">
     <button id="btnDockInTrain" class="dock-btn dock-btn-primary" type="button" title="Ik zit in de trein">
       <span class="dock-beacon-dot"></span>
       <span class="dock-icon">🚆</span>
