@@ -853,11 +853,16 @@ body {
 /* -------------------------------------------------------------
    Hoofdlayout: Split Screen (Minimaliseerbaar Lijnoverzicht links, Kaart rechts)
 ------------------------------------------------------------- */
+:root {
+  --corridor-width: 420px;
+}
+
 .main-layout {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
-  width: 100vw;
-  height: calc(100vh - 48px);
+  width: 100%;
+  height: auto;
   overflow: hidden;
   position: relative;
 }
@@ -866,11 +871,11 @@ body {
    Linkerpaneel: Het Rustige Lijnoverzicht (Minimaliseerbaar)
 ------------------------------------------------------------- */
 .corridor-panel {
-  width: 420px;
-  min-width: 320px;
-  max-width: 450px;
+  width: var(--corridor-width, 420px);
+  min-width: 280px;
+  max-width: min(75vw, 850px);
   background-color: var(--bg-card);
-  border-right: 1px solid var(--border-light);
+  border-right: none;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -878,6 +883,76 @@ body {
   z-index: 50;
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.25s ease, opacity 0.2s ease;
   overflow: hidden;
+  flex-shrink: 0;
+}
+
+.corridor-panel.is-resizing,
+.main-layout.is-resizing .corridor-panel {
+  transition: none !important;
+}
+
+/* De container voor het scrollbare lijnoverzicht */
+.line-diagram-container {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 14px;
+  overscroll-behavior: contain;
+}
+
+/* -------------------------------------------------------------
+   Draggable Splitter (Interactief schaalbaar tussen Lijn & Kaart)
+------------------------------------------------------------- */
+.layout-resizer {
+  width: 8px;
+  cursor: col-resize;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.layout-resizer:hover,
+.layout-resizer.is-dragging {
+  background: rgba(255, 201, 23, 0.25);
+  border-left-color: var(--ns-yellow);
+  box-shadow: 0 0 12px rgba(255, 201, 23, 0.45);
+}
+
+.layout-resizer-handle {
+  width: 2px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: background 0.15s ease, height 0.15s ease;
+}
+
+.layout-resizer:hover .layout-resizer-handle,
+.layout-resizer.is-dragging .layout-resizer-handle {
+  background: var(--ns-yellow);
+  height: 54px;
+}
+
+@media (max-width: 900px) {
+  .layout-resizer {
+    display: none !important;
+  }
+}
+
+.main-layout.view-map .layout-resizer,
+.main-layout.view-list .layout-resizer,
+.main-layout.panel-collapsed .layout-resizer {
+  display: none !important;
 }
 
 /* Geminimaliseerde staat (volledig kaartbeeld) */
@@ -2646,30 +2721,35 @@ body {
     flex-shrink: 0;
   }
 
-  /* Hoofdindeling: side-by-side splitview standaard actief op laptops */
+  /* Hoofdindeling: side-by-side splitview standaard actief op laptops & desktops */
   .main-layout {
     flex-direction: row;
-    height: calc(100vh - 50px);
-    height: calc(100dvh - 50px);
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    width: 100%;
+    overflow: hidden;
   }
 
   .main-layout:not(.view-map):not(.view-list) .corridor-panel,
   .main-layout.view-split .corridor-panel {
     display: flex !important;
-    width: clamp(380px, 30vw, 460px) !important;
-    min-width: 360px !important;
-    max-width: 480px !important;
+    width: var(--corridor-width, 420px);
+    min-width: 280px;
+    max-width: min(75vw, 850px);
     height: 100% !important;
-    border-right: 1px solid var(--border-light);
+    flex-shrink: 0;
+    border-right: none;
   }
 
   .main-layout:not(.view-map):not(.view-list) .map-panel,
   .main-layout.view-split .map-panel {
     display: flex !important;
-    flex: 1 1 auto !important;
+    flex: 1 1 0 !important;
     width: auto !important;
     height: 100% !important;
     min-width: 0 !important;
+    min-height: 0 !important;
   }
 
   /* Weergave 2: Alleen Satellietkaart (volledig scherm) */
@@ -2762,8 +2842,9 @@ body {
   }
 
   .main-layout {
-    height: calc(100vh - 84px);
-    height: calc(100dvh - 84px);
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
   }
 
   /* iPads in Landscape: side-by-side splitview */
@@ -2928,8 +3009,9 @@ body {
 
   .main-layout {
     flex-direction: column;
-    height: calc(100vh - 84px);
-    height: calc(100dvh - 84px);
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
   }
 
   .main-layout.view-list .map-panel {
@@ -2948,9 +3030,6 @@ body {
     display: flex !important;
     width: 100% !important;
     height: 100% !important;
-  }
-}
-    height: calc(100dvh - 84px);
   }
 
   .route-planner-bar {
@@ -4229,8 +4308,9 @@ body {
   }
 
   .main-layout {
-    height: calc(100vh - 84px - env(safe-area-inset-top, 0px));
-    height: calc(100dvh - 84px - env(safe-area-inset-top, 0px));
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
   }
 
   /* iPhone Native Bottom Sheet voor Mijn Trein Modal */
@@ -4352,8 +4432,9 @@ body {
   }
 
   .main-layout {
-    height: calc(100vh - 40px) !important;
-    height: calc(100dvh - 40px) !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
   }
 }
 

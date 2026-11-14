@@ -3765,6 +3765,9 @@ function setupNavigation() {
     if (shouldShow) {
       document.getElementById('routeFromSelect')?.focus();
     }
+    if (appState.map) {
+      setTimeout(() => appState.map.invalidateSize(), 80);
+    }
   }
 
   // Trajectplanner (Van ➔ Tot) standaard direct zichtbaar
@@ -3986,6 +3989,107 @@ function setupNavigation() {
       window.setAppViewMode(viewMode);
     });
   });
+
+  // =============================================================
+  // 11c. Draggable Splitter (Interactief schaalbaar tussen Lijn & Kaart)
+  // =============================================================
+  function initLayoutResizer() {
+    const resizer = document.getElementById('layoutResizer');
+    const corridor = document.querySelector('.corridor-panel');
+    const layout = document.getElementById('mainLayout');
+    if (!resizer || !corridor || !layout) return;
+
+    // Herstel eerder gekozen paneelbreedte van localStorage
+    try {
+      const savedWidth = localStorage.getItem('treinen_corridor_width');
+      if (savedWidth && window.innerWidth >= 1024) {
+        const parsed = parseInt(savedWidth, 10);
+        const minW = 280;
+        const maxW = Math.min(window.innerWidth * 0.75, 850);
+        if (parsed >= minW && parsed <= maxW) {
+          document.documentElement.style.setProperty('--corridor-width', `${parsed}px`);
+        }
+      }
+    } catch (e) {}
+
+    let isDragging = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    function onPointerDown(e) {
+      if (window.innerWidth < 900) return;
+      if (layout.classList.contains('view-map') || layout.classList.contains('view-list')) return;
+
+      isDragging = true;
+      startX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+      startWidth = corridor.getBoundingClientRect().width;
+      resizer.classList.add('is-dragging');
+      corridor.classList.add('is-resizing');
+      layout.classList.add('is-resizing');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      window.addEventListener('pointermove', onPointerMove, { passive: false });
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerUp);
+      e.preventDefault();
+    }
+
+    function onPointerMove(e) {
+      if (!isDragging) return;
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+      const deltaX = clientX - startX;
+      const minW = 280;
+      const maxW = Math.min(window.innerWidth * 0.75, 850);
+      const newWidth = Math.max(minW, Math.min(maxW, Math.round(startWidth + deltaX)));
+
+      document.documentElement.style.setProperty('--corridor-width', `${newWidth}px`);
+
+      if (appState.map) {
+        appState.map.invalidateSize();
+      }
+      e.preventDefault();
+    }
+
+    function onPointerUp() {
+      if (!isDragging) return;
+      isDragging = false;
+      resizer.classList.remove('is-dragging');
+      corridor.classList.remove('is-resizing');
+      layout.classList.remove('is-resizing');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+
+      const finalWidth = corridor.getBoundingClientRect().width;
+      try {
+        localStorage.setItem('treinen_corridor_width', `${Math.round(finalWidth)}`);
+      } catch (e) {}
+
+      if (appState.map) {
+        setTimeout(() => appState.map.invalidateSize(), 50);
+      }
+    }
+
+    resizer.addEventListener('pointerdown', onPointerDown);
+
+    // Dubbelklik op resizer om terug te keren naar de standaardbreedte (420px)
+    resizer.addEventListener('dblclick', () => {
+      const defaultW = 420;
+      document.documentElement.style.setProperty('--corridor-width', `${defaultW}px`);
+      try {
+        localStorage.setItem('treinen_corridor_width', `${defaultW}`);
+      } catch (e) {}
+      if (appState.map) {
+        setTimeout(() => appState.map.invalidateSize(), 50);
+      }
+    });
+  }
+
+  initLayoutResizer();
 
   // Schermrotatie & Resize optimalisatie voor iPads, laptops en telefoons
   window.addEventListener('resize', () => {
@@ -4295,7 +4399,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '8d254b6';
+const APP_BUILD_COMMIT = '3c430ff';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
