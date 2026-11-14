@@ -1140,9 +1140,7 @@ function renderCorridorOnMap(corridor) {
   }
 
   const latlngs = corridor.stations.map(s => [s.lat, s.lon]);
-  const lineColor = corridor.category === 'freight' ? '#ea580c' :
-                    corridor.category === 'international' ? '#f43f5e' :
-                    corridor.category === 'regional' ? '#0284c7' : '#ffc917';
+  const lineColor = '#ffc917';
 
   appState.routePolyline = L.polyline(latlngs, {
     color: lineColor,
@@ -2197,7 +2195,7 @@ function applyCustomRoute(fromCode, toCode) {
   const summaryEl = document.getElementById('rpRouteSummary');
   if (summaryEl) {
     summaryEl.style.display = 'block';
-    summaryEl.innerHTML = `🟢 Actief traject: <strong>${customCorridor.name}</strong> &bull; ${customCorridor.stations.length} stations op het baanvak`;
+    summaryEl.innerHTML = `🚆 Actief traject: <strong>${customCorridor.name}</strong> &bull; ${customCorridor.stations.length} stations op het baanvak`;
   }
 
   // Status filters resetten
@@ -3549,7 +3547,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '91c1dcb';
+const APP_BUILD_COMMIT = 'f2547a5';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
