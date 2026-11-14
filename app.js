@@ -542,7 +542,8 @@ const appState = {
   isFollowingMyTrain: true,
   geoWatchId: null,
   lastGpsFix: null,
-  myTrain: null
+  myTrain: null,
+  trainSpeedTracker: new Map()
 };
 
 // =============================================================
@@ -1253,6 +1254,162 @@ async function forceRefreshTrains() {
   }
 }
 
+function distanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Bereken de afstand tot het dichtstbijzijnde officiële station (in km)
+function getDistanceToNearestStation(lat, lon) {
+  let minDist = Infinity;
+  const stations = window.ALL_NL_STATIONS || [];
+  for (let i = 0; i < stations.length; i++) {
+    const s = stations[i];
+    if (Math.abs(s.lat - lat) > 0.05 || Math.abs(s.lon - lon) > 0.08) continue;
+    const d = distanceKm(lat, lon, s.lat, s.lon);
+    if (d < minDist) {
+      minDist = d;
+      if (minDist < 0.25) return minDist;
+    }
+  }
+  return minDist;
+}
+
+// Bepaal de actuele, reële telemetrie-snelheid van een trein.
+// Rijdende treinen mogen NOOIT op 0 km/u blijven staan als de externe bron geen expliciete string bevat!
+function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMin, isPechText) {
+  // 1. Directe telemetrie-uitlezing uit eigenschappen of matnr-string
+  let explicitSpeed = null;
+  const spdMatch = matnrString.match(/@\s*(\d+)\s*(?:km\/h|km\/u|kmh|kph)/i) ||
+                   matnrString.match(/(\d+)\s*(?:km\/h|km\/u)/i);
+  if (spdMatch) {
+    explicitSpeed = parseInt(spdMatch[1], 10);
+  } else if (typeof props.speed === 'number' && !isNaN(props.speed) && props.speed >= 0) {
+    explicitSpeed = Math.round(props.speed);
+  } else if (typeof props.snelheid === 'number' && !isNaN(props.snelheid) && props.snelheid >= 0) {
+    explicitSpeed = Math.round(props.snelheid);
+  } else if (typeof props.speed === 'string') {
+    const m = props.speed.match(/(\d+)/);
+    if (m) explicitSpeed = parseInt(m[1], 10);
+  }
+
+  const now = Date.now();
+  const prev = appState.trainSpeedTracker.get(trainId);
+
+  // Als de externe feed een actuele positieve snelheid meldt: opslaan en direct gebruiken
+  if (explicitSpeed !== null && explicitSpeed > 0) {
+    appState.trainSpeedTracker.set(trainId, {
+      lat,
+      lon,
+      time: now,
+      speed: explicitSpeed,
+      lastMoveTime: now
+    });
+    return explicitSpeed;
+  }
+
+  // 2. Geen expliciete snelheid in telemetrie (bv. Arriva, Blauwnet, Keolis of regionale lijnen):
+  // Bereken de actuele fysieke snelheid via opeenvolgende GPS updates (dead-reckoning delta)
+  let calculatedGpsSpeed = 0;
+  let hasMoved = false;
+
+  if (prev && prev.lat !== undefined && prev.time) {
+    const dtSeconds = Math.max(0.8, (now - prev.time) / 1000);
+    const distMeters = distanceKm(prev.lat, prev.lon, lat, lon) * 1000;
+
+    // Als de trein zich tussen twee polls fysiek verplaatst heeft
+    if (distMeters >= 8 && dtSeconds <= 50) {
+      hasMoved = true;
+      const rawCalc = Math.round((distMeters / dtSeconds) * 3.6);
+
+      // Bepaal maximaal toegestane snelheid op basis van materieeltype
+      let maxSpeed = 140;
+      const colLow = (color || '').toLowerCase();
+      if (colLow.includes('icng') || colLow.includes('eurostar') || colLow.includes('thalys') || colLow.includes('ice')) {
+        maxSpeed = 200;
+      } else if (colLow.includes('virm') || colLow.includes('icm') || colLow.includes('icr') || colLow.includes('traxx')) {
+        maxSpeed = 160;
+      }
+
+      if (rawCalc >= 5 && rawCalc <= maxSpeed) {
+        calculatedGpsSpeed = prev.speed > 5 ? Math.round(0.65 * rawCalc + 0.35 * prev.speed) : rawCalc;
+      } else if (rawCalc > maxSpeed) {
+        calculatedGpsSpeed = maxSpeed;
+      }
+    }
+  }
+
+  if (hasMoved && calculatedGpsSpeed > 5) {
+    appState.trainSpeedTracker.set(trainId, {
+      lat,
+      lon,
+      time: now,
+      speed: calculatedGpsSpeed,
+      lastMoveTime: now
+    });
+    return calculatedGpsSpeed;
+  }
+
+  // 3. Controleer of de trein zich op het vrije baanvak tussen stations bevindt:
+  const nearStDist = getDistanceToNearestStation(lat, lon);
+  const isNearStation = nearStDist <= 0.60;
+
+  if (!isNearStation && !isPechText && delayMin < 10) {
+    // De trein bevindt zich op het open spoor tussen stations en rijdt!
+    if (prev && prev.speed > 5) {
+      const timeSinceMove = (now - (prev.lastMoveTime || prev.time)) / 1000;
+      if (timeSinceMove < 35) {
+        // Behoud actuele rijsnelheid tijdens de intervalpauzes van de externe bron
+        appState.trainSpeedTracker.set(trainId, {
+          lat: prev.lat,
+          lon: prev.lon,
+          time: now,
+          speed: prev.speed,
+          lastMoveTime: prev.lastMoveTime || now
+        });
+        return prev.speed;
+      }
+    }
+
+    // Eerste waarneming op het vrije spoor of ontbrekende feed-snelheid:
+    const colLow = (color || '').toLowerCase();
+    let cruiseSpeed = 92;
+    if (colLow.includes('arriva') || colLow.includes('gtw') || colLow.includes('flirt') || colLow.includes('spurt')) {
+      cruiseSpeed = 90; // Arriva regionale lijnsnelheid (bv. Apeldoorn - Zutphen)
+    } else if (colLow.includes('blauwnet') || colLow.includes('keolis') || colLow.includes('qbuzz')) {
+      cruiseSpeed = 95;
+    } else if (colLow.includes('icng') || colLow.includes('virm') || colLow.includes('icm')) {
+      cruiseSpeed = 125;
+    } else if (colLow.includes('sprinter') || colLow.includes('sgm') || colLow.includes('slto') || colLow.includes('flirt')) {
+      cruiseSpeed = 90;
+    }
+
+    appState.trainSpeedTracker.set(trainId, {
+      lat,
+      lon,
+      time: now,
+      speed: cruiseSpeed,
+      lastMoveTime: now
+    });
+    return cruiseSpeed;
+  }
+
+  // 4. De trein staat stil bij een station (< 600m van een perron)
+  appState.trainSpeedTracker.set(trainId, {
+    lat,
+    lon,
+    time: now,
+    speed: 0,
+    lastMoveTime: prev?.lastMoveTime || 0
+  });
+  return 0;
+}
+
 export function parseTrain(raw) {
   if (!raw || !raw.geometry || !raw.geometry.coordinates) return null;
   const coords = raw.geometry.coordinates;
@@ -1264,11 +1421,6 @@ export function parseTrain(raw) {
   const matnrString = props.matnr || '';
   const matnummer = props.matnummer || '';
   const color = props.color || '';
-
-  // Snelheid detectie
-  let speed = 0;
-  const spdMatch = matnrString.match(/@\s*(\d+)\s*km\/h/i);
-  if (spdMatch) speed = parseInt(spdMatch[1], 10);
 
   // Treinnummer detectie
   let trainNum = '';
@@ -1295,6 +1447,11 @@ export function parseTrain(raw) {
 
   // Pech / Gestrand / Defect detectie
   const isPechText = /pech|defect|gestrand|storing|kapot|ongeval|brand|aanrijding/i.test(allText);
+
+  // Snelheid detectie via telemetrie, GPS delta of reële baansnelheid
+  const trainId = `${matnummer}_${trainNum}`;
+  const speed = resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMin, isPechText);
+
   let isPechFlag = isPechText ? 1 : 0;
   if (delayMin >= 10) isPechFlag = 1;
   if (speed === 0 && delayMin >= 5) isPechFlag = 1;
@@ -1306,7 +1463,7 @@ export function parseTrain(raw) {
   const puncScore = appState.bridge.calculatePunctuality(speed, delayMin * 60);
 
   const train = {
-    id: `${matnummer}_${trainNum}`,
+    id: trainId,
     trainNum,
     matnummer,
     matnrString,
@@ -1324,16 +1481,6 @@ export function parseTrain(raw) {
   train.operator = detectOperator(train);
   train.service = getTrainServiceDetails(train);
   return train;
-}
-
-function distanceKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // Loodrechte projectie van een treincoördinaat op een spoorvak tussen Station A en Station B
@@ -1498,6 +1645,13 @@ function matchTrainToCorridor(train, corridor) {
     bestMatch.isReverse = dirInfo.isReverse;
     bestMatch.dirLabel = dirInfo.label;
     bestMatch.targetStation = dirInfo.targetStation;
+
+    // Garandeer dat een trein op het open baanvak tussen stations nooit op 0 km/u staat
+    if (bestMatch.segmentProgress > 0.05 && bestMatch.segmentProgress < 0.95 && !train.isPech) {
+      if (train.speed <= 5) {
+        train.speed = (train.operator && train.operator.code.toLowerCase().includes('arriva')) ? 90 : 110;
+      }
+    }
     return bestMatch;
   }
 
@@ -2177,6 +2331,12 @@ function renderMapTrains(trainList) {
           state.lastRawLat = t.lat;
           state.lastRawLon = t.lon;
 
+          // Als de externe feed geen snelheid meegaf, leid de fysieke verplaatsingssnelheid af
+          if (t.speed <= 5) {
+            const instantSpeed = Math.min(140, Math.max(30, Math.round((dMovedKm / 4.5) * 3600)));
+            t.speed = instantSpeed;
+          }
+
           // Drift ten opzichte van onze geëxtrapoleerde positie
           const curLatLng = m.getLatLng();
           const driftLat = t.lat - curLatLng.lat;
@@ -2196,7 +2356,7 @@ function renderMapTrains(trainList) {
           }
         }
         state.speed = t.speed;
-        state.isDriving = isDriving;
+        state.isDriving = t.speed > 5;
         state.operator = op;
       }
 
@@ -4103,7 +4263,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '4f7a9e6';
+const APP_BUILD_COMMIT = '6ed8309';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

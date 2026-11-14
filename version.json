@@ -1,16 +1,16 @@
 {
   "version": "2.6.0",
-  "commit": "4f7a9e6",
-  "fullCommit": "4f7a9e61c258fc3082da4b171d1c3eb461ac2e6e",
-  "buildTime": "2026-11-14T11:21:26Z",
+  "commit": "6ed8309",
+  "fullCommit": "6ed8309ee87ad2ae3db6220cf880b3e50ccee2e8",
+  "buildTime": "2026-11-14T11:29:35Z",
   "branch": "main",
   "environment": "local",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
     {
       "tag": "60 FPS Animatie",
-      "title": "Continue 60 FPS Dead-Reckoning Treinanimatie",
-      "desc": "Treinen rijden vloeiend en schokvrij over het spoor op ware GPS-snelheid met bochtentolerantie.",
+      "title": "Continue 60 FPS Dead-Reckoning & Live Snelheid",
+      "desc": "Treinen rijden vloeiend en schokvrij over het spoor op ware snelheid; ook voor Arriva, Blauwnet en Keolis wordt de snelheid continu berekend (nooit 0 km/u op het open spoor).",
       "icon": "⚡"
     },
     {

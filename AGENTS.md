@@ -12,7 +12,15 @@ Deze richtlijnen gelden voor alle huidige en toekomstige aanpassingen en applica
   - Kaartoverlays mogen het zicht op de satellietsporen, wissels en treinen nooit onnodig bedekken.
   - Vaste elementen moeten vloeiend meeschalen zonder overflow of afsnijding.
 
-## 2. Real-time Beweging & Animatie
+## 2. Real-time Beweging, Animatie & Telemetrie
 - Treinen en bewegende objecten bewegen altijd vloeiend (60 FPS continue interpolatie/dead-reckoning).
 - Geen schokken, haperingen of plotselinge sprongen bij binnenkomende telemetrie-updates.
 - Toon altijd duidelijke richtingaanduidingen (zowel voorwaarts als tegemoetkomend/tegentreinen).
+- **Nooit 0 km/u bij rijdende treinen:** Rijdende treinen op het open baanvak mogen NOOIT op 0 km/u of 'Stilstaand' blijven staan. Als een bronfeed (zoals bij Arriva, Blauwnet, Keolis of regionale vervoerders) geen expliciete `@ km/h` string doorgeeft, moet de snelheid altijd automatisch berekend worden via opeenvolgende GPS-deltaposities of realistische baansnelheid op het baanvak.
+- Treinen die daadwerkelijk stilstaan op een station (< 400m van het perron) tonen 0 km/u ('Halterend').
+
+## 3. Helpfile & Documentatie Standaard
+- Bouw in elke applicatie altijd een direct toegankelijke Help-modal (`💡 Help`) zoals in `vroonphoto`.
+- De featurelijst in de Help-modal moet dynamisch gesynchroniseerd zijn met `version.json` via het build-script (`build.py`), zodat de documentatie na elke build automatisch 100% actueel is met een `✓ Altijd Actueel` badge.
+
+

@@ -270,8 +270,8 @@ def update_version_json(sha=None, build_num=None):
     data["features"] = [
         {
             "tag": "60 FPS Animatie",
-            "title": "Continue 60 FPS Dead-Reckoning Treinanimatie",
-            "desc": "Treinen rijden vloeiend en schokvrij over het spoor op ware GPS-snelheid met bochtentolerantie.",
+            "title": "Continue 60 FPS Dead-Reckoning & Live Snelheid",
+            "desc": "Treinen rijden vloeiend en schokvrij over het spoor op ware snelheid; ook voor Arriva, Blauwnet en Keolis wordt de snelheid continu berekend (nooit 0 km/u op het open spoor).",
             "icon": "⚡"
         },
         {
