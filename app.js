@@ -1299,17 +1299,6 @@ export function getTrainServiceDetails(train, contextStation) {
   };
 }
 
-  return {
-    serviceType,
-    destination,
-    origin,
-    via,
-    operator: op,
-    platform,
-    displayTitle: `${serviceType} naar ${destination}`
-  };
-}
-
 // =============================================================
 // 5. Leaflet Satellietkaart Initialisatie
 // =============================================================
@@ -4751,7 +4740,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '6f11855';
+const APP_BUILD_COMMIT = '41941f0';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
