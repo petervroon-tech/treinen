@@ -530,6 +530,9 @@ const appState = {
   routePolyline: null,
   stationMarkers: [],
   trainMarkers: new Map(),
+  trainMotionStates: new Map(),
+  railMotionRaf: null,
+  lastSimTime: 0,
   soundEnabled: true,
   audioCtx: null,
   allLiveFeatures: [],
@@ -1330,6 +1333,49 @@ function distanceKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Loodrechte projectie van een treincoördinaat op een spoorvak tussen Station A en Station B
+function projectPointToSegmentKm(pLat, pLon, aLat, aLon, bLat, bLon) {
+  const midLat = (aLat + bLat) / 2.0;
+  const kx = 111.320 * Math.cos(midLat * Math.PI / 180);
+  const ky = 110.574;
+
+  const ax = aLon * kx, ay = aLat * ky;
+  const bx = bLon * kx, by = bLat * ky;
+  const px = pLon * kx, py = pLat * ky;
+
+  const dx = bx - ax;
+  const dy = by - ay;
+  const segLenSq = dx * dx + dy * dy;
+  const segLenKm = Math.sqrt(segLenSq);
+
+  if (segLenSq < 0.000001) {
+    return {
+      distKm: Math.hypot(px - ax, py - ay),
+      t: 0,
+      unclampedT: 0,
+      projLat: aLat,
+      projLon: aLon,
+      segLenKm: 0
+    };
+  }
+
+  // t = voortgang over het baanvak (0.0 = Station A, 1.0 = Station B)
+  const t = ((px - ax) * dx + (py - ay) * dy) / segLenSq;
+  const clampedT = Math.max(0, Math.min(1, t));
+  const projX = ax + clampedT * dx;
+  const projY = ay + clampedT * dy;
+  const distKm = Math.hypot(px - projX, py - projY);
+
+  return {
+    distKm,
+    t: clampedT,
+    unclampedT: t,
+    projLat: projY / ky,
+    projLon: projX / kx,
+    segLenKm
+  };
+}
+
 function matchTrainToCorridor(train, corridor) {
   if (!corridor) return true;
 
@@ -1352,28 +1398,55 @@ function matchTrainToCorridor(train, corridor) {
     }
   }
 
-  // 2. Fysieke baanvak projectie met strakke tolerantie (max 1.2 km afwijking van de spooras)
-  // zodat treinen op kruisende lijnen op 2 km afstand (zoals Apeldoorn Centraal) nooit meegenomen worden
+  // 2. Fysieke baanvak projectie via loodrechte spooras met ruime bochttolerantie (2.8 km)
+  // Dit voorkomt dat treinen in bogen tussen stations plotseling verdwijnen of verspringen!
+  let bestMatch = null;
+  let bestDist = Infinity;
+
   for (let i = 0; i < corridor.stations.length - 1; i++) {
     const s1 = corridor.stations[i];
     const s2 = corridor.stations[i + 1];
 
-    const d1 = distanceKm(train.lat, train.lon, s1.lat, s1.lon);
-    const d2 = distanceKm(train.lat, train.lon, s2.lat, s2.lon);
-    const segLen = distanceKm(s1.lat, s1.lon, s2.lat, s2.lon);
+    const proj = projectPointToSegmentKm(train.lat, train.lon, s1.lat, s1.lon, s2.lat, s2.lon);
 
-    if (segLen > 0 && d1 + d2 <= segLen + 1.2 && d1 <= segLen + 0.8 && d2 <= segLen + 0.8) {
-      return { segmentIndex: i, fromStation: s1, toStation: s2, distFromS1: d1 };
+    if (proj.unclampedT >= -0.08 && proj.unclampedT <= 1.08 && proj.distKm <= 2.8) {
+      if (proj.distKm < bestDist) {
+        bestDist = proj.distKm;
+        bestMatch = {
+          segmentIndex: i,
+          fromStation: s1,
+          toStation: s2,
+          segmentProgress: proj.t,
+          distFromS1: proj.t * proj.segLenKm,
+          perpDistKm: proj.distKm,
+          projLat: proj.projLat,
+          projLon: proj.projLon
+        };
+      }
     }
   }
 
-  // 3. Check of de trein stilstaat op een station van deze corridor (< 0.85 km van het perron)
-  // Nooit meer 2.5 km zodat Apeldoorn Centraal niet per abuis matcht met Apeldoorn De Maten!
+  if (bestMatch) {
+    return bestMatch;
+  }
+
+  // 3. Check of de trein stilstaat op een station van deze corridor (< 1.2 km van het perron)
   for (let i = 0; i < corridor.stations.length; i++) {
     const s = corridor.stations[i];
-    if (distanceKm(train.lat, train.lon, s.lat, s.lon) <= 0.85) {
+    const d = distanceKm(train.lat, train.lon, s.lat, s.lon);
+    if (d <= 1.2) {
       const segIdx = Math.min(i, Math.max(0, corridor.stations.length - 2));
-      return { segmentIndex: segIdx, fromStation: s, toStation: s, distFromS1: 0 };
+      const sNext = corridor.stations[segIdx + 1] || s;
+      return {
+        segmentIndex: segIdx,
+        fromStation: s,
+        toStation: sNext,
+        segmentProgress: i === corridor.stations.length - 1 ? 1.0 : 0.0,
+        distFromS1: 0,
+        perpDistKm: d,
+        projLat: s.lat,
+        projLon: s.lon
+      };
     }
   }
 
@@ -1381,7 +1454,14 @@ function matchTrainToCorridor(train, corridor) {
   if (!corridor.isCustomRoute && corridor.seriesPattern && corridor.seriesPattern.test(train.trainNum)) {
     const isNearStation = corridor.stations.some(s => distanceKm(train.lat, train.lon, s.lat, s.lon) <= 10);
     if (isNearStation) {
-      return { segmentIndex: findNearestSegment(train, corridor) };
+      const segIdx = findNearestSegment(train, corridor);
+      return {
+        segmentIndex: segIdx,
+        fromStation: corridor.stations[segIdx],
+        toStation: corridor.stations[segIdx + 1] || corridor.stations[segIdx],
+        segmentProgress: 0.5,
+        distFromS1: 0
+      };
     }
   }
 
@@ -1525,6 +1605,11 @@ function updateLineOverview() {
     if (match) {
       const segIdx = typeof match === 'object' ? match.segmentIndex : findNearestSegment(t, corridor);
       t.segmentIndex = segIdx;
+      if (typeof match === 'object') {
+        t.segmentProgress = match.segmentProgress;
+        t.fromStation = match.fromStation;
+        t.toStation = match.toStation;
+      }
       matchedTrains.push(t);
 
       if (!segmentTrainsMap.has(segIdx)) segmentTrainsMap.set(segIdx, []);
@@ -1538,12 +1623,14 @@ function updateLineOverview() {
   let html = '';
   corridor.stations.forEach((st, idx) => {
     const isTerminal = st.terminal || idx === 0 || idx === corridor.stations.length - 1;
+    const trainsOnSegment = idx < corridor.stations.length - 1 ? (segmentTrainsMap.get(idx) || []) : [];
+    const hasMovingTrain = trainsOnSegment.some(t => t.speed > 5);
 
     html += `
       <div class="station-node ${isTerminal ? 'terminal' : ''}" onclick="window.selectStation('${st.code}')" role="button" tabindex="0" title="Tik om alle treinen op ${st.name} te zien">
         <div class="station-track-col">
           <div class="station-bullet"></div>
-          ${idx < corridor.stations.length - 1 ? '<div class="track-line"></div>' : ''}
+          ${idx < corridor.stations.length - 1 ? `<div class="track-line ${hasMovingTrain ? 'has-active-traffic' : ''}"></div>` : ''}
         </div>
         <div class="station-details">
           <div class="station-name-row">
@@ -1556,7 +1643,7 @@ function updateLineOverview() {
 
     // Toon de treinen die tussen dit station en het volgende station rijden
     if (idx < corridor.stations.length - 1) {
-      const trainsOnSegment = segmentTrainsMap.get(idx) || [];
+      const nextSt = corridor.stations[idx + 1];
       if (trainsOnSegment.length > 0) {
         html += `<div class="trains-between-segment">`;
         trainsOnSegment.forEach(t => {
@@ -1565,19 +1652,37 @@ function updateLineOverview() {
           const puncClass = t.statusType === 'ontime' ? 'on-time' : t.statusType === 'delayed' ? 'delayed' : 'halted';
           const puncText = t.statusType === 'ontime' ? 'Op tijd' :
                            t.statusType === 'delayed' ? `+${t.delayMin || 2}m Vertraagd` : '🚨 Pech / Gestrand';
+          const isDriving = t.speed > 5;
+          const progressPct = Math.max(5, Math.min(95, Math.round((t.segmentProgress !== undefined ? t.segmentProgress : 0.5) * 100)));
 
           html += `
-            <div class="train-corridor-card ${puncClass}" onclick="window.selectTrain('${t.id}')">
-              <div class="t-info">
-                <div class="t-header-row">
-                  <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
-                  <span class="t-number">Trein ${t.trainNum}</span>
+            <div class="train-corridor-card ${puncClass} ${isDriving ? 'is-driving-card' : ''}" onclick="window.selectTrain('${t.id}')">
+              <div class="t-top-row">
+                <div class="t-info">
+                  <div class="t-header-row">
+                    <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
+                    <span class="t-number">Trein ${t.trainNum}</span>
+                  </div>
+                  <div class="t-mat">${t.matnummer || op.name}</div>
                 </div>
-                <div class="t-mat">${t.matnummer || op.name}</div>
+                <div class="t-status-badges">
+                  <span class="t-speed-badge ${spdInfo.cssClass}">${spdInfo.icon} ${spdInfo.label}</span>
+                  <span class="t-punc-badge ${puncClass}">${puncText}</span>
+                </div>
               </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="t-speed-badge ${spdInfo.cssClass}">${spdInfo.icon} ${spdInfo.label}</span>
-                <span class="t-punc-badge ${puncClass}">${puncText}</span>
+              <div class="t-track-progress-row">
+                <span class="ttp-st-label from" title="${st.name}">${st.name}</span>
+                <div class="ttp-bar-container">
+                  <div class="ttp-bar-rail ${isDriving ? 'driving-rail' : ''}">
+                    <div class="ttp-bar-fill" style="width: ${progressPct}%; background: ${op.border || 'var(--ns-yellow)'};"></div>
+                    <div class="ttp-train-marker ${isDriving ? 'is-driving' : ''}" style="left: ${progressPct}%;" title="${t.speed} km/u • ${progressPct}% tussen ${st.name} en ${nextSt.name}">
+                      <span class="ttp-icon">🚆</span>
+                      ${isDriving ? '<span class="ttp-pulse-ring"></span>' : ''}
+                    </div>
+                  </div>
+                  <div class="ttp-pct-badge">${isDriving ? `⚡ Rijdt ${t.speed} km/u &bull; ${progressPct}% op baanvak` : `⏸ Halteert (${progressPct}%)`}</div>
+                </div>
+                <span class="ttp-st-label to" title="${nextSt.name}">${nextSt.name}</span>
               </div>
             </div>
           `;
@@ -1726,9 +1831,69 @@ function renderUnifiedStatusView(allTrains, statusFilter) {
 }
 
 // =============================================================
-// Vloeiende Marker Animatie: Laat treinen echt rijden over het spoor
+// Vloeiende 60 FPS Dead-Reckoning Treinrij-Engine
+// Laat treinen continu op ware snelheid over het spoor glijden
+// zonder stil te staan tussen updates of plotseling te verspringen!
 // =============================================================
-function smoothMoveMarker(marker, targetLat, targetLon, durationMs = 2800) {
+function startRailMotionEngine() {
+  if (appState.railMotionRaf) return;
+
+  const degLatPerMeter = 1.0 / 111000.0;
+
+  function stepRailMotion(now) {
+    if (!appState.lastSimTime) appState.lastSimTime = now;
+    const dt = Math.min(0.1, Math.max(0.001, (now - appState.lastSimTime) / 1000));
+    appState.lastSimTime = now;
+
+    for (const [id, state] of appState.trainMotionStates.entries()) {
+      const m = state.marker;
+      if (!m || !appState.trainMarkers.has(id)) continue;
+
+      // Als de trein rijdt (> 5 km/u): beweeg vloeiend voorwaarts op ware snelheid
+      if (state.isDriving && state.speed > 5) {
+        const distMeters = (state.speed / 3.6) * dt;
+        const degLonPerMeter = 1.0 / (111000.0 * Math.cos(state.curLat * Math.PI / 180));
+
+        let uLat = 0, uLon = 0;
+        if (state.dirVector && (state.dirVector.dLat !== 0 || state.dirVector.dLon !== 0)) {
+          const len = Math.hypot(state.dirVector.dLat, state.dirVector.dLon) || 1;
+          uLat = state.dirVector.dLat / len;
+          uLon = state.dirVector.dLon / len;
+        } else if (state.heading !== undefined) {
+          const rad = state.heading * Math.PI / 180;
+          uLat = Math.cos(rad);
+          uLon = Math.sin(rad);
+        }
+
+        state.curLat += distMeters * uLat * degLatPerMeter;
+        state.curLon += distMeters * uLon * degLonPerMeter;
+      }
+
+      // Vloeiende reconciliatie van GPS drift (zonder schokken of verspringen)
+      if (state.driftLat !== 0 || state.driftLon !== 0) {
+        const blend = Math.min(1.0, dt * 2.2);
+        state.curLat += state.driftLat * blend;
+        state.curLon += state.driftLon * blend;
+        state.driftLat *= (1.0 - blend);
+        state.driftLon *= (1.0 - blend);
+        if (Math.hypot(state.driftLat, state.driftLon) < 0.000005) {
+          state.driftLat = 0;
+          state.driftLon = 0;
+        }
+      }
+
+      m.setLatLng([state.curLat, state.curLon]);
+    }
+
+    appState.railMotionRaf = requestAnimationFrame(stepRailMotion);
+  }
+
+  appState.lastSimTime = performance.now();
+  appState.railMotionRaf = requestAnimationFrame(stepRailMotion);
+}
+
+// Hulpanimatie voor de eigen GPS-locatie marker van de gebruiker
+function smoothMoveMarker(marker, targetLat, targetLon, durationMs = 1200) {
   if (!marker) return;
   if (!marker._anim) marker._anim = {};
   if (marker._anim.raf) {
@@ -1743,7 +1908,6 @@ function smoothMoveMarker(marker, targetLat, targetLon, durationMs = 2800) {
   const dLon = targetLon - startLon;
 
   const dist = Math.hypot(dLat, dLon);
-  // Direct plaatsen als verplaatsing te klein (< 2 meter) of te groot (> 15 km) is
   if (dist > 0.15 || dist < 0.00002) {
     marker.setLatLng([targetLat, targetLon]);
     return;
@@ -1753,7 +1917,7 @@ function smoothMoveMarker(marker, targetLat, targetLon, durationMs = 2800) {
   function step(now) {
     const elapsed = now - startTime;
     const progress = Math.min(1, elapsed / durationMs);
-    const ease = progress * (2 - progress); // Vloeiende vertraging
+    const ease = progress * (2 - progress);
     marker.setLatLng([startLat + dLat * ease, startLon + dLon * ease]);
     if (progress < 1) {
       marker._anim.raf = requestAnimationFrame(step);
@@ -1858,8 +2022,6 @@ function renderMapTrains(trainList) {
             if (!collidesLeft) {
               posClass = 'tag-pos-left';
             } else {
-              // Alle 4 posities overlappen (dicht cluster bij perron/emplacement zoals Maastricht)
-              // -> schakel over naar minimal stand om overlap te elimineren
               trainCompactClass = 'minimal';
             }
           }
@@ -1872,10 +2034,45 @@ function renderMapTrains(trainList) {
     }
 
     const isDriving = t.speed > 5;
+    let state = appState.trainMotionStates.get(t.id);
 
     if (appState.trainMarkers.has(t.id)) {
       const m = appState.trainMarkers.get(t.id);
-      smoothMoveMarker(m, t.lat, t.lon, 2800);
+
+      if (state) {
+        // Bereken of telemetry van treinposities.nl nieuwe GPS coördinaten bevat
+        const dMovedKm = distanceKm(state.lastRawLat, state.lastRawLon, t.lat, t.lon);
+        if (dMovedKm > 0.035) { // Meer dan 35 meter verplaatst
+          const dLat = t.lat - state.lastRawLat;
+          const dLon = t.lon - state.lastRawLon;
+          state.dirVector = { dLat, dLon };
+          state.heading = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
+          state.lastRawLat = t.lat;
+          state.lastRawLon = t.lon;
+
+          // Drift ten opzichte van onze geëxtrapoleerde positie
+          const curLatLng = m.getLatLng();
+          const driftLat = t.lat - curLatLng.lat;
+          const driftLon = t.lon - curLatLng.lng;
+          const driftDist = Math.hypot(driftLat, driftLon);
+          if (driftDist > 0.12) {
+            // Te grote sprong (> 12 km), snap direct
+            state.curLat = t.lat;
+            state.curLon = t.lon;
+            state.driftLat = 0;
+            state.driftLon = 0;
+            m.setLatLng([t.lat, t.lon]);
+          } else {
+            // Vloeiende reconciliatie zonder schokken of verspringen
+            state.driftLat = driftLat;
+            state.driftLon = driftLon;
+          }
+        }
+        state.speed = t.speed;
+        state.isDriving = isDriving;
+        state.operator = op;
+      }
+
       const el = m.getElement();
       if (el) {
         const pin = el.querySelector('.clean-train-pin');
@@ -1917,6 +2114,29 @@ function renderMapTrains(trainList) {
       const marker = L.marker([t.lat, t.lon], { icon }).addTo(map);
       marker.on('click', () => window.selectTrain(t.id));
       appState.trainMarkers.set(t.id, marker);
+
+      let initDir = { dLat: 0, dLon: 0 };
+      let initHeading = 0;
+      if (t.fromStation && t.toStation && t.fromStation.code !== t.toStation.code) {
+        const dLat = t.toStation.lat - t.fromStation.lat;
+        const dLon = t.toStation.lon - t.fromStation.lon;
+        initDir = { dLat, dLon };
+        initHeading = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
+      }
+
+      appState.trainMotionStates.set(t.id, {
+        marker,
+        curLat: t.lat,
+        curLon: t.lon,
+        lastRawLat: t.lat,
+        lastRawLon: t.lon,
+        speed: t.speed,
+        isDriving,
+        dirVector: initDir,
+        heading: initHeading,
+        driftLat: 0,
+        driftLon: 0
+      });
     }
   });
 
@@ -1925,6 +2145,7 @@ function renderMapTrains(trainList) {
     if (!currentIds.has(id)) {
       m.remove();
       appState.trainMarkers.delete(id);
+      appState.trainMotionStates.delete(id);
     }
   }
 }
@@ -3740,7 +3961,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = 'c321ff7';
+const APP_BUILD_COMMIT = '6c06dd6';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -3877,6 +4098,7 @@ async function initVersionManagement() {
 // =============================================================
 async function init() {
   initMap();
+  startRailMotionEngine();
   setupNavigation();
   window.setAppViewMode('list');
   initCommunicationEngine();
