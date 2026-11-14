@@ -883,6 +883,100 @@ body {
   flex: 1 1 100% !important;
 }
 
+/* -------------------------------------------------------------
+   Directe "Ik zit in de trein" Banner bovenaan Lijnoverzicht
+-------------------------------------------------------------- */
+.in-train-quick-banner {
+  background: linear-gradient(135deg, rgba(0, 48, 130, 0.55) 0%, rgba(3, 105, 161, 0.4) 100%);
+  border: 1.5px solid var(--ns-yellow);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(255, 201, 23, 0.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 8px 10px 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.in-train-quick-banner.is-active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(0, 48, 130, 0.6) 100%);
+  border-color: #34d399;
+}
+
+.in-train-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.in-train-banner-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.in-train-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.in-train-banner-text strong {
+  font-size: 0.82rem;
+  color: #ffffff;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.in-train-banner-text span {
+  font-size: 0.7rem;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.in-train-banner-btn {
+  background: var(--ns-yellow);
+  border: 1px solid var(--ns-yellow);
+  color: var(--ns-blue);
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(255, 201, 23, 0.35);
+  transition: all 0.15s ease;
+}
+
+.in-train-banner-btn:hover,
+.in-train-banner-btn:active {
+  background: #ffffff;
+  color: var(--ns-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.4);
+}
+
+.btn-beacon-live {
+  width: 7px;
+  height: 7px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulseDot 1.4s infinite;
+}
+
 .corridor-header {
   padding: 10px 14px;
   background: rgba(0, 0, 0, 0.25);
@@ -2795,6 +2889,32 @@ body {
 .btn-follow.active {
   background: #10b981;
   box-shadow: 0 0 16px rgba(16, 185, 129, 0.5);
+}
+
+.auto-detect-row {
+  padding: 10px 16px 14px;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.auto-detect-checkbox-label {
+  font-size: 0.74rem;
+  color: var(--text-sub);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-detect-checkbox-label input {
+  accent-color: var(--ns-yellow);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 @media (max-width: 600px) {

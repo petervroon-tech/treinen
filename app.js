@@ -2821,36 +2821,44 @@ function initCommunicationEngine() {
 // 10. Live GPS: "In Welke Trein Zit Ik?" & Real-Time Cockpit HUD
 // =============================================================
 function findMyTrain() {
-  if (appState.isTrackingUser) {
-    // Tracking is al actief: open het volledige dashboard modal
-    const modal = document.getElementById('myTrainModal');
-    if (modal) modal.style.display = 'flex';
-  } else {
-    startLiveTrainTracking();
-    playAuthenticNSChime();
-  }
+  detectAndShowMyTrain(true);
 }
 
-function startLiveTrainTracking() {
+function detectAndShowMyTrain(openModal = true) {
+  const modal = document.getElementById('myTrainModal');
+  if (appState.isTrackingUser && appState.myTrain) {
+    if (openModal && modal) modal.style.display = 'flex';
+    return;
+  }
+
+  const bannerTitle = document.getElementById('inTrainBannerTitle');
+  const bannerSub = document.getElementById('inTrainBannerSub');
+  const bannerBtnText = document.getElementById('inTrainBannerBtnText');
+
+  if (bannerTitle) bannerTitle.textContent = '📡 GPS Peiling Actief...';
+  if (bannerSub) bannerSub.textContent = 'Bezig met zoeken naar actieve trein op uw baanvak...';
+  if (bannerBtnText) bannerBtnText.textContent = '⏳ Laden...';
+
+  startLiveTrainTracking(openModal);
+  playAuthenticNSChime();
+}
+
+function startLiveTrainTracking(openModalOnFirstFix = false) {
   if (!navigator.geolocation) {
     alert('GPS-locatie is niet beschikbaar in uw browser. Zorg dat locatietoegang is ingeschakeld.');
     return;
   }
 
+  appState.openModalOnFirstFix = openModalOnFirstFix;
+
   const btnHeader = document.getElementById('btnFindMyTrain');
   const btnPlanner = document.getElementById('btnImInTrainPlanner');
-  const hud = document.getElementById('liveTrainHUD');
 
   if (btnHeader) {
     btnHeader.classList.add('tracking-active');
     btnHeader.innerHTML = '<span class="pulse-dot-beacon" style="background:#10b981;"></span> <span class="btn-icon">📡</span> <span class="btn-label-text">Zoeken...</span>';
   }
   if (btnPlanner) btnPlanner.innerHTML = '<span>📡 GPS Verbinden...</span>';
-
-  // Schakel direct over naar de satellietkaart zodat de reiziger direct ziet waar hij rijdt
-  if (window.setAppViewMode) {
-    window.setAppViewMode('map');
-  }
 
   appState.isTrackingUser = true;
   appState.isFollowingMyTrain = true;
@@ -2883,10 +2891,15 @@ function stopLiveTrainTracking() {
   appState.isTrackingUser = false;
   appState.isFollowingMyTrain = false;
   appState.lastGpsFix = null;
+  appState.openModalOnFirstFix = false;
 
   const btnHeader = document.getElementById('btnFindMyTrain');
   const btnPlanner = document.getElementById('btnImInTrainPlanner');
   const hud = document.getElementById('liveTrainHUD');
+  const quickBanner = document.getElementById('inTrainQuickBanner');
+  const bannerTitle = document.getElementById('inTrainBannerTitle');
+  const bannerSub = document.getElementById('inTrainBannerSub');
+  const bannerBtnText = document.getElementById('inTrainBannerBtnText');
 
   if (btnHeader) {
     btnHeader.classList.remove('tracking-active');
@@ -2894,6 +2907,11 @@ function stopLiveTrainTracking() {
   }
   if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!';
   if (hud) hud.style.display = 'none';
+
+  if (quickBanner) quickBanner.classList.remove('is-active');
+  if (bannerTitle) bannerTitle.textContent = 'Zit u in de trein?';
+  if (bannerSub) bannerSub.textContent = 'Tik voor snelheid, volgend station & vertraging';
+  if (bannerBtnText) bannerBtnText.textContent = '⚡ Toon Mijn Trein';
 }
 
 function onLiveLocationFix(pos) {
@@ -2995,6 +3013,17 @@ function onLiveLocationFix(pos) {
   const op = bestTrain.operator;
   const spdInfo = getSpeedBadgeInfo(effectiveSpeed);
 
+  // Update de snelle banner bovenaan het lijnoverzicht
+  const quickBanner = document.getElementById('inTrainQuickBanner');
+  const bannerTitle = document.getElementById('inTrainBannerTitle');
+  const bannerSub = document.getElementById('inTrainBannerSub');
+  const bannerBtnText = document.getElementById('inTrainBannerBtnText');
+
+  if (quickBanner) quickBanner.classList.add('is-active');
+  if (bannerTitle) bannerTitle.innerHTML = `🚆 U zit in ${op.name} Trein #${bestTrain.trainNum}`;
+  if (bannerSub) bannerSub.innerHTML = `⚡ <strong>${effectiveSpeed} km/u</strong> &bull; Volgend: ${nextStation.name}${etaMin ? ` (~${etaMin} min)` : ''}`;
+  if (bannerBtnText) bannerBtnText.textContent = '📋 Alle Gegevens';
+
   // Update de zwevende Live HUD op de kaart
   if (hud) {
     hud.style.display = 'flex';
@@ -3021,7 +3050,7 @@ function onLiveLocationFix(pos) {
     }
   }
 
-  // Update ook modal-elementen op de achtergrond
+  // Update ook modal-elementen
   const modalSpeedEl = document.getElementById('myTrainSpeed');
   if (modalSpeedEl) modalSpeedEl.textContent = effectiveSpeed;
   const modalStatusEl = document.getElementById('myTrainSpeedStatus');
@@ -3038,10 +3067,45 @@ function onLiveLocationFix(pos) {
   }
   const modalTitle = document.getElementById('myTrainTitle');
   if (modalTitle) modalTitle.textContent = `U zit in ${op.name} Trein #${bestTrain.trainNum}`;
+  const modalOpBadge = document.getElementById('myTrainOpBadge');
+  if (modalOpBadge) {
+    modalOpBadge.className = `op-badge ${op.badgeClass}`;
+    modalOpBadge.textContent = `[${op.code}]`;
+  }
+  const modalOperator = document.getElementById('myTrainOperator');
+  if (modalOperator) modalOperator.textContent = `${op.name} (${bestTrain.matnummer || 'Standaard materieel'})`;
+  const modalMatnr = document.getElementById('myTrainMatnr');
+  if (modalMatnr) modalMatnr.textContent = `Materieelcode: ${bestTrain.matnummer || 'NVT'} • Trein #${bestTrain.trainNum}`;
+
+  const puncText = bestTrain.statusType === 'ontime' ? '🟢 Volgens schema op tijd' :
+                   bestTrain.statusType === 'delayed' ? `🟡 +${bestTrain.delayMin || 2}m Vertraagd` : '🔴 Pech / Storing';
+  const modalPunc = document.getElementById('myTrainPunctuality');
+  if (modalPunc) modalPunc.textContent = puncText;
+  const modalDelay = document.getElementById('myTrainDelay');
+  if (modalDelay) modalDelay.textContent = `Verwachte vertraging: ${bestTrain.delayMin || 0} minuten`;
+
+  const modalNextStation = document.getElementById('myTrainNextStation');
+  if (modalNextStation) modalNextStation.textContent = `${nextStation.name} (${nextStation.code}) - Spoor ${nextStation.sporen || 1}`;
+  const modalNextEta = document.getElementById('myTrainNextEta');
+  if (modalNextEta) modalNextEta.textContent = `Afstand: ~${distToNextKm.toFixed(1)} km ${etaMin ? `(ca. ${etaMin} min bij ${effectiveSpeed} km/u)` : ''}`;
+
+  const modalPrevStation = document.getElementById('myTrainPrevStation');
+  if (modalPrevStation) modalPrevStation.textContent = `${closestStation.name} (${closestStation.code})`;
+  const distFromPrev = distanceKm(bestTrain.lat, bestTrain.lon, closestStation.lat, closestStation.lon);
+  const modalPrevDist = document.getElementById('myTrainPrevDist');
+  if (modalPrevDist) modalPrevDist.textContent = `Afstand: ~${distFromPrev.toFixed(1)} km geleden`;
+
   const modalRoute = document.getElementById('myTrainRoute');
   if (modalRoute) modalRoute.textContent = `${op.name} • Treinserie ${bestTrain.trainNum}`;
   const modalSegment = document.getElementById('myTrainSegment');
   if (modalSegment) modalSegment.textContent = `Baanvak nabij ${closestStation.name} (richting ${nextStation.name})`;
+
+  // Als gevraagd om direct de modal te openen bij eerste fix:
+  if (appState.openModalOnFirstFix) {
+    const modal = document.getElementById('myTrainModal');
+    if (modal) modal.style.display = 'flex';
+    appState.openModalOnFirstFix = false;
+  }
 
   // Als meereizen actief is, pan rustig mee met de trein
   if (appState.isFollowingMyTrain && appState.map) {
@@ -3465,6 +3529,9 @@ function setupNavigation() {
   document.getElementById('btnCenterMyTrain')?.addEventListener('click', () => {
     const modal = document.getElementById('myTrainModal');
     if (modal) modal.style.display = 'none';
+    if (window.setAppViewMode) {
+      window.setAppViewMode('map');
+    }
     if (appState.myTrain) {
       appState.map.flyTo([appState.myTrain.lat, appState.myTrain.lon], 16, { duration: 1.0 });
     }
@@ -3509,6 +3576,11 @@ function setupNavigation() {
 
   document.getElementById('btnHudClose')?.addEventListener('click', () => {
     stopLiveTrainTracking();
+  });
+
+  // 1-Tap "Zit u in de trein?" Banner bovenaan
+  document.getElementById('btnBannerDetectTrain')?.addEventListener('click', () => {
+    detectAndShowMyTrain(true);
   });
 
   // NS Gong knop
@@ -3668,7 +3740,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '49e5a69';
+const APP_BUILD_COMMIT = '86f79d8';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -3838,6 +3910,23 @@ async function init() {
   }
 
   poll();
+
+  // Automatische detectie bij opening als de reiziger dat wil
+  const chkAuto = document.getElementById('chkAutoDetectOnOpen');
+  const autoDetect = localStorage.getItem('treinen_auto_detect_in_train') === 'true';
+  if (chkAuto) {
+    chkAuto.checked = autoDetect;
+    chkAuto.addEventListener('change', () => {
+      localStorage.setItem('treinen_auto_detect_in_train', chkAuto.checked ? 'true' : 'false');
+    });
+  }
+
+  // Als automatische detectie bij openen is ingeschakeld: direct de trein detecteren en alle gegevens tonen!
+  if (autoDetect) {
+    setTimeout(() => {
+      detectAndShowMyTrain(true);
+    }, 1000);
+  }
 }
 
 window.addEventListener('DOMContentLoaded', init);
