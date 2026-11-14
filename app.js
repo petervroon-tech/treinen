@@ -273,6 +273,24 @@ export const CORRIDORS = {
     ]
   },
 
+  'arriva-achterhoek': {
+    id: 'arriva-achterhoek',
+    category: 'regional',
+    name: 'Apeldoorn ➔ Apeldoorn De Maten ➔ Klarenbeek ➔ Voorst-Empe ➔ Zutphen',
+    shortName: 'Apeldoorn ➔ Zutphen (Arriva)',
+    badge: 'Arriva',
+    operator: 'Arriva Personenvervoer',
+    primaryOpKey: 'arriva',
+    seriesPattern: /^(178|304|305|308|309)\d{2}$/,
+    stations: [
+      { code: 'APD',  name: 'Apeldoorn',          lat: 52.20942, lon: 5.96748,  terminal: true,  sporen: '4' },
+      { code: 'APDM', name: 'Apeldoorn De Maten', lat: 52.20528, lon: 6.00056,  terminal: false, sporen: '1' },
+      { code: 'KBK',  name: 'Klarenbeek',         lat: 52.17806, lon: 6.08361,  terminal: false, sporen: '1' },
+      { code: 'VEM',  name: 'Voorst-Empe',        lat: 52.15750, lon: 6.14361,  terminal: false, sporen: '1' },
+      { code: 'ZP',   name: 'Zutphen',            lat: 52.14483, lon: 6.19414,  terminal: true,  sporen: '1-4' }
+    ]
+  },
+
   'arriva-vechtdal': {
     id: 'arriva-vechtdal',
     category: 'regional',
@@ -649,17 +667,19 @@ export function detectOperator(train) {
     return OPERATORS.icberlijn;
   }
 
-  // 4. Arriva (Noord, Vechtdal, Maaslijn, Limburg)
+  // 4. Arriva (Gelderland / Achterhoek, Noord, Vechtdal, Maaslijn, Limburg)
   if (rawMat.includes('arriva') || rawStr.includes('arriva') || rawCol.includes('arriva') ||
-      rawMat.includes('spurt') || rawMat.includes('wink') ||
-      (num >= 18900 && num <= 18999) || (num >= 37000 && num <= 38999) || (num >= 32200 && num <= 32399)) {
+      rawMat.includes('spurt') || rawMat.includes('wink') || rawMat.includes('gtw') ||
+      (num >= 17800 && num <= 17899) || (num >= 30400 && num <= 30599) || (num >= 30800 && num <= 30999) ||
+      (num >= 13800 && num <= 13899) || (num >= 3800 && num <= 3899) || (num >= 31100 && num <= 31199) ||
+      (num >= 18900 && num <= 18999) || (num >= 37000 && num <= 38999) || (num >= 32000 && num <= 32999)) {
     return OPERATORS.arriva;
   }
 
   // 5. Keolis / Blauwnet
   if (rawMat.includes('keolis') || rawMat.includes('blauwnet') || rawCol.includes('blauwnet') ||
       rawStr.includes('blauwnet') || rawMat.includes('syntus') ||
-      (num >= 31200 && num <= 31299) || (num >= 7900 && num <= 7999)) {
+      (num >= 31200 && num <= 31299) || (num >= 7900 && num <= 7999) || (num >= 8500 && num <= 8599)) {
     return OPERATORS.blauwnet;
   }
 
@@ -728,6 +748,241 @@ export function getSpeedBadgeInfo(speed) {
       text: 'Stilstaand / halterend'
     };
   }
+}
+
+// Bepaal de authentieke reizigersinformatie, treintype, bestemming en via-stations op basis van het landelijke treinnummer
+export function getTrainServiceDetails(train, contextStation) {
+  const num = parseInt(train.trainNum, 10) || 0;
+  const op = train.operator || detectOperator(train);
+  const stCode = contextStation ? contextStation.code.toUpperCase() : '';
+
+  let serviceType = 'Trein';
+  let destination = 'Eindbestemming';
+  let origin = 'Vertrekstation';
+  let via = '';
+  let platform = '';
+
+  // 1. Arriva Achterhoek: Apeldoorn ➔ Zutphen ➔ Winterswijk (Serie 17800 / 30400 / 30500 / 30800 / 30900)
+  if ((num >= 17800 && num <= 17899) || (num >= 30400 && num <= 30599)) {
+    serviceType = (num >= 17850 && num <= 17899) ? 'Sneltrein' : 'Stoptrein';
+    if (num % 2 === 0) {
+      origin = 'Apeldoorn';
+      destination = 'Zutphen';
+      via = 'via Apeldoorn De Maten, Klarenbeek, Voorst-Empe';
+    } else {
+      origin = 'Zutphen';
+      destination = 'Apeldoorn';
+      via = 'via Voorst-Empe, Klarenbeek, Apeldoorn De Maten';
+    }
+    platform = (stCode === 'APD') ? '4' : (stCode === 'ZP' ? '1b' : '1');
+  } else if (num >= 30800 && num <= 30999) {
+    serviceType = 'Stoptrein';
+    if (num % 2 === 0) {
+      origin = 'Zutphen';
+      destination = 'Winterswijk';
+      via = 'via Vorden, Ruurlo, Lichtenvoorde-Groenlo';
+    } else {
+      origin = 'Winterswijk';
+      destination = 'Zutphen';
+      via = 'via Lichtenvoorde-Groenlo, Ruurlo, Vorden';
+    }
+    platform = (stCode === 'ZP') ? '3' : '1';
+  } else if (num >= 31100 && num <= 31199) {
+    serviceType = 'Stoptrein';
+    destination = num % 2 === 0 ? 'Arnhem Centraal' : 'Tiel';
+    via = 'via Elst, Zetten-Andelst';
+    platform = '1';
+  }
+  // 2. NS Apeldoorn Hoofdlijn: Intercity 1600 / 1700 / 1400 / 1500 & Sprinter 7000
+  else if ((num >= 1600 && num <= 1799) || (num >= 11600 && num <= 11799)) {
+    serviceType = 'Intercity';
+    if (num % 2 === 0) {
+      origin = 'Den Haag C / Schiphol';
+      destination = 'Enschede';
+      via = 'via Deventer, Almelo, Hengelo';
+      platform = (stCode === 'APD') ? '3' : '1';
+    } else {
+      origin = 'Enschede';
+      destination = 'Den Haag Centraal';
+      via = 'via Amersfoort C, Utrecht C, Gouda';
+      platform = (stCode === 'APD') ? '1' : '3';
+    }
+  } else if (num >= 1400 && num <= 1499) {
+    serviceType = 'Intercity';
+    if (num % 2 === 0) {
+      origin = 'Rotterdam Centraal';
+      destination = 'Deventer';
+      via = 'via Utrecht C, Amersfoort C, Apeldoorn';
+      platform = (stCode === 'APD') ? '3' : '1';
+    } else {
+      origin = 'Deventer';
+      destination = 'Rotterdam Centraal';
+      via = 'via Amersfoort C, Utrecht C, Gouda';
+      platform = (stCode === 'APD') ? '1' : '3';
+    }
+  } else if (num >= 1500 && num <= 1599) {
+    serviceType = 'Intercity';
+    if (num % 2 === 0) {
+      origin = 'Amsterdam Centraal';
+      destination = 'Deventer';
+      via = 'via Hilversum, Amersfoort C, Apeldoorn';
+      platform = (stCode === 'APD') ? '3' : '1';
+    } else {
+      origin = 'Deventer';
+      destination = 'Amsterdam Centraal';
+      via = 'via Amersfoort C, Hilversum';
+      platform = (stCode === 'APD') ? '1' : '3';
+    }
+  } else if (num >= 7000 && num <= 7099) {
+    serviceType = 'Sprinter';
+    if (num % 2 === 0) {
+      origin = 'Apeldoorn';
+      destination = 'Enschede';
+      via = 'via Apeldoorn Osseveld, Deventer, Almelo';
+      platform = (stCode === 'APD') ? '3b' : '1';
+    } else {
+      origin = 'Enschede';
+      destination = 'Apeldoorn';
+      via = 'via Almelo, Deventer, Apeldoorn Osseveld';
+      platform = (stCode === 'APD') ? '3b' : '1';
+    }
+  }
+  // 3. Arriva Noord (Leeuwarden - Groningen - Harlingen - Stavoren)
+  else if (num >= 37300 && num <= 37399) {
+    serviceType = 'Sneltrein';
+    destination = num % 2 === 0 ? 'Groningen' : 'Leeuwarden';
+    via = 'via Buitenpost';
+    platform = '1';
+  } else if (num >= 37400 && num <= 37499) {
+    serviceType = 'Stoptrein';
+    destination = num % 2 === 0 ? 'Groningen' : 'Leeuwarden';
+    via = 'via Buitenpost, Zuidhorn';
+    platform = '2';
+  } else if (num >= 37200 && num <= 37299) {
+    serviceType = 'Stoptrein';
+    destination = num % 2 === 0 ? 'Harlingen Haven' : 'Leeuwarden';
+    via = 'via Franeker, Dronryp';
+    platform = '1';
+  } else if (num >= 37100 && num <= 37199) {
+    serviceType = 'Stoptrein';
+    destination = num % 2 === 0 ? 'Stavoren' : 'Leeuwarden';
+    via = 'via Sneek, Workum';
+    platform = '1';
+  }
+  // 4. Arriva Vechtdallijnen (Zwolle - Emmen)
+  else if ((num >= 13800 && num <= 13899) || (num >= 3800 && num <= 3899)) {
+    serviceType = num >= 13800 ? 'Sneltrein' : 'Stoptrein';
+    destination = num % 2 === 0 ? 'Emmen' : 'Zwolle';
+    via = 'via Dalfsen, Ommen, Hardenberg';
+    platform = '1';
+  }
+  // 5. Blauwnet / Keolis (Zwolle - Enschede / Kampen)
+  else if (num >= 31200 && num <= 31299) {
+    serviceType = 'Stoptrein';
+    destination = num % 2 === 0 ? 'Enschede' : 'Zwolle';
+    via = 'via Raalte, Nijverdal, Almelo';
+    platform = '1';
+  } else if (num >= 8500 && num <= 8599) {
+    serviceType = 'Stoptrein';
+    destination = num % 2 === 0 ? 'Kampen' : 'Zwolle';
+    via = 'via Kampen Zuid';
+    platform = '12';
+  }
+  // 6. Arriva Maaslijn (Nijmegen - Roermond)
+  else if (num >= 32200 && num <= 32399) {
+    serviceType = 'Stoptrein RS11';
+    destination = num % 2 === 0 ? 'Roermond' : 'Nijmegen';
+    via = 'via Boxmeer, Venray, Venlo';
+    platform = '1';
+  }
+  // 7. Qbuzz MerwedeLingelijn
+  else if (num >= 36700 && num <= 36799) {
+    serviceType = 'Stoptrein R-net';
+    destination = num % 2 === 0 ? 'Geldermalsen' : 'Dordrecht';
+    via = 'via Sliedrecht, Gorinchem';
+    platform = '1';
+  }
+  // 8. Breng (Arnhem - Doetinchem)
+  else if (num >= 30700 && num <= 30799) {
+    serviceType = 'Stoptrein Breng';
+    destination = num % 2 === 0 ? 'Doetinchem' : 'Arnhem Centraal';
+    via = 'via Zevenaar, Didam';
+    platform = '1';
+  }
+  // 9. Hoofdrailnet Intercity's
+  else if (num >= 500 && num <= 599) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Groningen' : 'Rotterdam Centraal';
+    via = 'via Utrecht C, Zwolle, Assen';
+  } else if (num >= 600 && num <= 699) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Leeuwarden' : 'Rotterdam Centraal';
+    via = 'via Utrecht C, Zwolle';
+  } else if (num >= 700 && num <= 799) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Groningen' : 'Den Haag Centraal';
+    via = 'via Schiphol, Zwolle, Assen';
+  } else if (num >= 800 && num <= 899) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Schagen / Alkmaar' : 'Maastricht';
+    via = 'via Utrecht C, Eindhoven C';
+  } else if (num >= 2100 && num <= 2299) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Vlissingen' : 'Amsterdam Centraal';
+    via = 'via Leiden C, Den Haag HS, Rotterdam C';
+  } else if (num >= 3000 && num <= 3099) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Nijmegen' : 'Den Helder';
+    via = 'via Alkmaar, Amsterdam C, Utrecht C, Arnhem C';
+  } else if (num >= 3500 && num <= 3599) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Venlo' : 'Schiphol Airport';
+    via = 'via Utrecht C, Eindhoven C';
+  } else if (num >= 3600 && num <= 3699) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Roosendaal' : 'Zwolle';
+    via = 'via Deventer, Zutphen, Arnhem C, Breda';
+  } else if (num >= 3900 && num <= 3999) {
+    serviceType = 'Intercity';
+    destination = num % 2 === 0 ? 'Heerlen' : 'Enkhuizen';
+    via = 'via Amsterdam C, Utrecht C, Eindhoven C';
+  }
+  // 10. Internationale Treinen
+  else if ((num >= 9100 && num <= 9399) || (num >= 9900 && num <= 9999)) {
+    serviceType = 'Eurostar';
+    destination = num % 2 === 0 ? 'Parijs Nord / Londen' : 'Amsterdam Centraal';
+    via = 'via Rotterdam C, Antwerpen, Brussel';
+  } else if (num >= 100 && num <= 129) {
+    serviceType = 'ICE International';
+    destination = num % 2 === 0 ? 'Frankfurt (Main) Hbf' : 'Amsterdam Centraal';
+    via = 'via Utrecht C, Arnhem C, Duisburg';
+  } else if (num >= 140 && num <= 149) {
+    serviceType = 'IC Berlijn';
+    destination = num % 2 === 0 ? 'Berlijn Hbf' : 'Amsterdam Centraal';
+    via = 'via Amersfoort C, Deventer, Bad Bentheim';
+  } else if (num >= 40000 && num <= 69999) {
+    serviceType = 'Goederentrein';
+    destination = 'Goederencorridor';
+    via = 'Betuweroute / Havenspoorlijn';
+  } else {
+    serviceType = (op.category === 'ns') ? 'Reizigerstrein' : 'Regionale Trein';
+    destination = contextStation && contextStation.corridorName ? contextStation.corridorName.split('➔').pop().trim() : 'Eindbestemming';
+    via = 'Vastgesteld dienstregelingtraject';
+  }
+
+  if (!platform) {
+    platform = assignPlatform(contextStation ? contextStation.sporen : '1-4', train.trainNum);
+  }
+
+  return {
+    serviceType,
+    destination,
+    origin,
+    via,
+    operator: op,
+    platform,
+    displayTitle: `${serviceType} naar ${destination}`
+  };
 }
 
 // =============================================================
@@ -1058,6 +1313,7 @@ export function parseTrain(raw) {
   };
 
   train.operator = detectOperator(train);
+  train.service = getTrainServiceDetails(train);
   return train;
 }
 
@@ -1074,7 +1330,27 @@ function distanceKm(lat1, lon1, lat2, lon2) {
 function matchTrainToCorridor(train, corridor) {
   if (!corridor) return true;
 
-  // 1. Controleer of de trein fysiek op een baanvaksegment van de corridor rijdt
+  // 1. Spoorwegmaatschappij filter:
+  // Als een specifiek traject wordt bekeken (bv. Arriva tussen Apeldoorn De Maten en Zutphen),
+  // toon dan uitsluitend treinen van die maatschappij en geen NS treinen van kruisende lijnen!
+  if (corridor.primaryOpKey && corridor.primaryOpKey !== 'all') {
+    const opCode = (train.operator && train.operator.code) ? train.operator.code.toLowerCase() : '';
+    if (corridor.primaryOpKey === 'arriva' && !opCode.includes('arriva')) {
+      return false; // Alleen Arriva treinen op Arriva trajecten
+    }
+    if (corridor.primaryOpKey === 'blauwnet' && !opCode.includes('blauwnet') && !opCode.includes('keolis')) {
+      return false;
+    }
+    if (corridor.primaryOpKey === 'qbuzz' && !opCode.includes('qbuzz')) {
+      return false;
+    }
+    if (corridor.primaryOpKey === 'ns' && (opCode.includes('arriva') || opCode.includes('blauwnet') || opCode.includes('qbuzz'))) {
+      return false;
+    }
+  }
+
+  // 2. Fysieke baanvak projectie met strakke tolerantie (max 1.2 km afwijking van de spooras)
+  // zodat treinen op kruisende lijnen op 2 km afstand (zoals Apeldoorn Centraal) nooit meegenomen worden
   for (let i = 0; i < corridor.stations.length - 1; i++) {
     const s1 = corridor.stations[i];
     const s2 = corridor.stations[i + 1];
@@ -1083,23 +1359,24 @@ function matchTrainToCorridor(train, corridor) {
     const d2 = distanceKm(train.lat, train.lon, s2.lat, s2.lon);
     const segLen = distanceKm(s1.lat, s1.lon, s2.lat, s2.lon);
 
-    if (d1 + d2 <= segLen + 7.5 && d1 <= segLen + 5.0 && d2 <= segLen + 5.0) {
+    if (segLen > 0 && d1 + d2 <= segLen + 1.2 && d1 <= segLen + 0.8 && d2 <= segLen + 0.8) {
       return { segmentIndex: i, fromStation: s1, toStation: s2, distFromS1: d1 };
     }
   }
 
-  // Check ook of de trein dicht bij een van de stations stilstaat (< 2.5 km)
+  // 3. Check of de trein stilstaat op een station van deze corridor (< 0.85 km van het perron)
+  // Nooit meer 2.5 km zodat Apeldoorn Centraal niet per abuis matcht met Apeldoorn De Maten!
   for (let i = 0; i < corridor.stations.length; i++) {
     const s = corridor.stations[i];
-    if (distanceKm(train.lat, train.lon, s.lat, s.lon) <= 2.5) {
+    if (distanceKm(train.lat, train.lon, s.lat, s.lon) <= 0.85) {
       const segIdx = Math.min(i, Math.max(0, corridor.stations.length - 2));
       return { segmentIndex: segIdx, fromStation: s, toStation: s, distFromS1: 0 };
     }
   }
 
-  // 2. Als treinnummer bij de serie hoort (alleen voor vaste corridors, niet voor custom Van-Naar trajecten)
+  // 4. Als treinnummer bij de serie hoort (alleen voor vaste corridors)
   if (!corridor.isCustomRoute && corridor.seriesPattern && corridor.seriesPattern.test(train.trainNum)) {
-    const isNearStation = corridor.stations.some(s => distanceKm(train.lat, train.lon, s.lat, s.lon) <= 18);
+    const isNearStation = corridor.stations.some(s => distanceKm(train.lat, train.lon, s.lat, s.lon) <= 10);
     if (isNearStation) {
       return { segmentIndex: findNearestSegment(train, corridor) };
     }
@@ -1767,7 +2044,7 @@ function getAllStations() {
   return Array.from(map.values());
 }
 
-// Bouw een specifiek deeltraject tussen vertrek- en aankomststation (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)
+// Bouw een specifiek deeltraject tussen vertrek- en aankomststation (bv. Buitenpost ➔ Leeuwarden of Apeldoorn De Maten ➔ Zutphen)
 function buildCustomRoute(fromCode, toCode) {
   const stA = findStationByCode(fromCode);
   const stB = findStationByCode(toCode);
@@ -1775,12 +2052,14 @@ function buildCustomRoute(fromCode, toCode) {
 
   // 1. Zoek of er een bestaande corridor is waar BEIDE stations op liggen
   let intermediateStations = [];
+  let matchedCorridor = null;
   for (const cKey in CORRIDORS) {
     const c = CORRIDORS[cKey];
     if (c.isCustomRoute) continue;
     const idxA = c.stations.findIndex(s => s.code.toLowerCase() === fromCode.toLowerCase());
     const idxB = c.stations.findIndex(s => s.code.toLowerCase() === toCode.toLowerCase());
     if (idxA !== -1 && idxB !== -1) {
+      matchedCorridor = c;
       if (idxA < idxB) {
         intermediateStations = c.stations.slice(idxA, idxB + 1);
       } else {
@@ -1836,14 +2115,45 @@ function buildCustomRoute(fromCode, toCode) {
     terminal: idx === 0 || idx === intermediateStations.length - 1
   }));
 
+  // Bepaal de spoorwegmaatschappij van het traject
+  let opKey = 'ns';
+  let opName = 'NS Reizigers';
+  let opBadge = 'NS';
+
+  if (matchedCorridor) {
+    opKey = matchedCorridor.primaryOpKey || 'ns';
+    opName = matchedCorridor.operator || 'NS Reizigers';
+    opBadge = matchedCorridor.badge || 'TRAJECT';
+  } else {
+    const codes = new Set(cleanedStations.map(s => s.code.toUpperCase()));
+    const isArriva = ['APDM', 'KBK', 'VEM', 'VD', 'RL', 'LTV', 'WW', 'WTN', 'BP', 'ZH', 'DL', 'OMN', 'HDB', 'CO', 'EMN', 'MTH', 'BOX', 'VRN', 'CU', 'BHE', 'TBE', 'SWK', 'MRN', 'RV'].some(c => codes.has(c));
+    const isBlauwnet = ['KPN', 'KPNZ', 'HA', 'NIJ', 'RA', 'HV', 'ALM', 'WB', 'BKN'].some(c => codes.has(c));
+    const isQbuzz = ['SDT', 'SDTB', 'HLD', 'GCM', 'ARR', 'LR', 'BK', 'GDM'].some(c => codes.has(c));
+
+    if (isArriva) {
+      opKey = 'arriva';
+      opName = 'Arriva Personenvervoer';
+      opBadge = 'Arriva';
+    } else if (isBlauwnet) {
+      opKey = 'blauwnet';
+      opName = 'Keolis / Blauwnet';
+      opBadge = 'Blauwnet';
+    } else if (isQbuzz) {
+      opKey = 'qbuzz';
+      opName = 'Qbuzz (R-net)';
+      opBadge = 'R-net';
+    }
+  }
+
   const customId = `custom-${stA.code.toLowerCase()}-${stB.code.toLowerCase()}`;
   return {
     id: customId,
-    category: 'custom',
+    category: opKey === 'ns' ? 'ns' : 'regional',
     name: `${stA.name} ➔ ${stB.name}`,
     shortName: `${stA.name} ➔ ${stB.name}`,
-    badge: 'TRAJECT',
-    operator: 'Alle Treinen op dit traject',
+    badge: opBadge,
+    operator: opName,
+    primaryOpKey: opKey,
     stations: cleanedStations,
     isCustomRoute: true
   };
@@ -1956,7 +2266,96 @@ function assignPlatform(sporenStr, trainNum) {
   return sporenStr;
 }
 
-// Selecteer een station en open het interactieve perronbord
+// Hulpfunctie om het reizigers-vertrekbord te renderen met eventuele maatschappijfilter
+function renderStationDepartureBoard(station, filterOpCode) {
+  const listEl = document.getElementById('stationBoardList');
+  const countEl = document.getElementById('stModalLiveTrainCount');
+  if (!listEl) return;
+
+  const allTrains = appState.stationModalTrains || [];
+  let displayedTrains = allTrains;
+  if (filterOpCode && filterOpCode !== 'all') {
+    displayedTrains = allTrains.filter(t => t.operator && t.operator.code.toLowerCase() === filterOpCode.toLowerCase());
+  }
+
+  const atStationCount = displayedTrains.filter(t => t.isAtStation).length;
+  const nearingCount = displayedTrains.filter(t => !t.isAtStation).length;
+
+  if (countEl) {
+    countEl.innerHTML = `<strong>${atStationCount}</strong> aanwezig op station &bull; <strong>${nearingCount}</strong> in aantocht`;
+  }
+
+  if (displayedTrains.length === 0) {
+    listEl.innerHTML = `
+      <div style="padding: 32px 16px; text-align: center; color: var(--text-sub);">
+        <div style="font-size: 2.2rem; margin-bottom: 8px;">🚉</div>
+        <strong style="color: var(--text-main); font-size: 0.95rem;">Geen treinen gevonden voor deze selectie.</strong><br>
+        <span style="font-size: 0.8rem;">Er zijn momenteel geen treinen aanwezig of in aantocht rond ${station.name}.</span>
+      </div>
+    `;
+    return;
+  }
+
+  const now = new Date();
+  let html = '';
+
+  displayedTrains.forEach(t => {
+    const srv = t.service || getTrainServiceDetails(t, station);
+    const depTime = new Date(now.getTime() + t.etaMin * 60000);
+    const hh = String(depTime.getHours()).padStart(2, '0');
+    const mm = String(depTime.getMinutes()).padStart(2, '0');
+    const timeStr = `${hh}:${mm}`;
+
+    const spdInfo = getSpeedBadgeInfo(t.speed);
+    const op = t.operator;
+
+    let delayTag = '';
+    if (t.delayMin > 0) {
+      delayTag = `<span class="st-delay delayed">+${t.delayMin}m vertraging</span>`;
+    } else if (t.statusType === 'pech') {
+      delayTag = `<span class="st-delay" style="color: #ef4444;">🚨 Gestrand</span>`;
+    } else {
+      delayTag = `<span class="st-delay">Op tijd</span>`;
+    }
+
+    const countdownBadge = t.isAtStation
+      ? '<span class="st-status-badge at-station">🟢 Nu op station</span>'
+      : `<span class="st-status-badge nearing">⏱️ Over ${t.etaMin} min</span>`;
+
+    html += `
+      <div class="st-board-row" onclick="window.selectTrainAndCloseStation('${t.id}')" role="button" tabindex="0" title="Tik om ${srv.serviceType} naar ${srv.destination} live te volgen op satelliet">
+        <div class="st-col-time">
+          <span class="st-time">${timeStr}</span>
+          ${countdownBadge}
+          ${delayTag}
+        </div>
+        <div class="st-col-dest">
+          <div class="st-dest-top-row">
+            <span class="st-dest-name">➔ ${srv.destination}</span>
+          </div>
+          <div class="st-dest-via">${srv.serviceType} &bull; ${srv.via}</div>
+          <div class="st-dest-train-id">Trein #${t.trainNum} &bull; ${t.matnummer || op.name}</div>
+        </div>
+        <div class="st-col-op">
+          <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
+        </div>
+        <div class="st-col-platform">
+          <div class="ns-platform-badge-container">
+            <span class="ns-platform-badge">Spoor ${srv.platform}</span>
+          </div>
+        </div>
+        <div class="st-col-radar">
+          <span class="st-radar-pill ${t.isAtStation ? 'at-station' : 'nearing'}">${spdInfo.icon} ${t.speed} km/u</span>
+          <span class="st-radar-dist">Afstand: ~${t.dist} km</span>
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+// Selecteer een station en open het interactieve reizigers-perronbord
 window.selectStation = (stationCode) => {
   const station = findStationByCode(stationCode);
   if (!station) return;
@@ -1967,36 +2366,45 @@ window.selectStation = (stationCode) => {
   const modal = document.getElementById('stationModal');
   const titleEl = document.getElementById('stModalTitle');
   const subEl = document.getElementById('stModalSub');
-  const countEl = document.getElementById('stModalLiveTrainCount');
   const trackStatusEl = document.getElementById('stModalTrackStatus');
-  const listEl = document.getElementById('stationBoardList');
+  const tabsEl = document.getElementById('stOperatorTabs');
 
   if (titleEl) titleEl.textContent = station.name;
   if (subEl) {
-    subEl.innerHTML = `Code: <strong>${station.code}</strong> &bull; Perrons: <strong>Spoor ${station.sporen}</strong> &bull; ${station.operator || 'NS & Regionaal'}`;
+    subEl.innerHTML = `Code: <strong>${station.code}</strong> &bull; Perrons: <strong>Spoor ${station.sporen}</strong> &bull; Reizigers Vertrekstaat`;
   }
 
-  // Zoek alle naderende en vertrekkende live treinen binnen een gerichte straal van 14 km (overzichtelijk zonder ruis)
+  // Zoek alle treinen die aanwezig zijn of in aantocht zijn (binnen 18 km)
   const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
   const nearbyTrains = [];
 
   allParsed.forEach(t => {
     const dist = distanceKm(station.lat, station.lon, t.lat, t.lon);
-    if (dist <= 14) {
-      const spd = t.speed > 5 ? t.speed : 80;
-      const etaMin = Math.max(1, Math.round((dist / spd) * 60));
+    if (dist <= 18) {
+      const isAtStation = dist <= 0.85 || (t.speed < 12 && dist <= 1.2);
+      const spd = t.speed > 10 ? t.speed : 70;
+      const etaMin = isAtStation ? 0 : Math.max(1, Math.round((dist / spd) * 60));
+      const srv = getTrainServiceDetails(t, station);
+
       nearbyTrains.push({
         ...t,
         dist: Math.round(dist * 10) / 10,
-        etaMin
+        etaMin,
+        isAtStation,
+        service: srv
       });
     }
   });
 
-  // Sorteer op nadering (dichtstbijzijnde eerst)
-  nearbyTrains.sort((a, b) => a.dist - b.dist);
+  // Sorteer: eerst de treinen die NU op het station staan, daarna naderende treinen op ETA
+  nearbyTrains.sort((a, b) => {
+    if (a.isAtStation && !b.isAtStation) return -1;
+    if (!a.isAtStation && b.isAtStation) return 1;
+    return a.etaMin - b.etaMin || a.dist - b.dist;
+  });
 
-  if (countEl) countEl.textContent = `${nearbyTrains.length} treinen in nadering (binnen 14 km rond ${station.name})`;
+  appState.stationModalTrains = nearbyTrains;
+  appState.stationModalActiveFilter = 'all';
 
   // Status van baanvak bepalen
   const hasPech = nearbyTrains.some(t => t.statusType === 'pech' || t.delayMin >= 15);
@@ -2004,75 +2412,52 @@ window.selectStation = (stationCode) => {
   if (trackStatusEl) {
     if (hasPech) {
       trackStatusEl.className = 'status-pill red';
-      trackStatusEl.innerHTML = '🚨 Baanvakstoring / Gestrande trein';
+      trackStatusEl.innerHTML = '🚨 Baanvakstoring';
     } else if (hasDelay) {
       trackStatusEl.className = 'status-pill yellow';
       trackStatusEl.innerHTML = '⚠️ Enkele vertragingen';
     } else {
       trackStatusEl.className = 'status-pill green';
-      trackStatusEl.innerHTML = '🟢 Normaal treinverkeer (Op tijd)';
+      trackStatusEl.innerHTML = '🟢 Normaal treinverkeer';
     }
   }
 
-  // Bouw de live vertrekstaat
-  if (listEl) {
-    if (nearbyTrains.length === 0) {
-      listEl.innerHTML = `
-        <div style="padding: 28px 16px; text-align: center; color: var(--text-sub);">
-          <div style="font-size: 2rem; margin-bottom: 8px;">🚉</div>
-          <strong style="color: var(--text-main); font-size: 0.95rem;">Geen actieve treinen binnen 14 km van dit station.</strong><br>
-          <span style="font-size: 0.8rem;">Kijk op de landelijke satellietradar of schakel naar een andere hoofdlijn.</span>
-        </div>
+  // Bouw filtertabs voor spoorwegmaatschappijen als er meerdere aanwezig zijn (bv. NS én Arriva op Apeldoorn)
+  if (tabsEl) {
+    const opCounts = {};
+    nearbyTrains.forEach(t => {
+      const c = t.operator ? t.operator.code : 'NS';
+      opCounts[c] = (opCounts[c] || 0) + 1;
+    });
+
+    const opKeys = Object.keys(opCounts);
+    if (opKeys.length > 1) {
+      tabsEl.style.display = 'flex';
+      let tabsHtml = `
+        <button class="st-op-tab-btn active" data-op="all" type="button">Alle Maatschappijen (${nearbyTrains.length})</button>
       `;
-    } else {
-      const now = new Date();
-      let html = '';
-
-      nearbyTrains.slice(0, 16).forEach(t => {
-        const depTime = new Date(now.getTime() + t.etaMin * 60000);
-        const hh = String(depTime.getHours()).padStart(2, '0');
-        const mm = String(depTime.getMinutes()).padStart(2, '0');
-        const timeStr = `${hh}:${mm}`;
-
-        const spoor = assignPlatform(station.sporen, t.trainNum);
-        const spdInfo = getSpeedBadgeInfo(t.speed);
-        const op = t.operator;
-
-        let delayTag = '';
-        if (t.statusType === 'delayed') {
-          delayTag = `<span class="st-delay delayed">+${t.delayMin || 2}m</span>`;
-        } else if (t.statusType === 'pech') {
-          delayTag = `<span class="st-delay" style="color: #ef4444;">🚨 Pech</span>`;
-        } else {
-          delayTag = `<span class="st-delay">Op tijd</span>`;
-        }
-
-        html += `
-          <div class="st-board-row" onclick="window.selectTrainAndCloseStation('${t.id}')" role="button" tabindex="0" title="Tik om trein ${t.trainNum} live op satelliet te volgen">
-            <div class="st-col-time">
-              <span class="st-time">${timeStr}</span>
-              ${delayTag}
-            </div>
-            <div class="st-col-dest">
-              <span class="st-dest-name">Trein #${t.trainNum}</span>
-              <span class="st-dest-via">${t.matnummer || op.name} &bull; Richting ${station.corridorName ? station.corridorName.split('➔').pop().trim() : 'Baanvak'}</span>
-            </div>
-            <div>
-              <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
-            </div>
-            <div>
-              <span class="ns-platform-badge">${spoor}</span>
-            </div>
-            <div class="st-col-radar">
-              <span class="st-radar-pill ${t.dist <= 1.0 ? 'at-station' : 'nearing'}">${spdInfo.icon} ${t.speed} km/u</span>
-              <span class="st-radar-eta">~${t.dist} km (${t.etaMin}m)</span>
-            </div>
-          </div>
+      opKeys.forEach(opCode => {
+        tabsHtml += `
+          <button class="st-op-tab-btn" data-op="${opCode}" type="button">${opCode} (${opCounts[opCode]})</button>
         `;
       });
-      listEl.innerHTML = html;
+      tabsEl.innerHTML = tabsHtml;
+
+      tabsEl.querySelectorAll('.st-op-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          tabsEl.querySelectorAll('.st-op-tab-btn').forEach(b => b.classList.remove('active'));
+          e.currentTarget.classList.add('active');
+          const chosenOp = e.currentTarget.getAttribute('data-op');
+          renderStationDepartureBoard(station, chosenOp);
+        });
+      });
+    } else {
+      tabsEl.style.display = 'none';
     }
   }
+
+  // Render initiële lijst
+  renderStationDepartureBoard(station, 'all');
 
   if (modal) modal.style.display = 'flex';
 };
@@ -3164,7 +3549,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '3b552e7';
+const APP_BUILD_COMMIT = '6bcd972';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
