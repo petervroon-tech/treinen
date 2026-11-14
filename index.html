@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.6.0_3c3cea8">
-  <link rel="manifest" href="./manifest.json?v=2.6.0_3c3cea8">
+  <link rel="stylesheet" href="./style.css?v=2.6.0_32e4bff">
+  <link rel="manifest" href="./manifest.json?v=2.6.0_32e4bff">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -362,6 +362,38 @@
       <!-- Het Leaflet Kaartvenster -->
       <div id="map"></div>
 
+      <!-- LIVE TREIN GPS & SNELHEIDSMETER HUD (Zwevende cockpit op de satellietkaart) -->
+      <div id="liveTrainHUD" class="live-train-hud" style="display: none;" role="region" aria-label="Live Trein Snelheidsmeter">
+        <div class="hud-left">
+          <div class="hud-train-identity">
+            <span id="hudOpBadge" class="op-badge op-ns">[NS]</span>
+            <strong id="hudTrainTitle">Trein #--</strong>
+            <span id="hudLiveDot" class="hud-live-dot">● LIVE GPS</span>
+          </div>
+          <div class="hud-route-text" id="hudNextStationText">Zoeken naar trein...</div>
+        </div>
+
+        <div class="hud-center-speed">
+          <div class="hud-speed-gauge">
+            <span class="hud-speed-val" id="hudSpeedVal">0</span>
+            <span class="hud-speed-unit">km/u</span>
+          </div>
+          <span class="hud-speed-status-badge spd-cruise" id="hudSpeedBadge">⚡ Snelheid</span>
+        </div>
+
+        <div class="hud-right-actions">
+          <button id="btnHudFollowToggle" class="hud-action-btn active" type="button" title="Blijf de trein automatisch volgen op de kaart">
+            <span id="hudFollowIcon">📍</span> Volg
+          </button>
+          <button id="btnHudOpenDetails" class="hud-action-btn" type="button" title="Open uitgebreid treindashboard">
+            📋 Details
+          </button>
+          <button id="btnHudClose" class="hud-action-btn hud-close-btn" type="button" title="Stop live meereizen">
+            ✕
+          </button>
+        </div>
+      </div>
+
       <!-- Kaartstatus onderaan -->
       <div class="map-status-footer">
         <div>
@@ -575,7 +607,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.6.0_3c3cea8"></script>
-  <script type="module" src="./app.js?v=2.6.0_3c3cea8"></script>
+  <script src="./stations.js?v=2.6.0_32e4bff"></script>
+  <script type="module" src="./app.js?v=2.6.0_32e4bff"></script>
 </body>
 </html>

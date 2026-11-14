@@ -1818,6 +1818,24 @@ body {
   z-index: 500 !important;
 }
 
+/* Dynamische rijdende trein animatie op de satellietkaart */
+.clean-train-pin.is-driving {
+  box-shadow: 0 0 0 0 rgba(255, 201, 23, 0.85), 0 4px 12px rgba(0, 0, 0, 0.7);
+  animation: trainDrivePulse 1.8s infinite ease-out;
+}
+
+@keyframes trainDrivePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 201, 23, 0.9), 0 4px 12px rgba(0, 0, 0, 0.7);
+  }
+  65% {
+    box-shadow: 0 0 0 16px rgba(255, 201, 23, 0), 0 4px 12px rgba(0, 0, 0, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 201, 23, 0), 0 4px 12px rgba(0, 0, 0, 0.7);
+  }
+}
+
 .clean-train-tag {
   position: absolute;
   top: -22px;
@@ -1937,6 +1955,197 @@ body {
 .clean-train-tag .tag-spd.spd-stopped {
   background: rgba(239, 68, 68, 0.3);
   color: #f87171;
+}
+
+/* -------------------------------------------------------------
+   Live Trein Cockpit HUD (Zwevende snelheidsmeter op de satellietkaart)
+-------------------------------------------------------------- */
+.live-train-hud {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 550;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: rgba(4, 12, 30, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid var(--ns-yellow);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75), 0 0 18px rgba(255, 201, 23, 0.35);
+  border-radius: 16px;
+  padding: 10px 16px;
+  min-width: 340px;
+  max-width: 95vw;
+  animation: hudSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+@keyframes hudSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 120px;
+}
+
+.hud-train-identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-train-identity strong {
+  font-size: 0.92rem;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.hud-live-dot {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #10b981;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.hud-route-text {
+  font-size: 0.72rem;
+  color: var(--text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.hud-center-speed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.hud-speed-gauge {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  line-height: 1;
+}
+
+.hud-speed-val {
+  font-family: var(--font-mono);
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: var(--ns-yellow);
+  text-shadow: 0 0 14px rgba(255, 201, 23, 0.5);
+  letter-spacing: -0.5px;
+}
+
+.hud-speed-unit {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.hud-speed-status-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.hud-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-action-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 6px 9px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.hud-action-btn:hover,
+.hud-action-btn:active {
+  background: rgba(255, 201, 23, 0.2);
+  border-color: var(--ns-yellow);
+  color: var(--ns-yellow);
+}
+
+.hud-action-btn.active {
+  background: var(--ns-yellow);
+  color: var(--ns-blue);
+  border-color: var(--ns-yellow);
+  font-weight: 800;
+}
+
+.hud-action-btn.hud-close-btn {
+  padding: 6px 9px;
+  color: #94a3b8;
+}
+
+.hud-action-btn.hud-close-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+/* Mobiel geoptimaliseerd voor iPhone portrait */
+@media (max-width: 900px) {
+  .live-train-hud {
+    bottom: 12px;
+    left: 8px;
+    right: 8px;
+    transform: none;
+    min-width: 0;
+    max-width: none;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .hud-speed-val {
+    font-size: 1.6rem;
+  }
+
+  .hud-route-text {
+    max-width: 110px;
+    font-size: 0.68rem;
+  }
+
+  .hud-action-btn {
+    padding: 5px 6px;
+    font-size: 0.7rem;
+  }
 }
 
 /* -------------------------------------------------------------

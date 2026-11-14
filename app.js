@@ -534,7 +534,12 @@ const appState = {
   audioCtx: null,
   allLiveFeatures: [],
   lastRenderedTrains: [],
-  selectedTrainId: null
+  selectedTrainId: null,
+  isTrackingUser: false,
+  isFollowingMyTrain: true,
+  geoWatchId: null,
+  lastGpsFix: null,
+  myTrain: null
 };
 
 // =============================================================
@@ -1721,6 +1726,45 @@ function renderUnifiedStatusView(allTrains, statusFilter) {
 }
 
 // =============================================================
+// Vloeiende Marker Animatie: Laat treinen echt rijden over het spoor
+// =============================================================
+function smoothMoveMarker(marker, targetLat, targetLon, durationMs = 2800) {
+  if (!marker) return;
+  if (!marker._anim) marker._anim = {};
+  if (marker._anim.raf) {
+    cancelAnimationFrame(marker._anim.raf);
+    marker._anim.raf = null;
+  }
+
+  const current = marker.getLatLng();
+  const startLat = current.lat;
+  const startLon = current.lng;
+  const dLat = targetLat - startLat;
+  const dLon = targetLon - startLon;
+
+  const dist = Math.hypot(dLat, dLon);
+  // Direct plaatsen als verplaatsing te klein (< 2 meter) of te groot (> 15 km) is
+  if (dist > 0.15 || dist < 0.00002) {
+    marker.setLatLng([targetLat, targetLon]);
+    return;
+  }
+
+  const startTime = performance.now();
+  function step(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(1, elapsed / durationMs);
+    const ease = progress * (2 - progress); // Vloeiende vertraging
+    marker.setLatLng([startLat + dLat * ease, startLon + dLon * ease]);
+    if (progress < 1) {
+      marker._anim.raf = requestAnimationFrame(step);
+    } else {
+      marker._anim.raf = null;
+    }
+  }
+  marker._anim.raf = requestAnimationFrame(step);
+}
+
+// =============================================================
 // 9. Teken Treinen op de Satellietkaart (Rustig, Schoon & Anti-Chaos)
 // =============================================================
 function renderMapTrains(trainList) {
@@ -1741,9 +1785,9 @@ function renderMapTrains(trainList) {
   const isAllMode = appState.activeCorridorKey === 'all' || appState.activeCategory === 'all';
   const densityMode = appState.labelMode || 'smart';
 
-  // Bepaal modus: minimal (alleen iconen), compact of full
-  const isMinimal = densityMode === 'minimal';
-  const useCompact = densityMode === 'compact' || (densityMode === 'smart' && (isAllMode || zoom < 11));
+  // Bepaal modus: op een specifiek gekozen traject tonen we ALTIJD de trein en de actuele snelheid!
+  const isMinimal = isAllMode && densityMode === 'minimal';
+  const useCompact = isAllMode ? (densityMode === 'compact' || densityMode === 'minimal' || zoom < 11) : false;
   const baseCompactClass = isMinimal ? 'minimal' : (useCompact ? 'compact' : '');
 
   // Houd bij waar tags op het scherm worden geplaatst voor slimme botsingdetectie
@@ -1827,11 +1871,15 @@ function renderMapTrains(trainList) {
       placedTagBoxes.push({ x: tagX, y: tagY });
     }
 
+    const isDriving = t.speed > 5;
+
     if (appState.trainMarkers.has(t.id)) {
       const m = appState.trainMarkers.get(t.id);
-      m.setLatLng([t.lat, t.lon]);
+      smoothMoveMarker(m, t.lat, t.lon, 2800);
       const el = m.getElement();
       if (el) {
+        const pin = el.querySelector('.clean-train-pin');
+        if (pin) pin.classList.toggle('is-driving', isDriving);
         const tag = el.querySelector('.clean-train-tag');
         if (tag) {
           tag.className = `clean-train-tag ${trainCompactClass} ${posClass}`;
@@ -1851,7 +1899,7 @@ function renderMapTrains(trainList) {
             <span class="tag-num">${t.trainNum}</span>
             <span class="tag-spd ${spdInfo.cssClass}">${spdInfo.label}</span>
           </div>
-          <div class="clean-train-pin" style="background: ${op.border}; border-color: ${statusBorder};">
+          <div class="clean-train-pin ${isDriving ? 'is-driving' : ''}" style="background: ${op.border}; border-color: ${statusBorder};">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="${op.color}">
               <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.5 0 6 .4 6 2H6c0-1.6 2.5-2 6-2zm-5 9c-.83 0-1.5-.67-1.5-1.5S6.17 10 7 10s1.5.67 1.5 1.5S7.83 13 7 13zm10 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
             </svg>
@@ -2770,9 +2818,20 @@ function initCommunicationEngine() {
 }
 
 // =============================================================
-// 10. Live GPS: "In Welke Trein Zit Ik?" & "Waar Ben Ik?"
+// 10. Live GPS: "In Welke Trein Zit Ik?" & Real-Time Cockpit HUD
 // =============================================================
 function findMyTrain() {
+  if (appState.isTrackingUser) {
+    // Tracking is al actief: open het volledige dashboard modal
+    const modal = document.getElementById('myTrainModal');
+    if (modal) modal.style.display = 'flex';
+  } else {
+    startLiveTrainTracking();
+    playAuthenticNSChime();
+  }
+}
+
+function startLiveTrainTracking() {
   if (!navigator.geolocation) {
     alert('GPS-locatie is niet beschikbaar in uw browser. Zorg dat locatietoegang is ingeschakeld.');
     return;
@@ -2780,152 +2839,214 @@ function findMyTrain() {
 
   const btnHeader = document.getElementById('btnFindMyTrain');
   const btnPlanner = document.getElementById('btnImInTrainPlanner');
+  const hud = document.getElementById('liveTrainHUD');
 
-  if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">📡</span> <span class="btn-label-text">Zoeken...</span>';
-  if (btnPlanner) btnPlanner.innerHTML = '<span>📡 GPS Zoeken...</span>';
+  if (btnHeader) {
+    btnHeader.classList.add('tracking-active');
+    btnHeader.innerHTML = '<span class="pulse-dot-beacon" style="background:#10b981;"></span> <span class="btn-icon">📡</span> <span class="btn-label-text">Zoeken...</span>';
+  }
+  if (btnPlanner) btnPlanner.innerHTML = '<span>📡 GPS Verbinden...</span>';
 
-  navigator.geolocation.getCurrentPosition(
+  // Schakel direct over naar de satellietkaart zodat de reiziger direct ziet waar hij rijdt
+  if (window.setAppViewMode) {
+    window.setAppViewMode('map');
+  }
+
+  appState.isTrackingUser = true;
+  appState.isFollowingMyTrain = true;
+
+  if (appState.geoWatchId !== null) {
+    navigator.geolocation.clearWatch(appState.geoWatchId);
+    appState.geoWatchId = null;
+  }
+
+  appState.geoWatchId = navigator.geolocation.watchPosition(
     (pos) => {
-      if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">In Trein</span>';
-      if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!';
-
-      const userLat = pos.coords.latitude;
-      const userLon = pos.coords.longitude;
-      const userAcc = Math.round(pos.coords.accuracy || 10);
-      const userSpeedKmh = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : null;
-
-      // Update of maak "U bevindt zich hier" marker op de kaart
-      if (!appState.userLocationMarker) {
-        appState.userLocationMarker = L.circleMarker([userLat, userLon], {
-          radius: 11,
-          fillColor: '#38bdf8',
-          color: '#ffffff',
-          weight: 3,
-          fillOpacity: 1.0,
-          className: 'pulse-user-marker'
-        }).addTo(appState.map);
-
-        appState.userLocationMarker.bindTooltip('<strong>📍 U bevindt zich hier</strong>', {
-          direction: 'top',
-          offset: [0, -10]
-        });
-      } else {
-        appState.userLocationMarker.setLatLng([userLat, userLon]);
-      }
-
-      // Zoek dichtstbijzijnde trein uit alle actuele treinen
-      const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
-      if (allParsed.length === 0) {
-        alert('Treingegevens worden geladen van de radar. Probeer over 3 seconden opnieuw.');
-        return;
-      }
-
-      let bestTrain = null;
-      let bestScore = Infinity;
-
-      allParsed.forEach(t => {
-        const d = distanceKm(userLat, userLon, t.lat, t.lon);
-        let score = d;
-
-        // Als gebruiker in een rijdende trein zit (>15 km/u), geef sterke voorkeur aan rijdende treinen!
-        if (userSpeedKmh && userSpeedKmh > 15) {
-          if (t.speed && t.speed > 15 && d < 3.5) {
-            const speedDiff = Math.abs(t.speed - userSpeedKmh);
-            score = d * 0.4 + (speedDiff * 0.01);
-          } else {
-            score = d + 5.0;
-          }
-        }
-
-        if (score < bestScore) {
-          bestScore = score;
-          bestTrain = t;
-        }
-      });
-
-      if (!bestTrain) return;
-
-      const distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
-      appState.myTrain = bestTrain;
-
-      // Zoek de dichtstbijzijnde stations uit álle 397 Nederlandse stations
-      const allStations = getAllStations().filter(s => s.sporen !== 'Goederen' && s.sporen !== 'DE Grens');
-      allStations.sort((a, b) => {
-        const da = distanceKm(bestTrain.lat, bestTrain.lon, a.lat, a.lon);
-        const db = distanceKm(bestTrain.lat, bestTrain.lon, b.lat, b.lon);
-        return da - db;
-      });
-
-      const closestStation = allStations[0] || { name: 'Station nabij', code: 'NS' };
-      const nextStation = allStations[1] || { name: 'Volgend station', code: 'NS' };
-
-      const distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
-      const etaMin = bestTrain.speed > 10 ? Math.round((distToNextKm / bestTrain.speed) * 60) : null;
-
-      const op = bestTrain.operator;
-      const spdInfo = getSpeedBadgeInfo(bestTrain.speed);
-
-      // Vul de interactieve Mijn Trein Dashboard Modal
-      const modal = document.getElementById('myTrainModal');
-      if (modal) {
-        document.getElementById('myTrainOpBadge').className = `op-badge ${op.badgeClass}`;
-        document.getElementById('myTrainOpBadge').textContent = `[${op.code}]`;
-        document.getElementById('myTrainTitle').textContent = `U zit in ${op.name} Trein #${bestTrain.trainNum}`;
-        document.getElementById('myTrainSpeed').textContent = bestTrain.speed || (userSpeedKmh || 0);
-        document.getElementById('myTrainSpeedStatus').textContent = spdInfo.text;
-        document.getElementById('myTrainSpeedStatus').className = `speed-status-pill ${spdInfo.cssClass}`;
-
-        document.getElementById('myTrainRoute').textContent = `${op.name} • Treinserie ${bestTrain.trainNum}`;
-        document.getElementById('myTrainSegment').textContent = `Baanvak nabij ${closestStation.name} (richting ${nextStation.name})`;
-        document.getElementById('myTrainGpsMeta').innerHTML = `
-          📍 <strong>Uw GPS:</strong> ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (±${userAcc}m)${userSpeedKmh ? ` &bull; Snelheid: ${userSpeedKmh} km/u` : ''}<br>
-          🚆 <strong>Trein GPS:</strong> ${bestTrain.lat.toFixed(5)}, ${bestTrain.lon.toFixed(5)} &bull; Afstand tot trein: <strong>${distMeters} meter</strong>
-        `;
-
-        document.getElementById('myTrainOperator').textContent = `${op.name} (${bestTrain.matnummer || 'Standaard materieel'})`;
-        document.getElementById('myTrainMatnr').textContent = `Materieelcode: ${bestTrain.matnummer || 'NVT'} • Trein #${bestTrain.trainNum}`;
-
-        const puncText = bestTrain.statusType === 'ontime' ? '🟢 Volgens schema op tijd' :
-                         bestTrain.statusType === 'delayed' ? `🟡 +${bestTrain.delayMin || 2}m Vertraagd` : '🔴 Pech / Storing';
-        document.getElementById('myTrainPunctuality').textContent = puncText;
-        document.getElementById('myTrainDelay').textContent = `Verwachte vertraging: ${bestTrain.delayMin || 0} minuten`;
-
-        document.getElementById('myTrainNextStation').textContent = `${nextStation.name} (${nextStation.code})`;
-        document.getElementById('myTrainNextEta').textContent = `Afstand: ~${distToNextKm.toFixed(1)} km ${etaMin ? `(ca. ${etaMin} min bij ${bestTrain.speed} km/u)` : ''}`;
-
-        document.getElementById('myTrainPrevStation').textContent = `${closestStation.name} (${closestStation.code})`;
-        const distFromPrev = distanceKm(bestTrain.lat, bestTrain.lon, closestStation.lat, closestStation.lon);
-        document.getElementById('myTrainPrevDist').textContent = `Afstand: ~${distFromPrev.toFixed(1)} km geleden`;
-
-        modal.style.display = 'flex';
-      }
-
-      // Speel de akoestische NS Stationsgong
-      playAuthenticNSChime();
-
-      // Vlieg de satellietkaart direct naar uw trein
-      appState.map.flyTo([bestTrain.lat, bestTrain.lon], 15, { duration: 1.4 });
-
-      // Schakel naar kaart als de app op mobiel staat
-      const layout = document.getElementById('mainLayout');
-      if (layout && layout.classList.contains('view-list')) {
-        if (window.setAppViewMode) {
-          window.setAppViewMode('map');
-        } else {
-          layout.classList.remove('view-list');
-          layout.classList.add('view-map');
-          setTimeout(() => appState.map?.invalidateSize(), 150);
-        }
-      }
+      onLiveLocationFix(pos);
     },
     (err) => {
-      if (btnHeader) btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">In Trein</span>';
-      if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!';
-      console.warn('GPS error:', err);
-      alert('Kon uw GPS-positie niet bepalen. Geef alstublieft toestemming voor locatie in uw browserinstellingen.');
+      console.warn('GPS tracking waarschuwing:', err);
+      if (!appState.lastGpsFix) {
+        stopLiveTrainTracking();
+        alert('Kon uw GPS-positie niet bepalen. Controleer of locatietoegang is toegestaan in Safari/Chrome.');
+      }
     },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
   );
+}
+
+function stopLiveTrainTracking() {
+  if (appState.geoWatchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(appState.geoWatchId);
+    appState.geoWatchId = null;
+  }
+  appState.isTrackingUser = false;
+  appState.isFollowingMyTrain = false;
+  appState.lastGpsFix = null;
+
+  const btnHeader = document.getElementById('btnFindMyTrain');
+  const btnPlanner = document.getElementById('btnImInTrainPlanner');
+  const hud = document.getElementById('liveTrainHUD');
+
+  if (btnHeader) {
+    btnHeader.classList.remove('tracking-active');
+    btnHeader.innerHTML = '<span class="pulse-dot-beacon"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">In Trein</span>';
+  }
+  if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon"></span> 🚆 Ik zit in de trein!';
+  if (hud) hud.style.display = 'none';
+}
+
+function onLiveLocationFix(pos) {
+  const btnHeader = document.getElementById('btnFindMyTrain');
+  const btnPlanner = document.getElementById('btnImInTrainPlanner');
+  const hud = document.getElementById('liveTrainHUD');
+
+  if (btnHeader) {
+    btnHeader.classList.add('tracking-active');
+    btnHeader.innerHTML = '<span class="pulse-dot-beacon" style="background:#10b981;"></span> <span class="btn-icon">🚆</span> <span class="btn-label-text">Volgen</span>';
+  }
+  if (btnPlanner) btnPlanner.innerHTML = '<span class="pulse-dot-beacon" style="background:#10b981;"></span> 🚆 Meereizen Actief';
+
+  const userLat = pos.coords.latitude;
+  const userLon = pos.coords.longitude;
+  const userAcc = Math.round(pos.coords.accuracy || 10);
+  const now = Date.now();
+
+  // Bereken de live rijsnelheid in km/u (hardware GPS van de smartphone)
+  let userSpeedKmh = null;
+  if (typeof pos.coords.speed === 'number' && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
+    userSpeedKmh = Math.round(pos.coords.speed * 3.6);
+  } else if (appState.lastGpsFix) {
+    const dtSeconds = (now - appState.lastGpsFix.time) / 1000;
+    if (dtSeconds > 1 && dtSeconds < 15) {
+      const dKm = distanceKm(appState.lastGpsFix.lat, appState.lastGpsFix.lon, userLat, userLon);
+      userSpeedKmh = Math.round((dKm / dtSeconds) * 3600);
+    }
+  }
+
+  appState.lastGpsFix = { lat: userLat, lon: userLon, time: now, speed: userSpeedKmh };
+
+  // Update of maak "U bevindt zich hier" marker op de kaart
+  if (!appState.userLocationMarker) {
+    appState.userLocationMarker = L.circleMarker([userLat, userLon], {
+      radius: 11,
+      fillColor: '#38bdf8',
+      color: '#ffffff',
+      weight: 3,
+      fillOpacity: 1.0,
+      className: 'pulse-user-marker'
+    }).addTo(appState.map);
+
+    appState.userLocationMarker.bindTooltip('<strong>📍 U bevindt zich hier</strong>', {
+      direction: 'top',
+      offset: [0, -10]
+    });
+  } else {
+    smoothMoveMarker(appState.userLocationMarker, userLat, userLon, 1200);
+  }
+
+  // Zoek dichtstbijzijnde trein uit alle actuele treinen
+  const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+  let bestTrain = null;
+  let bestScore = Infinity;
+
+  allParsed.forEach(t => {
+    const d = distanceKm(userLat, userLon, t.lat, t.lon);
+    let score = d;
+
+    // Als gebruiker in een rijdende trein zit (>15 km/u), geef sterke voorkeur aan rijdende treinen!
+    if (userSpeedKmh && userSpeedKmh > 15) {
+      if (t.speed && t.speed > 15 && d < 4.0) {
+        const speedDiff = Math.abs(t.speed - userSpeedKmh);
+        score = d * 0.4 + (speedDiff * 0.01);
+      } else {
+        score = d + 5.0;
+      }
+    }
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestTrain = t;
+    }
+  });
+
+  if (!bestTrain && appState.myTrain) {
+    bestTrain = appState.myTrain;
+  }
+  if (!bestTrain) return;
+
+  appState.myTrain = bestTrain;
+  const distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
+
+  // Zoek de dichtstbijzijnde stations
+  const allStations = getAllStations().filter(s => s.sporen !== 'Goederen' && s.sporen !== 'DE Grens');
+  allStations.sort((a, b) => {
+    const da = distanceKm(bestTrain.lat, bestTrain.lon, a.lat, a.lon);
+    const db = distanceKm(bestTrain.lat, bestTrain.lon, b.lat, b.lon);
+    return da - db;
+  });
+
+  const closestStation = allStations[0] || { name: 'Station nabij', code: 'NS' };
+  const nextStation = allStations[1] || { name: 'Volgend station', code: 'NS' };
+
+  const distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
+  const effectiveSpeed = (userSpeedKmh !== null && userSpeedKmh > 3) ? userSpeedKmh : (bestTrain.speed || 0);
+  const etaMin = effectiveSpeed > 10 ? Math.round((distToNextKm / effectiveSpeed) * 60) : null;
+  const op = bestTrain.operator;
+  const spdInfo = getSpeedBadgeInfo(effectiveSpeed);
+
+  // Update de zwevende Live HUD op de kaart
+  if (hud) {
+    hud.style.display = 'flex';
+    const opEl = document.getElementById('hudOpBadge');
+    if (opEl) {
+      opEl.className = `op-badge ${op.badgeClass}`;
+      opEl.textContent = `[${op.code}]`;
+    }
+    const titleEl = document.getElementById('hudTrainTitle');
+    if (titleEl) titleEl.textContent = `Trein #${bestTrain.trainNum}`;
+
+    const nextEl = document.getElementById('hudNextStationText');
+    if (nextEl) {
+      nextEl.textContent = `Volgend: ${nextStation.name} (~${distToNextKm.toFixed(1)} km${etaMin ? ` • ${etaMin} min` : ''})`;
+    }
+
+    const spdValEl = document.getElementById('hudSpeedVal');
+    if (spdValEl) spdValEl.textContent = effectiveSpeed;
+
+    const spdBadgeEl = document.getElementById('hudSpeedBadge');
+    if (spdBadgeEl) {
+      spdBadgeEl.className = `hud-speed-status-badge ${spdInfo.cssClass}`;
+      spdBadgeEl.textContent = `${spdInfo.icon} ${spdInfo.text}`;
+    }
+  }
+
+  // Update ook modal-elementen op de achtergrond
+  const modalSpeedEl = document.getElementById('myTrainSpeed');
+  if (modalSpeedEl) modalSpeedEl.textContent = effectiveSpeed;
+  const modalStatusEl = document.getElementById('myTrainSpeedStatus');
+  if (modalStatusEl) {
+    modalStatusEl.className = `speed-status-pill ${spdInfo.cssClass}`;
+    modalStatusEl.textContent = spdInfo.text;
+  }
+  const modalMetaEl = document.getElementById('myTrainGpsMeta');
+  if (modalMetaEl) {
+    modalMetaEl.innerHTML = `
+      📍 <strong>Uw GPS:</strong> ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (±${userAcc}m)${userSpeedKmh ? ` &bull; Snelheid: ${userSpeedKmh} km/u` : ''}<br>
+      🚆 <strong>Trein GPS:</strong> ${bestTrain.lat.toFixed(5)}, ${bestTrain.lon.toFixed(5)} &bull; Afstand tot trein: <strong>${distMeters} meter</strong>
+    `;
+  }
+  const modalTitle = document.getElementById('myTrainTitle');
+  if (modalTitle) modalTitle.textContent = `U zit in ${op.name} Trein #${bestTrain.trainNum}`;
+  const modalRoute = document.getElementById('myTrainRoute');
+  if (modalRoute) modalRoute.textContent = `${op.name} • Treinserie ${bestTrain.trainNum}`;
+  const modalSegment = document.getElementById('myTrainSegment');
+  if (modalSegment) modalSegment.textContent = `Baanvak nabij ${closestStation.name} (richting ${nextStation.name})`;
+
+  // Als meereizen actief is, pan rustig mee met de trein
+  if (appState.isFollowingMyTrain && appState.map) {
+    appState.map.panTo([userLat, userLon], { animate: true, duration: 1.0 });
+  }
 }
 
 // =============================================================
@@ -3349,45 +3470,45 @@ function setupNavigation() {
     }
   });
 
-  // Live Meereizen Toggle
+  // Live Meereizen Toggle (in modal)
   document.getElementById('btnFollowMyTrain')?.addEventListener('click', () => {
     const btn = document.getElementById('btnFollowMyTrain');
+    const hudFollowBtn = document.getElementById('btnHudFollowToggle');
     appState.isFollowingMyTrain = !appState.isFollowingMyTrain;
 
-    if (appState.isFollowingMyTrain) {
-      btn.classList.add('active');
-      const textEl = document.getElementById('followText');
-      const iconEl = document.getElementById('followIcon');
-      if (textEl) textEl.textContent = '📡 Meereizen Actief';
-      if (iconEl) iconEl.textContent = '🟢';
+    if (btn) btn.classList.toggle('active', appState.isFollowingMyTrain);
+    if (hudFollowBtn) hudFollowBtn.classList.toggle('active', appState.isFollowingMyTrain);
 
-      if (navigator.geolocation) {
-        appState.watchPositionId = navigator.geolocation.watchPosition(
-          (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            if (appState.userLocationMarker) {
-              appState.userLocationMarker.setLatLng([lat, lon]);
-            }
-            if (appState.isFollowingMyTrain && appState.map) {
-              appState.map.panTo([lat, lon]);
-            }
-          },
-          (err) => console.warn('Watch error:', err),
-          { enableHighAccuracy: true, maximumAge: 2000 }
-        );
-      }
-    } else {
-      btn.classList.remove('active');
-      const textEl = document.getElementById('followText');
-      const iconEl = document.getElementById('followIcon');
-      if (textEl) textEl.textContent = 'Live Meereizen op Satelliet';
-      if (iconEl) iconEl.textContent = '📡';
-      if (appState.watchPositionId !== null && navigator.geolocation) {
-        navigator.geolocation.clearWatch(appState.watchPositionId);
-        appState.watchPositionId = null;
-      }
+    const textEl = document.getElementById('followText');
+    const iconEl = document.getElementById('followIcon');
+    if (textEl) textEl.textContent = appState.isFollowingMyTrain ? '📡 Meereizen Actief' : 'Live Meereizen op Satelliet';
+    if (iconEl) iconEl.textContent = appState.isFollowingMyTrain ? '🟢' : '📡';
+
+    if (appState.isFollowingMyTrain && appState.lastGpsFix && appState.map) {
+      appState.map.panTo([appState.lastGpsFix.lat, appState.lastGpsFix.lon], { animate: true, duration: 1.0 });
     }
+  });
+
+  // Live Trein Cockpit HUD Knoppen
+  document.getElementById('btnHudFollowToggle')?.addEventListener('click', () => {
+    appState.isFollowingMyTrain = !appState.isFollowingMyTrain;
+    const hudBtn = document.getElementById('btnHudFollowToggle');
+    const modalFollowBtn = document.getElementById('btnFollowMyTrain');
+    if (hudBtn) hudBtn.classList.toggle('active', appState.isFollowingMyTrain);
+    if (modalFollowBtn) modalFollowBtn.classList.toggle('active', appState.isFollowingMyTrain);
+
+    if (appState.isFollowingMyTrain && appState.lastGpsFix && appState.map) {
+      appState.map.panTo([appState.lastGpsFix.lat, appState.lastGpsFix.lon], { animate: true, duration: 1.0 });
+    }
+  });
+
+  document.getElementById('btnHudOpenDetails')?.addEventListener('click', () => {
+    const modal = document.getElementById('myTrainModal');
+    if (modal) modal.style.display = 'flex';
+  });
+
+  document.getElementById('btnHudClose')?.addEventListener('click', () => {
+    stopLiveTrainTracking();
   });
 
   // NS Gong knop
@@ -3547,7 +3668,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '3c3cea8';
+const APP_BUILD_COMMIT = '32e4bff';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
