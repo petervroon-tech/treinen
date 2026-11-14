@@ -1376,6 +1376,69 @@ function projectPointToSegmentKm(pLat, pLon, aLat, aLon, bLat, bLon) {
   };
 }
 
+// Bepaal nauwkeurig de rijrichting van een trein ten opzichte van het geselecteerde traject
+// (Heenrit A ➔ B vs. Tegentrein / Terugrit B ➔ A)
+function determineTrainDirection(train, corridor) {
+  if (!corridor || !corridor.stations || corridor.stations.length < 2) {
+    return { isReverse: false, targetStation: null, label: 'Voorwaarts' };
+  }
+
+  const sStart = corridor.stations[0];
+  const sEnd = corridor.stations[corridor.stations.length - 1];
+
+  // 1. Analyseer reisbestemming en vertrekstation uit train.service
+  const destName = (train.service && train.service.destination) ? train.service.destination.toLowerCase() : '';
+  const origName = (train.service && train.service.origin) ? train.service.origin.toLowerCase() : '';
+
+  if (destName) {
+    if (destName.includes(sStart.name.toLowerCase())) {
+      return { isReverse: true, targetStation: sStart, label: `⬅ Richting ${sStart.name}` };
+    }
+    if (destName.includes(sEnd.name.toLowerCase())) {
+      return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
+    }
+
+    // Controleer via geografische afstand tot begin- of eindstation van het traject
+    const allSt = getAllStations();
+    const destStation = allSt.find(s => destName.includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(destName));
+    if (destStation) {
+      const distToStart = distanceKm(destStation.lat, destStation.lon, sStart.lat, sStart.lon);
+      const distToEnd = distanceKm(destStation.lat, destStation.lon, sEnd.lat, sEnd.lon);
+      if (distToStart < distToEnd) {
+        return { isReverse: true, targetStation: sStart, label: `⬅ Richting ${sStart.name}` };
+      } else {
+        return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
+      }
+    }
+  }
+
+  if (origName) {
+    if (origName.includes(sEnd.name.toLowerCase())) {
+      return { isReverse: true, targetStation: sStart, label: `⬅ Richting ${sStart.name}` };
+    }
+    if (origName.includes(sStart.name.toLowerCase())) {
+      return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
+    }
+  }
+
+  // 2. Fallback op ProRail treinnummer pariteit (oneven = noord/west, even = zuid/oost)
+  const num = parseInt(train.trainNum, 10);
+  if (!isNaN(num) && num > 0) {
+    const isOdd = num % 2 !== 0;
+    const dLon = sEnd.lon - sStart.lon;
+    const dLat = sEnd.lat - sStart.lat;
+    const isForwardEven = (Math.abs(dLon) >= Math.abs(dLat)) ? (dLon > 0) : (dLat < 0);
+    const isReverse = isForwardEven ? isOdd : !isOdd;
+    return {
+      isReverse,
+      targetStation: isReverse ? sStart : sEnd,
+      label: isReverse ? `⬅ Richting ${sStart.name}` : `➔ Richting ${sEnd.name}`
+    };
+  }
+
+  return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
+}
+
 function matchTrainToCorridor(train, corridor) {
   if (!corridor) return true;
 
@@ -1417,6 +1480,7 @@ function matchTrainToCorridor(train, corridor) {
           fromStation: s1,
           toStation: s2,
           segmentProgress: proj.t,
+          segLenKm: proj.segLenKm,
           distFromS1: proj.t * proj.segLenKm,
           perpDistKm: proj.distKm,
           projLat: proj.projLat,
@@ -1427,6 +1491,10 @@ function matchTrainToCorridor(train, corridor) {
   }
 
   if (bestMatch) {
+    const dirInfo = determineTrainDirection(train, corridor);
+    bestMatch.isReverse = dirInfo.isReverse;
+    bestMatch.dirLabel = dirInfo.label;
+    bestMatch.targetStation = dirInfo.targetStation;
     return bestMatch;
   }
 
@@ -1437,15 +1505,20 @@ function matchTrainToCorridor(train, corridor) {
     if (d <= 1.2) {
       const segIdx = Math.min(i, Math.max(0, corridor.stations.length - 2));
       const sNext = corridor.stations[segIdx + 1] || s;
+      const dirInfo = determineTrainDirection(train, corridor);
       return {
         segmentIndex: segIdx,
         fromStation: s,
         toStation: sNext,
         segmentProgress: i === corridor.stations.length - 1 ? 1.0 : 0.0,
+        segLenKm: distanceKm(s.lat, s.lon, sNext.lat, sNext.lon),
         distFromS1: 0,
         perpDistKm: d,
         projLat: s.lat,
-        projLon: s.lon
+        projLon: s.lon,
+        isReverse: dirInfo.isReverse,
+        dirLabel: dirInfo.label,
+        targetStation: dirInfo.targetStation
       };
     }
   }
@@ -1455,12 +1528,19 @@ function matchTrainToCorridor(train, corridor) {
     const isNearStation = corridor.stations.some(s => distanceKm(train.lat, train.lon, s.lat, s.lon) <= 10);
     if (isNearStation) {
       const segIdx = findNearestSegment(train, corridor);
+      const s1 = corridor.stations[segIdx];
+      const s2 = corridor.stations[segIdx + 1] || s1;
+      const dirInfo = determineTrainDirection(train, corridor);
       return {
         segmentIndex: segIdx,
-        fromStation: corridor.stations[segIdx],
-        toStation: corridor.stations[segIdx + 1] || corridor.stations[segIdx],
+        fromStation: s1,
+        toStation: s2,
         segmentProgress: 0.5,
-        distFromS1: 0
+        segLenKm: distanceKm(s1.lat, s1.lon, s2.lat, s2.lon),
+        distFromS1: 0,
+        isReverse: dirInfo.isReverse,
+        dirLabel: dirInfo.label,
+        targetStation: dirInfo.targetStation
       };
     }
   }
@@ -1607,8 +1687,12 @@ function updateLineOverview() {
       t.segmentIndex = segIdx;
       if (typeof match === 'object') {
         t.segmentProgress = match.segmentProgress;
+        t.segLenKm = match.segLenKm;
         t.fromStation = match.fromStation;
         t.toStation = match.toStation;
+        t.isReverse = match.isReverse;
+        t.dirLabel = match.dirLabel;
+        t.targetStation = match.targetStation;
       }
       matchedTrains.push(t);
 
@@ -1617,7 +1701,11 @@ function updateLineOverview() {
     }
   });
 
-  if (countEl) countEl.innerHTML = `Actieve treinen op dit traject: <strong>${matchedTrains.length}</strong>`;
+  if (countEl) {
+    const revCount = matchedTrains.filter(t => t.isReverse).length;
+    const fwdCount = matchedTrains.length - revCount;
+    countEl.innerHTML = `Actieve treinen: <strong>${matchedTrains.length}</strong> (➔ ${fwdCount} trajectrichting &bull; ⬅ ${revCount} tegentrein${revCount === 1 ? '' : 'en'})`;
+  }
 
   // Bouw het heldere stationsdiagram met live snelheden & operator badges
   let html = '';
@@ -1653,15 +1741,23 @@ function updateLineOverview() {
           const puncText = t.statusType === 'ontime' ? 'Op tijd' :
                            t.statusType === 'delayed' ? `+${t.delayMin || 2}m Vertraagd` : '🚨 Pech / Gestrand';
           const isDriving = t.speed > 5;
-          const progressPct = Math.max(5, Math.min(95, Math.round((t.segmentProgress !== undefined ? t.segmentProgress : 0.5) * 100)));
+          const isReverse = !!t.isReverse;
+          const rawPct = (t.segmentProgress !== undefined) ? t.segmentProgress : 0.5;
+          const displayPct = Math.max(5, Math.min(95, Math.round((isReverse ? (1.0 - rawPct) : rawPct) * 100)));
+          const stFrom = isReverse ? nextSt.name : st.name;
+          const stTo = isReverse ? st.name : nextSt.name;
+          const destText = (t.service && t.service.destination) ? t.service.destination : stTo;
 
           html += `
-            <div class="train-corridor-card ${puncClass} ${isDriving ? 'is-driving-card' : ''}" onclick="window.selectTrain('${t.id}')">
+            <div class="train-corridor-card ${puncClass} ${isDriving ? 'is-driving-card' : ''} ${isReverse ? 'is-tegentrein' : ''}" data-train-id="${t.id}" onclick="window.selectTrain('${t.id}')">
               <div class="t-top-row">
                 <div class="t-info">
                   <div class="t-header-row">
                     <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
                     <span class="t-number">Trein ${t.trainNum}</span>
+                    <span class="t-direction-pill ${isReverse ? 'rev' : 'fwd'}">
+                      ${isReverse ? '⬅ Tegentrein' : '➔'} naar ${destText}
+                    </span>
                   </div>
                   <div class="t-mat">${t.matnummer || op.name}</div>
                 </div>
@@ -1670,19 +1766,21 @@ function updateLineOverview() {
                   <span class="t-punc-badge ${puncClass}">${puncText}</span>
                 </div>
               </div>
-              <div class="t-track-progress-row">
-                <span class="ttp-st-label from" title="${st.name}">${st.name}</span>
+              <div class="t-track-progress-row ${isReverse ? 'rev-row' : ''}">
+                <span class="ttp-st-label from" title="${stFrom}">${stFrom}</span>
                 <div class="ttp-bar-container">
-                  <div class="ttp-bar-rail ${isDriving ? 'driving-rail' : ''}">
-                    <div class="ttp-bar-fill" style="width: ${progressPct}%; background: ${op.border || 'var(--ns-yellow)'};"></div>
-                    <div class="ttp-train-marker ${isDriving ? 'is-driving' : ''}" style="left: ${progressPct}%;" title="${t.speed} km/u • ${progressPct}% tussen ${st.name} en ${nextSt.name}">
-                      <span class="ttp-icon">🚆</span>
-                      ${isDriving ? '<span class="ttp-pulse-ring"></span>' : ''}
+                  <div class="ttp-bar-rail ${isDriving ? 'driving-rail' : ''} ${isReverse ? 'rev-rail' : ''}">
+                    <div class="ttp-bar-fill ${isReverse ? 'rev-fill' : ''}" style="width: ${displayPct}%; background: ${isReverse ? '#38bdf8' : (op.border || 'var(--ns-yellow)')};"></div>
+                    <div class="ttp-train-marker ${isDriving ? 'is-driving' : ''}" style="left: ${displayPct}%;" title="${t.speed} km/u • ${isReverse ? `Komt aanrijden vanaf ${stFrom} richting ${stTo}` : `Rijdt van ${stFrom} naar ${stTo}`}">
+                      <span class="ttp-icon ${isReverse ? 'rev-icon' : ''}">🚆</span>
+                      ${isDriving ? `<span class="ttp-pulse-ring ${isReverse ? 'rev-ring' : ''}"></span>` : ''}
                     </div>
                   </div>
-                  <div class="ttp-pct-badge">${isDriving ? `⚡ Rijdt ${t.speed} km/u &bull; ${progressPct}% op baanvak` : `⏸ Halteert (${progressPct}%)`}</div>
+                  <div class="ttp-pct-badge ${isReverse ? 'rev-badge' : ''}">
+                    ${isDriving ? `⚡ Rijdt ${t.speed} km/u &bull; ${isReverse ? `⬅ Komt aanrijden naar ${stTo} (${displayPct}%)` : `➔ Onderweg naar ${stTo} (${displayPct}%)`}` : `⏸ Halteert (${displayPct}%)`}
+                  </div>
                 </div>
-                <span class="ttp-st-label to" title="${nextSt.name}">${nextSt.name}</span>
+                <span class="ttp-st-label to" title="${stTo}">${stTo}</span>
               </div>
             </div>
           `;
@@ -1838,8 +1936,6 @@ function renderUnifiedStatusView(allTrains, statusFilter) {
 function startRailMotionEngine() {
   if (appState.railMotionRaf) return;
 
-  const degLatPerMeter = 1.0 / 111000.0;
-
   function stepRailMotion(now) {
     if (!appState.lastSimTime) appState.lastSimTime = now;
     const dt = Math.min(0.1, Math.max(0.001, (now - appState.lastSimTime) / 1000));
@@ -1849,29 +1945,51 @@ function startRailMotionEngine() {
       const m = state.marker;
       if (!m || !appState.trainMarkers.has(id)) continue;
 
-      // Als de trein rijdt (> 5 km/u): beweeg vloeiend voorwaarts op ware snelheid
+      // Als de trein rijdt (> 5 km/u): beweeg vloeiend voorwaarts op ware telemetrie-snelheid
       if (state.isDriving && state.speed > 5) {
-        const distMeters = (state.speed / 3.6) * dt;
-        const degLonPerMeter = 1.0 / (111000.0 * Math.cos(state.curLat * Math.PI / 180));
+        const midLat = state.curLat;
+        const kx = 111320.0 * Math.cos(midLat * Math.PI / 180);
+        const ky = 110574.0;
 
-        let uLat = 0, uLon = 0;
+        // Exacte verplaatsing in meters op ware snelheid
+        const distMeters = (state.speed / 3.6) * dt;
+
+        // Isometrische eenheidsvector in meters zodat de snelheid overal exact klopt
+        let ux = 0, uy = 0;
         if (state.dirVector && (state.dirVector.dLat !== 0 || state.dirVector.dLon !== 0)) {
-          const len = Math.hypot(state.dirVector.dLat, state.dirVector.dLon) || 1;
-          uLat = state.dirVector.dLat / len;
-          uLon = state.dirVector.dLon / len;
+          const mx = state.dirVector.dLon * kx;
+          const my = state.dirVector.dLat * ky;
+          const lenMeters = Math.hypot(mx, my) || 1;
+          ux = mx / lenMeters;
+          uy = my / lenMeters;
         } else if (state.heading !== undefined) {
           const rad = state.heading * Math.PI / 180;
-          uLat = Math.cos(rad);
-          uLon = Math.sin(rad);
+          ux = Math.sin(rad);
+          uy = Math.cos(rad);
         }
 
-        state.curLat += distMeters * uLat * degLatPerMeter;
-        state.curLon += distMeters * uLon * degLonPerMeter;
+        state.curLon += (distMeters * ux) / kx;
+        state.curLat += (distMeters * uy) / ky;
+
+        // Vloeiende voortgang in geopende lijstweergave
+        if (state.segLenKm && state.segLenKm > 0) {
+          const dPct = (distMeters / (state.segLenKm * 1000)) * 100;
+          if (state.displayPct !== undefined) {
+            state.displayPct = Math.min(95, Math.max(5, state.displayPct + dPct));
+            const card = document.querySelector(`.train-corridor-card[data-train-id="${id}"]`);
+            if (card) {
+              const fill = card.querySelector('.ttp-bar-fill');
+              const marker = card.querySelector('.ttp-train-marker');
+              if (fill) fill.style.width = `${state.displayPct}%`;
+              if (marker) marker.style.left = `${state.displayPct}%`;
+            }
+          }
+        }
       }
 
       // Vloeiende reconciliatie van GPS drift (zonder schokken of verspringen)
       if (state.driftLat !== 0 || state.driftLon !== 0) {
-        const blend = Math.min(1.0, dt * 2.2);
+        const blend = Math.min(1.0, dt * 1.8);
         state.curLat += state.driftLat * blend;
         state.curLon += state.driftLon * blend;
         state.driftLat *= (1.0 - blend);
@@ -2034,12 +2152,18 @@ function renderMapTrains(trainList) {
     }
 
     const isDriving = t.speed > 5;
+    const isRev = !!t.isReverse;
+    const arrow = isRev ? '⬅' : '➔';
+    const destShort = (t.service && t.service.destination) ? t.service.destination.split(' ')[0] : (isRev ? 'Terug' : 'Heen');
     let state = appState.trainMotionStates.get(t.id);
 
     if (appState.trainMarkers.has(t.id)) {
       const m = appState.trainMarkers.get(t.id);
 
       if (state) {
+        state.isReverse = isRev;
+        state.segLenKm = t.segLenKm || state.segLenKm || 5.0;
+
         // Bereken of telemetry van treinposities.nl nieuwe GPS coördinaten bevat
         const dMovedKm = distanceKm(state.lastRawLat, state.lastRawLon, t.lat, t.lon);
         if (dMovedKm > 0.035) { // Meer dan 35 meter verplaatst
@@ -2076,27 +2200,33 @@ function renderMapTrains(trainList) {
       const el = m.getElement();
       if (el) {
         const pin = el.querySelector('.clean-train-pin');
-        if (pin) pin.classList.toggle('is-driving', isDriving);
+        if (pin) {
+          pin.classList.toggle('is-driving', isDriving);
+          pin.classList.toggle('is-reverse', isRev);
+        }
         const tag = el.querySelector('.clean-train-tag');
         if (tag) {
           tag.className = `clean-train-tag ${trainCompactClass} ${posClass}`;
-          tag.style.borderColor = op.border;
+          tag.style.borderColor = isRev ? '#38bdf8' : op.border;
           tag.innerHTML = `
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
             <span class="tag-num">${t.trainNum}</span>
+            <span class="tag-dir ${isRev ? 'rev' : 'fwd'}">${arrow} ${destShort}</span>
             <span class="tag-spd ${spdInfo.cssClass}">${spdInfo.label}</span>
           `;
         }
       }
     } else {
+      const pinBorder = isRev ? '#38bdf8' : statusBorder;
       const html = `
-        <div class="clean-train-marker" title="[${op.code}] Trein ${t.trainNum} - ${t.speed} km/u (${t.statusType})">
-          <div class="clean-train-tag ${trainCompactClass} ${posClass}" style="border-color: ${op.border};">
+        <div class="clean-train-marker" title="[${op.code}] Trein ${t.trainNum} - ${t.speed} km/u (${isRev ? 'Tegentrein naar ' + destShort : 'Naar ' + destShort})">
+          <div class="clean-train-tag ${trainCompactClass} ${posClass}" style="border-color: ${isRev ? '#38bdf8' : op.border};">
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
             <span class="tag-num">${t.trainNum}</span>
+            <span class="tag-dir ${isRev ? 'rev' : 'fwd'}">${arrow} ${destShort}</span>
             <span class="tag-spd ${spdInfo.cssClass}">${spdInfo.label}</span>
           </div>
-          <div class="clean-train-pin ${isDriving ? 'is-driving' : ''}" style="background: ${op.border}; border-color: ${statusBorder};">
+          <div class="clean-train-pin ${isDriving ? 'is-driving' : ''} ${isRev ? 'is-reverse' : ''}" style="background: ${op.border}; border-color: ${pinBorder};">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="${op.color}">
               <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.5 0 6 .4 6 2H6c0-1.6 2.5-2 6-2zm-5 9c-.83 0-1.5-.67-1.5-1.5S6.17 10 7 10s1.5.67 1.5 1.5S7.83 13 7 13zm10 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
             </svg>
@@ -2118,11 +2248,15 @@ function renderMapTrains(trainList) {
       let initDir = { dLat: 0, dLon: 0 };
       let initHeading = 0;
       if (t.fromStation && t.toStation && t.fromStation.code !== t.toStation.code) {
-        const dLat = t.toStation.lat - t.fromStation.lat;
-        const dLon = t.toStation.lon - t.fromStation.lon;
+        const mult = isRev ? -1 : 1;
+        const dLat = (t.toStation.lat - t.fromStation.lat) * mult;
+        const dLon = (t.toStation.lon - t.fromStation.lon) * mult;
         initDir = { dLat, dLon };
         initHeading = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
       }
+
+      const rawPct = (t.segmentProgress !== undefined) ? t.segmentProgress : 0.5;
+      const initialDisplayPct = Math.max(5, Math.min(95, Math.round((isRev ? (1.0 - rawPct) : rawPct) * 100)));
 
       appState.trainMotionStates.set(t.id, {
         marker,
@@ -2132,6 +2266,9 @@ function renderMapTrains(trainList) {
         lastRawLon: t.lon,
         speed: t.speed,
         isDriving,
+        isReverse: isRev,
+        segLenKm: t.segLenKm || 5.0,
+        displayPct: initialDisplayPct,
         dirVector: initDir,
         heading: initHeading,
         driftLat: 0,
@@ -3961,7 +4098,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '051214f';
+const APP_BUILD_COMMIT = '40d4993';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
