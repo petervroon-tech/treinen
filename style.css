@@ -2296,6 +2296,48 @@ body {
 }
 
 /* -------------------------------------------------------------
+   Station Aanduiding op Satellietkaart (Compact, Rond ipv Groot & 4-kant)
+-------------------------------------------------------------- */
+.leaflet-tooltip.station-map-tooltip {
+  background: rgba(9, 14, 26, 0.90) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 201, 23, 0.8) !important;
+  border-radius: 999px !important; /* Perfect afgeronde pil-vorm ipv 4-kant */
+  padding: 3px 10px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  font-family: inherit !important;
+  white-space: nowrap !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.75), 0 0 10px rgba(255, 201, 23, 0.25) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  pointer-events: none !important;
+}
+
+.leaflet-tooltip.station-map-tooltip::before {
+  border-top-color: var(--ns-yellow) !important;
+}
+
+.leaflet-tooltip.station-map-tooltip strong {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.2px !important;
+}
+
+/* Smartphone optimalisatie: ultra-subtiel & nooit het spoor blokkerend */
+@media (max-width: 680px) {
+  .leaflet-tooltip.station-map-tooltip {
+    font-size: 0.64rem !important;
+    padding: 2px 7px !important;
+    border-radius: 999px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8) !important;
+    max-width: 130px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
+/* -------------------------------------------------------------
    Live Trein Cockpit HUD (Zwevende snelheidsmeter op de satellietkaart)
 -------------------------------------------------------------- */
 .live-train-hud {

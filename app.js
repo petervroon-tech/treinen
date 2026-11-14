@@ -1158,20 +1158,23 @@ function renderCorridorOnMap(corridor) {
     lineJoin: 'round'
   }).addTo(map);
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 680;
+
   corridor.stations.forEach((st, i) => {
     const isTerm = st.terminal;
     const marker = L.circleMarker([st.lat, st.lon], {
-      radius: isTerm ? 11 : 8,
+      radius: isMobile ? (isTerm ? 6 : 4.5) : (isTerm ? 9 : 6.5),
       fillColor: isTerm ? '#ffffff' : lineColor,
       color: '#001948',
-      weight: 3,
+      weight: isMobile ? 1.5 : 2.5,
       fillOpacity: 1.0
     }).addTo(map);
 
-    marker.bindTooltip(`<strong>${st.name}</strong><br><small>Spoor ${st.sporen} &bull; 👉 Tik voor treinen</small>`, {
+    // Compacte stationaanduiding: alleen de stationsnaam in subtiele afgeronde pil-badge ipv groot 4kant blok
+    marker.bindTooltip(`<strong>${st.name}</strong>`, {
       permanent: isTerm,
       direction: 'top',
-      offset: [0, -8],
+      offset: [0, isMobile ? -5 : -8],
       className: 'station-map-tooltip'
     });
 
@@ -4098,7 +4101,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = 'd21e775';
+const APP_BUILD_COMMIT = 'c2884fb';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
