@@ -4082,6 +4082,8 @@ function setupNavigation() {
       if (stModal) stModal.style.display = 'none';
       const myTrainModal = document.getElementById('myTrainModal');
       if (myTrainModal) myTrainModal.style.display = 'none';
+      const helpModal = document.getElementById('helpModal');
+      if (helpModal) helpModal.style.display = 'none';
     }
   });
 
@@ -4101,7 +4103,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '415ade2';
+const APP_BUILD_COMMIT = '6fa7a35';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -4234,6 +4236,117 @@ async function initVersionManagement() {
 }
 
 // =============================================================
+// 12b. Help & Handleiding Modal (zoals in vroonphoto)
+// =============================================================
+function openHelpModal() {
+  const modal = document.getElementById('helpModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  renderDynamicHelpFeatures();
+
+  const verStr = `v${appBuildMeta.version || APP_VERSION}`;
+  const commitStr = appBuildMeta.commit || APP_BUILD_COMMIT;
+  const badge = document.getElementById('helpModalVersionBadge');
+  if (badge) badge.textContent = commitStr ? `${verStr} (${commitStr})` : verStr;
+
+  const footerBuild = document.getElementById('helpFooterBuildInfo');
+  if (footerBuild) {
+    const timeStr = appBuildMeta.buildTime ? new Date(appBuildMeta.buildTime).toLocaleString('nl-NL') : 'Actueel';
+    footerBuild.innerHTML = `Treinen Radar &bull; Versie <strong>${verStr}</strong> &bull; Build: ${timeStr}`;
+  }
+}
+
+function closeHelpModal() {
+  const modal = document.getElementById('helpModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderDynamicHelpFeatures() {
+  const container = document.getElementById('helpFeaturesDynamicList');
+  if (!container) return;
+
+  const fallbackFeatures = [
+    {
+      tag: "60 FPS Animatie",
+      title: "Continue 60 FPS Dead-Reckoning Treinanimatie",
+      desc: "Treinen rijden vloeiend en schokvrij over het spoor op ware GPS-snelheid met bochtentolerantie.",
+      icon: "⚡"
+    },
+    {
+      tag: "Tegentreinen",
+      title: "Automatische Tegentrein & Richting Herkenning",
+      desc: "Onderscheid tussen heenritten (➔ goud) en tegentreinen (⬅ cyaanblauw) met gespiegelde voortgang.",
+      icon: "🔄"
+    },
+    {
+      tag: "Traject Planner",
+      title: "Slimme Trajectkiezer (Van ➔ Tot) met Geheugen",
+      desc: "Onthoudt automatisch het laatst gekozen station met snelle wisselknop en directe traject-filters.",
+      icon: "🎯"
+    },
+    {
+      tag: "In Trein",
+      title: "Live Cockpit HUD & Automatische Treindetectie",
+      desc: "Vind direct uw trein via mobiele GPS inclusief live snelheid, volgend station en resterende reistijd.",
+      icon: "📱"
+    },
+    {
+      tag: "Alle Maatschappijen",
+      title: "Landelijke Status (NS, Arriva, Qbuzz, Keolis, e.a.)",
+      desc: "1 centraal overzicht van alle vervoerders met filters voor op tijd, vertraagd en pech/defect.",
+      icon: "🟢"
+    },
+    {
+      tag: "Satelliet",
+      title: "Haarscherpe Satellietbeelden & Sporenkaart",
+      desc: "Gedetailleerde satelliet-infrastructuur met wissels, perrons en minimalistische donkere stationspillen.",
+      icon: "🛰️"
+    },
+    {
+      tag: "GSM-R Radio",
+      title: "Live Vervoersinformatie & Verkeersleiding",
+      desc: "Real-time spoorwegcommunicatie en storingsberichten rechtstreeks vanuit de ProRail verkeersleiding.",
+      icon: "📻"
+    },
+    {
+      tag: "Stationsgong",
+      title: "Akoestische 3-Tonige NS Stationsgong",
+      desc: "Natuurgetrouwe audiogong bij stationsaankomsten en handmatige audiobediening.",
+      icon: "🔔"
+    }
+  ];
+
+  const features = (appBuildMeta && Array.isArray(appBuildMeta.features) && appBuildMeta.features.length > 0)
+    ? appBuildMeta.features
+    : fallbackFeatures;
+
+  container.innerHTML = features.map(item => `
+    <div class="help-dynamic-card">
+      <div class="help-dynamic-top">
+        <div class="help-dynamic-icon-title">
+          <span class="help-dynamic-icon">${item.icon || '✨'}</span>
+          <h5>${item.title}</h5>
+        </div>
+        <span class="help-dynamic-tag">${item.tag || 'Actief'}</span>
+      </div>
+      <p>${item.desc}</p>
+    </div>
+  `).join('');
+}
+
+function initHelpModal() {
+  document.getElementById('btnOpenHelp')?.addEventListener('click', openHelpModal);
+  document.getElementById('btnCloseHelpModal')?.addEventListener('click', closeHelpModal);
+  document.getElementById('btnCloseHelpFooter')?.addEventListener('click', closeHelpModal);
+
+  document.getElementById('helpModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'helpModal' || e.target.classList.contains('help-backdrop')) {
+      closeHelpModal();
+    }
+  });
+}
+
+// =============================================================
 // 13. Start Applicatie
 // =============================================================
 async function init() {
@@ -4243,6 +4356,7 @@ async function init() {
   window.setAppViewMode('list');
   initCommunicationEngine();
   initVersionManagement();
+  initHelpModal();
 
   populateLineButtons('ns');
   // Start direct met het laatst opgezochte Van ➔ Tot traject (zodat de keuze voor Tot behouden blijft als standaard)

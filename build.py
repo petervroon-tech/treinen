@@ -266,7 +266,60 @@ def update_version_json(sha=None, build_num=None):
     data["branch"] = "main"
     data["title"] = "Treinen - Live Satelliet Radar Nederland"
 
-    with open(version_file, "w") as f: json.dump(data, f, indent=2)
+    # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
+    data["features"] = [
+        {
+            "tag": "60 FPS Animatie",
+            "title": "Continue 60 FPS Dead-Reckoning Treinanimatie",
+            "desc": "Treinen rijden vloeiend en schokvrij over het spoor op ware GPS-snelheid met bochtentolerantie.",
+            "icon": "⚡"
+        },
+        {
+            "tag": "Tegentreinen",
+            "title": "Automatische Tegentrein & Richting Herkenning",
+            "desc": "Onderscheid tussen heenritten (➔ goud) en tegentreinen (⬅ cyaanblauw) met gespiegelde voortgang.",
+            "icon": "🔄"
+        },
+        {
+            "tag": "Traject Planner",
+            "title": "Slimme Trajectkiezer (Van ➔ Tot) met Geheugen",
+            "desc": "Onthoudt automatisch het laatst gekozen station met snelle wisselknop en directe traject-filters.",
+            "icon": "🎯"
+        },
+        {
+            "tag": "In Trein",
+            "title": "Live Cockpit HUD & Automatische Treindetectie",
+            "desc": "Vind direct uw trein via mobiele GPS inclusief live snelheid, volgend station en resterende reistijd.",
+            "icon": "📱"
+        },
+        {
+            "tag": "Alle Maatschappijen",
+            "title": "Landelijke Status (NS, Arriva, Qbuzz, Keolis, e.a.)",
+            "desc": "1 centraal overzicht van alle vervoerders met filters voor op tijd, vertraagd en pech/defect.",
+            "icon": "🟢"
+        },
+        {
+            "tag": "Satelliet",
+            "title": "Haarscherpe Satellietbeelden & Sporenkaart",
+            "desc": "Gedetailleerde satelliet-infrastructuur met wissels, perrons en minimalistische donkere stationspillen.",
+            "icon": "🛰️"
+        },
+        {
+            "tag": "GSM-R Radio",
+            "title": "Live Vervoersinformatie & Verkeersleiding",
+            "desc": "Real-time spoorwegcommunicatie en storingsberichten rechtstreeks vanuit de ProRail verkeersleiding.",
+            "icon": "📻"
+        },
+        {
+            "tag": "Stationsgong",
+            "title": "Akoestische 3-Tonige NS Stationsgong",
+            "desc": "Natuurgetrouwe audiogong bij stationsaankomsten en handmatige audiobediening.",
+            "icon": "🔔"
+        }
+    ]
+
+    with open(version_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
     print(f"📦 version.json bijgewerkt naar v{version} ({short_sha})")
 
     # Werk ook app.js, sw.js en index.html bij zodat de client runtime versie 100% klopt met CI buildnummer

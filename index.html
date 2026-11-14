@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.6.0_415ade2">
-  <link rel="manifest" href="./manifest.json?v=2.6.0_415ade2">
+  <link rel="stylesheet" href="./style.css?v=2.6.0_6fa7a35">
+  <link rel="manifest" href="./manifest.json?v=2.6.0_6fa7a35">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -146,6 +146,12 @@
         <!-- Geluid Toggle Knop -->
         <button id="btnAudioToggle" class="header-action-btn audio-btn active" type="button" title="Geluidssignalen aan/uit">
           <span id="audioStatusText">🔊</span>
+        </button>
+
+        <!-- Help / Handleiding Knop -->
+        <button id="btnOpenHelp" class="header-action-btn help-btn" type="button" title="Bekijk de complete handleiding en actuele mogelijkheden van de Treinen app">
+          <span class="btn-icon">💡</span>
+          <span class="btn-label-text">Help</span>
         </button>
       </div>
     </div>
@@ -605,6 +611,153 @@
     </div>
   </aside>
 
+  <!-- Help & Handleiding Modal (zoals in vroonphoto met dynamische actuele functielijst) -->
+  <aside id="helpModal" class="help-modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle" style="display: none;">
+    <div class="help-backdrop"></div>
+    <div class="help-dialog">
+      <!-- Modal Header -->
+      <div class="help-dialog-header">
+        <div class="help-header-title">
+          <span class="help-header-icon">💡</span>
+          <div>
+            <h2 id="helpModalTitle" class="help-title">Handleiding &amp; Mogelijkheden</h2>
+            <div class="help-subtitle">ProRail Live Satelliet Radar &bull; Treinen Nederland</div>
+          </div>
+          <span id="helpModalVersionBadge" class="help-version-tag">v2.6.0</span>
+        </div>
+        <button id="btnCloseHelpModal" class="help-close-btn" type="button" aria-label="Sluit handleiding">✕</button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="help-dialog-body">
+        <!-- Dynamische Feature Lijst Gesynchroniseerd met version.json -->
+        <section class="help-section help-section-dynamic">
+          <div class="help-section-header">
+            <div class="help-section-title-wrap">
+              <span class="help-section-icon">📋</span>
+              <h3 class="help-section-heading">Alle Mogelijkheden in Deze Versie</h3>
+            </div>
+            <span class="help-status-pill">✓ Altijd Actueel</span>
+          </div>
+          <p class="help-section-intro">Deze overzichtslijst wordt bij elke release automatisch gesynchroniseerd met de applicatie-build en toont de live actieve functies:</p>
+          <div id="helpFeaturesDynamicList" class="help-dynamic-grid">
+            <!-- Wordt dynamisch gevuld vanuit version.json via app.js -->
+          </div>
+        </section>
+
+        <!-- Uitgebreide Gebruikershandleiding -->
+        <section class="help-section">
+          <div class="help-section-header">
+            <div class="help-section-title-wrap">
+              <span class="help-section-icon">📖</span>
+              <h3 class="help-section-heading">Uitgebreide Handleiding &amp; Tips</h3>
+            </div>
+          </div>
+
+          <div class="help-guide-cards">
+            <!-- Kaart 1: Traject Kiezen & Onthouden -->
+            <article class="help-guide-card">
+              <div class="help-card-icon-badge">🎯</div>
+              <div class="help-card-content">
+                <h4 class="help-card-title">1. Traject Kiezen &amp; Automatisch Onthouden (Van ➔ Tot)</h4>
+                <p>U kunt snel een traject kiezen via het dropdown-menu in de hoofdbalk of door op <strong>Van / Tot</strong> te klikken. De app onthoudt standaard uw laatst gekozen bestemming in het geheugen, zodat u bij een volgend bezoek direct uw vertrouwde traject ziet.</p>
+                <div class="help-card-tip">
+                  <span class="tip-label">TIP</span> Met de wisselknop (<code>⇄</code>) keert u direct vertrek en aankomst om voor de terugreis.
+                </div>
+              </div>
+            </article>
+
+            <!-- Kaart 2: 60 FPS Animatie -->
+            <article class="help-guide-card">
+              <div class="help-card-icon-badge">⚡</div>
+              <div class="help-card-content">
+                <h4 class="help-card-title">2. Vloeiend Rijden &amp; Exacte Telemetrie (60 FPS)</h4>
+                <p>Treinen bewegen continu en schokvrij met 60 beelden per seconde over het spoor via geavanceerde dead-reckoning interpolatie. De snelheid wordt berekend op basis van actuele GPS-telemetrie (km/u). Door ruime bochtentolerantie blijven treinen ook in krappe spoorbogen perfect zichtbaar.</p>
+              </div>
+            </article>
+
+            <!-- Kaart 3: Tegentreinen & Rijrichting -->
+            <article class="help-guide-card">
+              <div class="help-card-icon-badge">🔄</div>
+              <div class="help-card-content">
+                <h4 class="help-card-title">3. Tegentreinen &amp; Rijrichtingdetectie</h4>
+                <p>De radar detecteert automatisch of een trein meereist in de gekozen richting (<code>➔</code> gouden gloed) of een tegemoetkomende tegentrein betreft (<code>⬅</code> cyaanblauwe gloed). Voortgangsbalken en richtingbadges geven direct inzicht in naderend treinverkeer uit beide richtingen.</p>
+              </div>
+            </article>
+
+            <!-- Kaart 4: In Trein GPS Cockpit -->
+            <article class="help-guide-card">
+              <div class="help-card-icon-badge">📱</div>
+              <div class="help-card-content">
+                <h4 class="help-card-title">4. Zit u in de Trein? (Live GPS Cockpit)</h4>
+                <p>Eén klik op de knop <strong>🚆 In Trein</strong> (of inschakeling van de optie "Automatisch detecteren bij openen") koppelt uw mobiele telefoon aan de rijdende trein waarin u zit. De Live Cockpit HUD toont uw actuele GPS-snelheid, het eerstvolgende station, de resterende afstand en de geschatte aankomsttijd (ETA).</p>
+                <div class="help-card-tip">
+                  <span class="tip-label">MOBIELE WEERGAVE</span> De Live Cockpit sluit op smartphones en laptops strak aan onderaan het scherm zonder knoppen of sporen te blokkeren.
+                </div>
+              </div>
+            </article>
+
+            <!-- Kaart 5: Alle Maatschappijen & Status -->
+            <article class="help-guide-card">
+              <div class="help-card-icon-badge">🟢</div>
+              <div class="help-card-content">
+                <h4 class="help-card-title">5. 1 Overzicht van Alle Maatschappijen</h4>
+                <p>Alle Nederlandse vervoerders worden ondersteund: NS, Arriva, Blauwnet/Keolis, Qbuzz, Eurostar, ICE en goederentreinen. Via de landelijke statusbalk filtert u in één tik op stipte ritten (<code>🟢 Op tijd</code>), vertraagde treinen (<code>🟡 Vertraagd</code>) of defect materieel (<code>🔴 Pech</code>).</p>
+              </div>
+            </article>
+
+            <!-- Kaart 6: Satellietradar & Donkere Badges -->
+            <article class="help-guide-card">
+              <div class="help-card-icon-badge">🛰️</div>
+              <div class="help-card-content">
+                <h4 class="help-card-title">6. Satellietradar &amp; Rustige Donkere Badges</h4>
+                <p>Schakel via de knop <strong>🛰️ Kaart</strong> direct naar haarscherpe luchtfoto's met weergave van alle wissels, perrons en rangeerterreinen. Stationslabels zijn uitgevoerd als subtiele donkere, afgeronde pill-badges in plaats van lompe witte vierkanten, zodat satellietbeelden optimaal zichtbaar blijven.</p>
+              </div>
+            </article>
+
+            <!-- Kaart 7: GSM-R & Live Communicatie -->
+            <article class="help-guide-card">
+              <div class="help-card-icon-badge">📻</div>
+              <div class="help-card-content">
+                <h4 class="help-card-title">7. Spoorcommunicatie &amp; Vervoersinfo (GSM-R)</h4>
+                <p>Klik op <strong>📻 Vervoersinfo</strong> om real-time verkeersberichten, GSM-R communicatie van ProRail verkeersleiding en baanstoringen te volgen zoals die worden doorgestuurd naar machinisten en conducteurs.</p>
+              </div>
+            </article>
+
+            <!-- Kaart 8: Authentieke Gong & Geluid -->
+            <article class="help-guide-card">
+              <div class="help-card-icon-badge">🔔</div>
+              <div class="help-card-content">
+                <h4 class="help-card-title">8. Authentieke NS Stationsgong &amp; Geluid</h4>
+                <p>Met de knop <strong>🔔</strong> speelt u de akoestisch gesynthetiseerde drietonige NS stationsgong af. Geluidssignalen kunt u op elk gewenst moment in- of uitschakelen via de luidsprekerknop (<code>🔊</code>).</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Systeem & Ontwerp Filosofie -->
+        <section class="help-section help-section-footer-info">
+          <div class="help-info-box">
+            <div class="help-info-icon">✨</div>
+            <div class="help-info-text">
+              <strong>Ontwerpstandaard: "Smooth, Donker &amp; Nooit Lomp of Wit Vierkant"</strong>
+              <p>Deze applicatie is gebouwd volgens moderne donkere glassmorphism-standaarden met afgeronde badges en 60 FPS WebAssembly prestaties voor vloeiende ervaringen op zowel desktop als smartphone.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="help-dialog-footer">
+        <div class="help-footer-meta">
+          <span class="help-pulse-dot"></span>
+          <span id="helpFooterBuildInfo">Treinen WebAssembly Radar &bull; Live gesynchroniseerd</span>
+        </div>
+        <button id="btnCloseHelpFooter" class="btn btn-primary" type="button">Begrepen &amp; Sluiten</button>
+      </div>
+    </div>
+  </aside>
+
   <!-- Verborgen iPhone Dock compatibiliteitsknoppen -->
   <nav class="iphone-bottom-dock" aria-label="Snelle iPhone bediening" style="display: none;" aria-hidden="true">
     <button id="btnDockInTrain" class="dock-btn dock-btn-primary" type="button" title="Ik zit in de trein">
@@ -630,7 +783,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.6.0_415ade2"></script>
-  <script type="module" src="./app.js?v=2.6.0_415ade2"></script>
+  <script src="./stations.js?v=2.6.0_6fa7a35"></script>
+  <script type="module" src="./app.js?v=2.6.0_6fa7a35"></script>
 </body>
 </html>

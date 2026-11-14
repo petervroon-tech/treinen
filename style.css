@@ -440,6 +440,19 @@ body {
   color: #001948;
 }
 
+.header-action-btn.help-btn {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.header-action-btn.help-btn:hover {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: #fbbf24;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
 .header-action-btn.audio-btn.active {
   border-color: #10b981;
   color: #34d399;
@@ -4159,5 +4172,448 @@ body {
   .main-layout {
     height: calc(100vh - 40px) !important;
     height: calc(100dvh - 40px) !important;
+  }
+}
+
+/* =============================================================
+   14. Help & Handleiding Modal (zoals in vroonphoto)
+   ============================================================= */
+.help-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.help-backdrop {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.help-dialog {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(9, 14, 26, 0.96) 0%, rgba(3, 7, 18, 0.98) 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.35);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 840px;
+  max-height: 88vh;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.9), 0 0 35px rgba(245, 158, 11, 0.15);
+  overflow: hidden;
+}
+
+.help-dialog-header {
+  padding: 14px 20px;
+  background: rgba(245, 158, 11, 0.08);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.22);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.help-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.help-header-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.help-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.help-subtitle {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.help-version-tag {
+  background: rgba(255, 201, 23, 0.18);
+  border: 1px solid var(--ns-yellow);
+  color: var(--ns-yellow);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.help-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.help-close-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.help-dialog-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.help-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.help-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.help-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-section-icon {
+  font-size: 1.15rem;
+}
+
+.help-section-heading {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.help-status-pill {
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid #22c55e;
+  color: #4ade80;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.help-section-intro {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Dynamische Feature Grid */
+.help-dynamic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.help-dynamic-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.help-dynamic-card:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(15, 23, 42, 0.85);
+  transform: translateY(-1px);
+}
+
+.help-dynamic-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.help-dynamic-icon-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-dynamic-icon {
+  font-size: 1.1rem;
+}
+
+.help-dynamic-tag {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 201, 23, 0.14);
+  border: 1px solid rgba(255, 201, 23, 0.35);
+  color: var(--ns-yellow);
+}
+
+.help-dynamic-card h5 {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.help-dynamic-card p {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Handleiding Kaarten */
+.help-guide-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.help-guide-card {
+  display: flex;
+  gap: 14px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+
+.help-guide-card:hover {
+  border-color: rgba(255, 201, 23, 0.3);
+  background: rgba(15, 23, 42, 0.75);
+}
+
+.help-card-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 201, 23, 0.12);
+  border: 1px solid rgba(255, 201, 23, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.help-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.help-card-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.help-card-content p {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.help-card-content p strong {
+  color: #e2e8f0;
+}
+
+.help-card-tip {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  border-left: 2px solid #38bdf8;
+  padding: 5px 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.tip-label {
+  font-weight: 800;
+  font-size: 0.66rem;
+  background: #0284c7;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* Systeem & Info box */
+.help-info-box {
+  display: flex;
+  gap: 12px;
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  align-items: flex-start;
+}
+
+.help-info-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.help-info-text {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.help-info-text strong {
+  color: #38bdf8;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.help-info-text p {
+  margin: 0;
+}
+
+/* Footer */
+.help-dialog-footer {
+  padding: 12px 20px;
+  background: rgba(15, 23, 42, 0.75);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.help-footer-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+.help-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+  flex-shrink: 0;
+}
+
+@media (max-width: 680px) {
+  .help-modal {
+    padding: 8px;
+  }
+
+  .help-dialog {
+    max-height: 94vh;
+    max-height: 94dvh;
+    border-radius: 14px;
+  }
+
+  .help-dialog-header {
+    padding: 12px 14px;
+  }
+
+  .help-title {
+    font-size: 0.98rem;
+  }
+
+  .help-subtitle {
+    font-size: 0.68rem;
+  }
+
+  .help-dialog-body {
+    padding: 12px 14px;
+    gap: 16px;
+  }
+
+  .help-dynamic-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .help-guide-card {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .help-card-icon-badge {
+    width: 30px;
+    height: 30px;
+    font-size: 1.1rem;
+  }
+
+  .help-dialog-footer {
+    padding: 10px 14px;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .help-dialog-footer .btn {
+    width: 100%;
+  }
+
+  .help-footer-meta {
+    justify-content: center;
+    font-size: 0.7rem;
   }
 }
