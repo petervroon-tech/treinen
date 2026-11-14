@@ -1,8 +1,8 @@
 {
   "version": "2.6.0",
-  "commit": "6ed8309",
-  "fullCommit": "6ed8309ee87ad2ae3db6220cf880b3e50ccee2e8",
-  "buildTime": "2026-11-14T11:29:35Z",
+  "commit": "961ea0b",
+  "fullCommit": "961ea0bbf71e3b30a620bcbf205d6369cf0bb5bd",
+  "buildTime": "2026-11-14T11:31:35Z",
   "branch": "main",
   "environment": "local",
   "title": "Treinen - Live Satelliet Radar Nederland",
