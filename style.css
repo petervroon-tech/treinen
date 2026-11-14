@@ -2056,10 +2056,10 @@ body {
 -------------------------------------------------------------- */
 .live-train-hud {
   position: absolute;
-  bottom: 22px;
+  bottom: 48px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 550;
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2665,13 +2665,15 @@ body {
   position: fixed;
   inset: 0;
   z-index: 3000;
-  background: rgba(4, 8, 18, 0.82);
+  background: rgba(4, 8, 18, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -2681,9 +2683,14 @@ body {
   border-radius: 14px;
   max-width: 580px;
   width: 100%;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 24px rgba(255, 201, 23, 0.35);
   overflow: hidden;
   animation: popInDialog 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: auto;
 }
 
 @keyframes popInDialog {
@@ -2698,6 +2705,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .my-train-title-group {
@@ -2736,6 +2744,9 @@ body {
 .my-train-body {
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
 }
 
 .my-train-hero {
@@ -2744,7 +2755,8 @@ body {
   align-items: center;
   background: linear-gradient(90deg, rgba(0, 48, 130, 0.4), rgba(2, 132, 199, 0.2));
   border-bottom: 1px solid var(--border-light);
-  padding: 16px 20px;
+  padding: 14px 18px;
+  flex-shrink: 0;
 }
 
 .speed-dial-box {
@@ -2815,7 +2827,8 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  padding: 16px 20px;
+  padding: 14px 18px;
+  flex-shrink: 0;
 }
 
 .my-train-card {
@@ -2860,9 +2873,10 @@ body {
 .my-train-actions {
   display: flex;
   gap: 10px;
-  padding: 14px 20px 18px;
+  padding: 12px 18px;
   border-top: 1px solid var(--border-light);
   background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
 }
 
 .btn-follow {
@@ -2892,12 +2906,13 @@ body {
 }
 
 .auto-detect-row {
-  padding: 10px 16px 14px;
+  padding: 8px 16px 12px;
   background: rgba(0, 0, 0, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .auto-detect-checkbox-label {
