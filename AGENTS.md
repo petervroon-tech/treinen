@@ -29,5 +29,20 @@ Deze richtlijnen gelden voor alle huidige en toekomstige aanpassingen en applica
 - **Live online URL's:** De gebruiker gebruikt en opent apps altijd direct via de online GitHub Pages URL (bv. `https://petervroon-tech.github.io/treinen/`), nooit via lokale `localhost` poorten.
 - **Automatische live update:** Apps controleren via `version.json` periodiek of er online op GitHub een nieuwere build beschikbaar is en verversen direct automatisch zonder dat de gebruiker lokaal iets hoeft te doen.
 
+## 5. Volledige Responsiviteit & Proporties (Laptops, iPads & Smartphones)
+- **Laptops & Desktops ($\ge$ 1024px):**
+  - Standaard optimale side-by-side (split) indeling: links het compacte controle- of stationspaneel (`clamp(380px, 30vw, 460px)`), rechts het interactieve werkgebied of de satellietkaart (`flex: 1`).
+  - Geen onnodig verborgen kaarten of panelen op brede schermen. Volledig scherm voor kaart of lijst blijft beschikbaar met 1 klik op de wisselknop (`🛰️ Alleen Kaart` / `📋 Treinen`).
+  - Zwevende HUD's en statusbalken zweven elegant gecentreerd boven de onderbalk met veilige marges, nooit half van het scherm afgekapt.
+- **iPads & Tablets (681px - 1023px):**
+  - Optimale verhoudingen in zowel **portrait** als **landscape**.
+  - De header schakelt bij schermen $\le$ 1100px soepel om naar een 2-laags indeling (boven: merk + trajectkiezer; onder: bedieningsknoppen) zodat alle 10 actieknoppen comfortabel bereikbaar blijven zonder te worden samengedrukt of buiten het scherm te vallen.
+  - Vloeiend horizontaal scrollen (`-webkit-overflow-scrolling: touch`) zonder storende scrollbars voor knoppenstroken.
+- **Smartphones ($\le$ 680px):**
+  - Schermvullende weergave (100% per actieve modus) met snelle 1-tap wisselknop.
+  - Modals schakelen automatisch over naar touch-vriendelijke bottom sheets met veilige marges (`env(safe-area-inset-bottom)`).
+  - Geen enkele horizontale overflow of afgekipte popups; knoppen en lettergroottes schalen strak mee (`0.65rem - 0.78rem`).
+
+
 
 

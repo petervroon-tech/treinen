@@ -3878,10 +3878,17 @@ function setupNavigation() {
   // Weergave Wisselaar: Strikt 'map' (alleen satelliet) OF 'list' (alleen treinen op station)
   // Geen split weergave zodat er nooit een station (zoals Buitenpost) onder de kaart blijft hangen
   // =============================================================
-  let currentAppViewMode = 'list';
+  // 11b. Responsieve Weergave Schakelaar (Smartphones, iPads & Laptops)
+  // =============================================================
+  const isDesktopScreen = () => window.innerWidth >= 1024;
+  let currentAppViewMode = isDesktopScreen() ? 'split' : 'list';
 
   window.setAppViewMode = function(mode) {
-    const effectiveMode = (mode === 'map' || mode === 'split') ? 'map' : 'list';
+    const isDesktop = isDesktopScreen();
+    let effectiveMode = mode;
+    if (!effectiveMode) {
+      effectiveMode = isDesktop ? 'split' : 'list';
+    }
     currentAppViewMode = effectiveMode;
     const layout = document.getElementById('mainLayout');
     const btnSplit = document.getElementById('btnHeaderSplit');
@@ -3897,28 +3904,42 @@ function setupNavigation() {
       if (btnSplit) {
         btnSplit.innerHTML = '<span class="btn-icon">📋</span><span class="btn-label-text">Treinen</span>';
         btnSplit.classList.add('active');
-        btnSplit.setAttribute('title', 'Schakel terug naar treinen op een station');
+        btnSplit.setAttribute('title', isDesktop ? 'Toon split view (treinen & kaart naast elkaar)' : 'Schakel terug naar treinen op station');
       }
       if (btnFloating) {
         btnFloating.style.display = 'inline-flex';
-        btnFloating.innerHTML = '<span>📋 Treinen op station</span>';
+        btnFloating.innerHTML = '<span>📋 Lijnoverzicht</span>';
       }
       if (peekText) {
         peekText.textContent = '📋 Terug naar treinenlijst';
       }
-    } else {
-      // Modus 2: ALLEEN DE TREINEN OP EEN STATION (schermvullend)
-      layout.classList.add('view-list');
+    } else if (effectiveMode === 'split') {
+      // Modus 2: SPLIT SCREEN (Laptops & iPads: Treinen links, Satellietkaart rechts)
+      layout.classList.add('view-split');
       if (btnSplit) {
-        btnSplit.innerHTML = '<span class="btn-icon">🛰️</span><span class="btn-label-text">Kaart</span>';
+        btnSplit.innerHTML = '<span class="btn-icon">🛰️</span><span class="btn-label-text">Alleen Kaart</span>';
         btnSplit.classList.remove('active');
-        btnSplit.setAttribute('title', 'Toon alleen de satellietbeelden (schermvullend)');
+        btnSplit.setAttribute('title', 'Maximaliseer satellietkaart naar volledig scherm');
       }
       if (btnFloating) {
         btnFloating.style.display = 'none';
       }
       if (peekText) {
-        peekText.textContent = '🛰️ Toon alleen satellietbeelden ▲';
+        peekText.textContent = '🛰️ Maximaliseer satellietkaart ▲';
+      }
+    } else {
+      // Modus 3: ALLEEN DE TREINEN OP EEN STATION (schermvullend)
+      layout.classList.add('view-list');
+      if (btnSplit) {
+        btnSplit.innerHTML = '<span class="btn-icon">🛰️</span><span class="btn-label-text">Kaart</span>';
+        btnSplit.classList.remove('active');
+        btnSplit.setAttribute('title', isDesktop ? 'Toon split view (treinen & kaart)' : 'Toon alleen de satellietbeelden');
+      }
+      if (btnFloating) {
+        btnFloating.style.display = 'none';
+      }
+      if (peekText) {
+        peekText.textContent = '🛰️ Toon satellietkaart ▲';
       }
     }
 
@@ -3933,12 +3954,23 @@ function setupNavigation() {
     }
   };
 
-  // Klik op compacte Kaart-knop bovenaan: wisselt direct tussen alleen satelliet of alleen treinen
+  // Klik op compacte Kaart-knop bovenaan: wisselt vloeiend tussen weergaves afgestemd op apparaat
   document.getElementById('btnHeaderSplit')?.addEventListener('click', () => {
-    if (currentAppViewMode === 'list') {
-      window.setAppViewMode('map');
+    const isDesktop = isDesktopScreen();
+    if (isDesktop) {
+      if (currentAppViewMode === 'split') {
+        window.setAppViewMode('map');
+      } else if (currentAppViewMode === 'map') {
+        window.setAppViewMode('list');
+      } else {
+        window.setAppViewMode('split');
+      }
     } else {
-      window.setAppViewMode('list');
+      if (currentAppViewMode === 'list') {
+        window.setAppViewMode('map');
+      } else {
+        window.setAppViewMode('list');
+      }
     }
   });
 
@@ -4263,7 +4295,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '961ea0b';
+const APP_BUILD_COMMIT = '8630610';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -4513,7 +4545,8 @@ async function init() {
   initMap();
   startRailMotionEngine();
   setupNavigation();
-  window.setAppViewMode('list');
+  const defaultMode = (window.innerWidth >= 1024) ? 'split' : 'list';
+  window.setAppViewMode(defaultMode);
   initCommunicationEngine();
   initVersionManagement();
   initHelpModal();

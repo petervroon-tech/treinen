@@ -2355,23 +2355,25 @@ body {
 -------------------------------------------------------------- */
 .live-train-hud {
   position: absolute;
-  bottom: 48px;
+  bottom: clamp(14px, 3.5vh, 32px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
   background: rgba(4, 12, 30, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1.5px solid var(--ns-yellow);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75), 0 0 18px rgba(255, 201, 23, 0.35);
   border-radius: 16px;
-  padding: 10px 16px;
-  min-width: 340px;
-  max-width: 95vw;
+  padding: 8px 14px;
+  width: auto;
+  min-width: 320px;
+  max-width: min(520px, calc(100% - 24px));
+  box-sizing: border-box;
   animation: hudSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
@@ -2609,93 +2611,231 @@ body {
    Geavanceerde Responsive Aanpassingen (Smartphones, iPads & Laptops)
 ------------------------------------------------------------- */
 
-/* Laptops & Grote Schermen (vanaf 1180px) */
-@media (min-width: 1181px) {
-  .corridor-panel {
-    width: clamp(420px, 32vw, 520px);
-  }
-}
-
-/* iPads in Landscape (901px tot 1180px) */
-@media (min-width: 901px) and (max-width: 1180px) {
-  .corridor-panel {
-    width: clamp(380px, 38vw, 440px);
-    min-width: 360px;
-  }
-  .line-selector-nav {
-    max-width: calc(100vw - 440px);
-  }
-  .status-filter-btn {
-    padding: 6px 6px;
-    font-size: 0.7rem;
-  }
-}
-
-/* Smartphones & iPads in Portrait (tot 900px) */
-@media (max-width: 900px) {
-  .mobile-view-bar {
-    display: none !important;
+/* 1. Laptops & Brede Schermen (vanaf 1024px) */
+@media (min-width: 1024px) {
+  .app-header {
+    height: 50px;
+    padding: 0 16px;
   }
 
-  /* Hoofd Layout in Kolom */
+  .header-main-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    height: 100%;
+  }
+
+  .header-top-subrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .traject-dropdown-container {
+    width: clamp(280px, 28vw, 480px);
+    max-width: 500px;
+  }
+
+  .header-tools-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  /* Hoofdindeling: side-by-side splitview standaard actief op laptops */
   .main-layout {
-    flex-direction: column;
+    flex-direction: row;
     height: calc(100vh - 50px);
     height: calc(100dvh - 50px);
   }
 
-  .corridor-panel {
-    width: 100%;
-    min-width: 100%;
-    height: 48%;
-    border-right: none;
-    border-bottom: 1px solid var(--border-light);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  }
-
-  .map-panel {
-    width: 100%;
-    height: 52%;
-  }
-
-  /* Weergave Modus 1: Alleen Lijst & Status (Volledig Scherm) */
-  .main-layout.view-list .map-panel {
-    display: none !important;
-  }
-  .main-layout.view-list .corridor-panel {
+  .main-layout:not(.view-map):not(.view-list) .corridor-panel,
+  .main-layout.view-split .corridor-panel {
+    display: flex !important;
+    width: clamp(380px, 30vw, 460px) !important;
+    min-width: 360px !important;
+    max-width: 480px !important;
     height: 100% !important;
-    max-height: 100% !important;
+    border-right: 1px solid var(--border-light);
   }
 
-  /* Weergave Modus 2: Alleen Satellietkaart (Volledig Scherm) */
+  .main-layout:not(.view-map):not(.view-list) .map-panel,
+  .main-layout.view-split .map-panel {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    height: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Weergave 2: Alleen Satellietkaart (volledig scherm) */
   .main-layout.view-map .corridor-panel {
     display: none !important;
   }
   .main-layout.view-map .map-panel {
-    height: 100% !important;
+    display: flex !important;
+    width: 100% !important;
+    flex: 1 1 100% !important;
   }
 
-  /* Vloeiend horizontaal scrollen op touch apparaten */
-  .category-tabs,
-  .line-selector-nav {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  /* Weergave 3: Alleen Treinenlijst (volledig scherm) */
+  .main-layout.view-list .map-panel {
+    display: none !important;
   }
-  .category-tabs::-webkit-scrollbar,
-  .line-selector-nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .cat-tab-btn,
-  .line-nav-btn {
-    flex-shrink: 0;
+  .main-layout.view-list .corridor-panel {
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
   }
 }
 
-/* Smartphones & Mobiele weergave (tot 680px - iPhone portrait, iPad mini smal) */
+/* 2. iPads & Tablets (681px tot 1100px - zowel portrait 768px als landscape 1024px) */
+@media (max-width: 1100px) and (min-width: 681px) {
+  .app-header {
+    padding: 6px 12px;
+    height: auto;
+    min-height: unset;
+  }
+
+  .header-main-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .header-top-subrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .brand-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .traject-dropdown-container {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+  }
+
+  .traject-select-dropdown {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    min-height: 34px;
+  }
+
+  /* Tweede rij: Knoppenbalk soepel horizontaal scrollbaar indien nodig, geen klemmen */
+  .header-tools-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 2px 0;
+  }
+  .header-tools-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-action-btn {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    height: 32px;
+    flex: 0 0 auto;
+    border-radius: 6px;
+  }
+
+  .main-layout {
+    height: calc(100vh - 84px);
+    height: calc(100dvh - 84px);
+  }
+
+  /* iPads in Landscape: side-by-side splitview */
+  @media (orientation: landscape) {
+    .main-layout {
+      flex-direction: row;
+    }
+    .main-layout:not(.view-map):not(.view-list) .corridor-panel,
+    .main-layout.view-split .corridor-panel {
+      display: flex !important;
+      width: clamp(350px, 36vw, 420px) !important;
+      height: 100% !important;
+      border-right: 1px solid var(--border-light);
+    }
+    .main-layout:not(.view-map):not(.view-list) .map-panel,
+    .main-layout.view-split .map-panel {
+      display: flex !important;
+      flex: 1 !important;
+      height: 100% !important;
+    }
+    .main-layout.view-map .corridor-panel {
+      display: none !important;
+    }
+    .main-layout.view-map .map-panel {
+      display: flex !important;
+      width: 100% !important;
+    }
+    .main-layout.view-list .map-panel {
+      display: none !important;
+    }
+    .main-layout.view-list .corridor-panel {
+      display: flex !important;
+      width: 100% !important;
+    }
+  }
+
+  /* iPads in Portrait: 100% scherm per modus of soepele split */
+  @media (orientation: portrait) {
+    .main-layout.view-list .map-panel {
+      display: none !important;
+    }
+    .main-layout.view-list .corridor-panel {
+      display: flex !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .main-layout.view-map .corridor-panel {
+      display: none !important;
+    }
+    .main-layout.view-map .map-panel {
+      display: flex !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .main-layout.view-split {
+      flex-direction: column;
+    }
+    .main-layout.view-split .corridor-panel {
+      display: flex !important;
+      width: 100% !important;
+      height: 48% !important;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .main-layout.view-split .map-panel {
+      display: flex !important;
+      width: 100% !important;
+      height: 52% !important;
+    }
+  }
+}
+
+/* 3. Smartphones (tot 680px - iPhone portrait, compacte Android) */
 @media (max-width: 680px) {
   .app-header {
     padding: 6px 8px;
@@ -2706,7 +2846,7 @@ body {
   .header-main-row {
     flex-direction: column;
     align-items: stretch;
-    gap: 6px;
+    gap: 5px;
     width: 100%;
   }
 
@@ -2748,7 +2888,7 @@ body {
     width: 100%;
   }
 
-  /* Compacte knoppenbalk: alle knoppen (Split, Toon, In Trein, Ververs, Heel NL, etc.) geordend bovenaan */
+  /* Horizontaal swipebare knoppenbalk */
   .header-tools-row {
     display: flex;
     align-items: center;
@@ -2787,7 +2927,29 @@ body {
   }
 
   .main-layout {
+    flex-direction: column;
     height: calc(100vh - 84px);
+    height: calc(100dvh - 84px);
+  }
+
+  .main-layout.view-list .map-panel {
+    display: none !important;
+  }
+  .main-layout.view-list .corridor-panel {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .main-layout.view-map .corridor-panel {
+    display: none !important;
+  }
+  .main-layout.view-map .map-panel {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
     height: calc(100dvh - 84px);
   }
 
@@ -3602,7 +3764,27 @@ body {
   font-family: var(--font-mono);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 680px) {
+  .station-modal {
+    padding: 8px;
+  }
+  .station-dialog {
+    max-width: 100%;
+    max-height: 94vh;
+    max-height: 94dvh;
+    border-radius: 14px;
+  }
+  .station-modal-header {
+    padding: 10px 14px;
+  }
+  .station-meta-strip {
+    padding: 8px 12px;
+    font-size: 0.72rem;
+  }
+  .st-operator-tabs {
+    padding: 6px 12px;
+    gap: 4px;
+  }
   .station-board-header {
     display: none;
   }
