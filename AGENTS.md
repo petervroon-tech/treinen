@@ -23,4 +23,11 @@ Deze richtlijnen gelden voor alle huidige en toekomstige aanpassingen en applica
 - Bouw in elke applicatie altijd een direct toegankelijke Help-modal (`💡 Help`) zoals in `vroonphoto`.
 - De featurelijst in de Help-modal moet dynamisch gesynchroniseerd zijn met `version.json` via het build-script (`build.py`), zodat de documentatie na elke build automatisch 100% actueel is met een `✓ Altijd Actueel` badge.
 
+## 4. Deployment & GitHub Online Standaard: Alleen Online via GitHub
+- **Niet meer lokaal, alleen online via GitHub:** Alle huidige en nieuw te bouwen apps worden niet meer lokaal gedraaid of getest, maar direct en exclusief online gepubliceerd via GitHub (GitHub Pages en GitHub Actions CI/CD).
+- **Directe automatische uitrol:** Elke wijziging wordt direct vastgelegd in Git en gepusht naar de `main` branch op GitHub, waarna de online build-pipeline (`.github/workflows/deploy.yml`) de nieuwste versie direct live zet.
+- **Live online URL's:** De gebruiker gebruikt en opent apps altijd direct via de online GitHub Pages URL (bv. `https://petervroon-tech.github.io/treinen/`), nooit via lokale `localhost` poorten.
+- **Automatische live update:** Apps controleren via `version.json` periodiek of er online op GitHub een nieuwere build beschikbaar is en verversen direct automatisch zonder dat de gebruiker lokaal iets hoeft te doen.
+
+
 
