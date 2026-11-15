@@ -364,6 +364,28 @@ body {
   transform: translateY(-1px);
 }
 
+/* Goederenvervoer Knop in Bovenbalk */
+.header-action-btn.freight-btn {
+  background: rgba(220, 38, 38, 0.16);
+  border-color: #dc2626;
+  color: #fca5a5;
+  font-weight: 750;
+}
+
+.header-action-btn.freight-btn:hover {
+  background: rgba(220, 38, 38, 0.32);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.header-action-btn.freight-btn.active {
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+  border-color: #f87171;
+  color: #ffffff;
+  font-weight: 850;
+  box-shadow: 0 0 14px rgba(220, 38, 38, 0.55);
+}
+
 .pulse-dot-beacon {
   width: 8px;
   height: 8px;
@@ -2032,6 +2054,193 @@ body {
 
 .inspector-content label {
   color: var(--text-sub);
+}
+
+.btn-insp-follow {
+  flex: 1;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10b981;
+  color: #34d399;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-insp-follow:hover {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-insp-follow.active {
+  background: #dc2626;
+  border-color: #f87171;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+}
+
+/* Zwevende Live Volg Status Pill op de satellietkaart */
+.live-follow-badge {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(9, 14, 26, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid var(--ns-yellow);
+  border-radius: 999px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65), 0 0 14px rgba(255, 201, 23, 0.4);
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 750;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  max-width: 90vw;
+  white-space: nowrap;
+}
+
+.live-follow-pulse {
+  width: 9px;
+  height: 9px;
+  background: #10b981;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: beaconPulse 1.6s infinite;
+}
+
+.btn-stop-follow {
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-stop-follow:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Goederenvervoer Dashboard */
+.freight-dashboard-container {
+  padding: 16px;
+  color: var(--text-main);
+}
+
+.freight-header-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.freight-operator-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.freight-op-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.freight-op-count {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #38bdf8;
+}
+
+.freight-train-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+.freight-train-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 201, 23, 0.4);
+  transform: translateY(-1px);
+}
+
+.freight-item-row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.freight-item-row2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: var(--text-sub);
+}
+
+.freight-cargo-desc {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-family: var(--font-sans);
+}
+
+.freight-yards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.freight-yard-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f1f5f9;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.freight-yard-btn:hover {
+  background: rgba(255, 201, 23, 0.2);
+  border-color: var(--ns-yellow);
+  color: var(--ns-yellow);
 }
 
 /* -------------------------------------------------------------

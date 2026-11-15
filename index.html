@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.6.0_332d706">
-  <link rel="manifest" href="./manifest.json?v=2.6.0_332d706">
+  <link rel="stylesheet" href="./style.css?v=2.7.0_15821c8">
+  <link rel="manifest" href="./manifest.json?v=2.7.0_15821c8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -58,6 +58,7 @@
         <div class="traject-dropdown-container">
           <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject of heel Nederland">
             <option value="all">🌐 Heel Nederland — Alle treinen van alle maatschappijen</option>
+            <option value="freight-all">🚂 Landelijk Goederenvervoer — DB Cargo, Lineas, RFO, Captrain</option>
             <optgroup label="🎯 Eigen Traject (Kies Start &amp; Aankomst)">
               <option value="custom-route">🎯 Kies Eigen Traject (Van ➔ Naar, bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)...</option>
             </optgroup>
@@ -84,6 +85,7 @@
               <option value="ic-berlijn">Intercity Berlijn &bull; Amsterdam ➔ Berlijn</option>
             </optgroup>
             <optgroup label="🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; Rail Force One &bull; Lineas)">
+              <option value="freight-all">🚂 Alle Goederentreinen in Nederland (Landelijke Vrachtradar)</option>
               <option value="betuweroute">Betuweroute &bull; Rotterdam Haven ➔ Kijfhoek ➔ Zevenaar</option>
               <option value="brabant-goederen">Brabantroute Goederen &bull; Kijfhoek ➔ Venlo Grens</option>
               <option value="havenlijn-twente">Havenspoorlijn &bull; Waalhaven ➔ Bad Bentheim</option>
@@ -104,6 +106,12 @@
         <button id="btnHeaderApplyRoute" class="header-action-btn apply-btn" type="button" title="Toon treinen op het gekozen traject">
           <span class="btn-icon">🔍</span>
           <span class="btn-label-text">Toon</span>
+        </button>
+
+        <!-- Goederenvervoer Knop: 1-klik toegang naar alle goederentreinen & live volgen -->
+        <button id="btnHeaderFreight" class="header-action-btn freight-btn" type="button" title="Goederenvervoer: Bekijk en volg live alle goederentreinen in Nederland (DB Cargo, Lineas, RFO, Betuweroute, Kijfhoek)">
+          <span class="btn-icon">🚂</span>
+          <span class="btn-label-text">Goederen</span>
         </button>
 
         <!-- Ik zit in de trein: Compacte GPS Knop (klein) -->
@@ -335,6 +343,11 @@
           <div><label>Status Baanvak:</label> <span id="inspStatus">Rijdend op schema</span></div>
           <div><label>Laatste GPS:</label> <span id="inspGps">Zojuist</span></div>
         </div>
+        <div class="inspector-actions" style="margin-top: 10px; display: flex; gap: 8px;">
+          <button id="btnInspFollowLive" class="btn-insp-follow" type="button" title="Volg deze trein live in realtime op de satellietkaart">
+            <span>🎯</span> <span id="btnInspFollowText">Volg Live op Satelliet</span>
+          </button>
+        </div>
       </div>
       <!-- Snelle knop onderaan om de satellietkaart uit of in te klappen -->
       <div id="corridorMapPeekBar" class="corridor-map-peek-bar">
@@ -389,6 +402,13 @@
 
       <!-- Het Leaflet Kaartvenster -->
       <div id="map"></div>
+
+      <!-- Zwevende Live Volg Status Pill op de satellietkaart -->
+      <div id="liveFollowBadge" class="live-follow-badge" style="display: none;">
+        <span class="live-follow-pulse"></span>
+        <span id="liveFollowText">🛰️ Volgt live: DB Cargo #41738 (92 km/u)</span>
+        <button id="btnStopLiveFollow" class="btn-stop-follow" type="button" title="Stop live volgen">✕ Stop</button>
+      </div>
 
       <!-- LIVE TREIN GPS & SNELHEIDSMETER HUD (Zwevende cockpit op de satellietkaart) -->
       <div id="liveTrainHUD" class="live-train-hud" style="display: none;" role="region" aria-label="Live Trein Snelheidsmeter">
@@ -804,7 +824,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.6.0_332d706"></script>
-  <script type="module" src="./app.js?v=2.6.0_332d706"></script>
+  <script src="./stations.js?v=2.7.0_15821c8"></script>
+  <script type="module" src="./app.js?v=2.7.0_15821c8"></script>
 </body>
 </html>

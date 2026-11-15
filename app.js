@@ -450,6 +450,27 @@ export const CORRIDORS = {
   },
 
   // --- D. Goederenvervoer (Betuweroute & Brabant) ---
+  'freight-all': {
+    id: 'freight-all',
+    category: 'freight',
+    name: 'Landelijke Goederencorridors (Betuweroute • Havenspoorlijn • Kijfhoek)',
+    shortName: 'Landelijke Goederentreinen',
+    badge: 'Cargo',
+    operator: 'DB Cargo • Lineas • Rail Force One • Captrain • RTB Cargo',
+    primaryOpKey: 'freight',
+    seriesPattern: /^(4|5|6)\d{4}$/,
+    stations: [
+      { code: 'MVL',  name: 'Maasvlakte West Empl.',   lat: 51.9567, lon: 4.0150, terminal: true,  sporen: 'Goederen' },
+      { code: 'WH',   name: 'Waalhaven Zuid Empl.',   lat: 51.8750, lon: 4.4350, terminal: false, sporen: 'Empl.'    },
+      { code: 'KJH',  name: 'Kijfhoek Rangeerstation', lat: 51.8389, lon: 4.6067, terminal: false, sporen: 'Empl.'    },
+      { code: 'GDMB', name: 'Betuweroute Geldermalsen',lat: 51.8650, lon: 5.2650, terminal: false, sporen: 'Baan'     },
+      { code: 'AMFB', name: 'Amersfoort Bokkeduinen', lat: 52.1480, lon: 5.3620, terminal: false, sporen: 'Empl.'    },
+      { code: 'ZEVG', name: 'Zevenaar Grens Emmerich', lat: 51.9189, lon: 6.1367, terminal: false, sporen: 'DE Grens' },
+      { code: 'VLG',  name: 'Venlo Grens Kaldenkirchen',lat: 51.3650,lon: 6.1850, terminal: false, sporen: 'DE Grens' },
+      { code: 'BBG',  name: 'Bad Bentheim Empl. (DE)',lat: 52.3086, lon: 7.1583, terminal: true,  sporen: 'DE Grens' }
+    ]
+  },
+
   'betuweroute': {
     id: 'betuweroute',
     category: 'freight',
@@ -543,7 +564,10 @@ const appState = {
   geoWatchId: null,
   lastGpsFix: null,
   myTrain: null,
-  trainSpeedTracker: new Map()
+  trainSpeedTracker: new Map(),
+  followedTrainId: null,
+  lastFollowPan: 0,
+  simulatedFreightFleet: null
 };
 
 // =============================================================
@@ -1251,10 +1275,14 @@ export function getTrainServiceDetails(train, contextStation) {
     via = 'via Goes, Middelburg';
   }
   // 6. Goederenvervoer
-  else if (num >= 40000 && num <= 69999) {
+  else if ((num >= 40000 && num <= 69999) || op.category === 'freight') {
     serviceType = 'Goederentrein';
-    destination = num % 2 === 0 ? 'Zevenaar Grens / Bad Bentheim' : 'Kijfhoek (Rotterdam)';
-    origin = num % 2 === 0 ? 'Kijfhoek' : 'Zevenaar / Bad Bentheim';
+    if (train.exactDestination) {
+      destination = train.exactDestination;
+    } else {
+      destination = num % 2 === 0 ? 'Zevenaar Grens (DE)' : 'Kijfhoek Emplacement';
+    }
+    origin = num % 2 === 0 ? 'Kijfhoek (Rotterdam)' : 'Zevenaar Grens (DE)';
     via = 'via Betuweroute / Havenspoorlijn';
   }
 
@@ -1388,6 +1416,13 @@ function initMap() {
     }
   });
 
+  // Als de gebruiker zelf de kaart versleept, ontkoppel de automatische camera-volgfunctie
+  map.on('dragstart', () => {
+    if (appState.followedTrainId) {
+      stopFollowingTrain();
+    }
+  });
+
   // Dropdown menu's voor kaartweergave en labels
   document.getElementById('mapLayerSelect')?.addEventListener('change', (e) => {
     switchLayer(e.target.value);
@@ -1454,13 +1489,14 @@ function renderCorridorOnMap(corridor) {
   }
 
   const latlngs = corridor.stations.map(s => [s.lat, s.lon]);
-  const lineColor = '#ffc917';
+  const isFreightCorridor = corridor.category === 'freight';
+  const lineColor = isFreightCorridor ? '#ea580c' : '#ffc917';
 
   appState.routePolyline = L.polyline(latlngs, {
     color: lineColor,
-    weight: 4.5,
+    weight: isFreightCorridor ? 5.0 : 4.5,
     opacity: 0.95,
-    dashArray: '8, 4',
+    dashArray: isFreightCorridor ? '10, 5' : '8, 4',
     lineJoin: 'round'
   }).addTo(map);
 
@@ -1864,9 +1900,262 @@ export function groupCoupledTrains(trainList) {
   return grouped;
 }
 
+// =============================================================
+// Live Goederenvervoer Simulatie & Corridor Management
+// Zorgt dat er te allen tijde actieve goederentreinen rijden
+// over de Betuweroute, Havenspoorlijn en Brabantroute
+// =============================================================
+const FREIGHT_FLEET_SEEDS = [
+  {
+    num: '41738',
+    opKey: 'dbcargo',
+    corridorId: 'betuweroute',
+    loco: 'Siemens Vectron BR 193',
+    cargo: '30x Chemische Ketelwagens (Bertschi/Hoyer)',
+    speed: 90,
+    segIdx: 2,
+    t: 0.35,
+    dir: 1
+  },
+  {
+    num: '42840',
+    opKey: 'rfo',
+    corridorId: 'betuweroute',
+    loco: 'Vectron 193 Shark (Oranje/Zwart)',
+    cargo: '32x Hupac & Samskip Containers',
+    speed: 94,
+    segIdx: 5,
+    t: 0.65,
+    dir: -1
+  },
+  {
+    num: '50123',
+    opKey: 'lineas',
+    corridorId: 'brabant-goederen',
+    loco: 'Bombardier TRAXX BR 186',
+    cargo: '26x Staal- & Automotivewagens',
+    speed: 86,
+    segIdx: 1,
+    t: 0.45,
+    dir: 1
+  },
+  {
+    num: '60814',
+    opKey: 'captrain',
+    corridorId: 'havenlijn-twente',
+    loco: 'TRAXX E 186 (Groen/Paars)',
+    cargo: '24x Gesloten Goederenwagens (Papier & Stukgoed)',
+    speed: 88,
+    segIdx: 3,
+    t: 0.20,
+    dir: 1
+  },
+  {
+    num: '47219',
+    opKey: 'dbcargo',
+    corridorId: 'betuweroute',
+    loco: 'Class 66 Zware Diesel',
+    cargo: '28x Eamnos Kolen- & Ertswagens',
+    speed: 74,
+    segIdx: 0,
+    t: 0.50,
+    dir: -1
+  },
+  {
+    num: '43905',
+    opKey: 'freight',
+    customOp: { code: 'RTB', name: 'RTB Cargo', category: 'freight', badgeClass: 'op-freight', bg: '#d97706', color: '#ffffff', border: '#f59e0b' },
+    corridorId: 'havenlijn-twente',
+    loco: 'Siemens Vectron 193',
+    cargo: '34x Maersk Zeecontainers',
+    speed: 91,
+    segIdx: 5,
+    t: 0.70,
+    dir: -1
+  },
+  {
+    num: '51442',
+    opKey: 'lineas',
+    corridorId: 'brabant-goederen',
+    loco: 'Class 77 Diesel (Donkerblauw)',
+    cargo: '22x Shimmns Coilwagens (Gewalst Staal)',
+    speed: 82,
+    segIdx: 4,
+    t: 0.80,
+    dir: -1
+  },
+  {
+    num: '48102',
+    opKey: 'dbcargo',
+    corridorId: 'betuweroute',
+    loco: 'Vectron Multi-System (DB Rood)',
+    cargo: '36x Dubbeldeks Containertrein',
+    speed: 94,
+    segIdx: 4,
+    t: 0.25,
+    dir: 1
+  },
+  {
+    num: '44520',
+    opKey: 'rfo',
+    corridorId: 'brabant-goederen',
+    loco: 'Loc 186 295 Rail Force One',
+    cargo: '18x ZACNS Brandstoftankwagens',
+    speed: 78,
+    segIdx: 2,
+    t: 0.60,
+    dir: 1
+  },
+  {
+    num: '53108',
+    opKey: 'freight',
+    customOp: { code: 'LTE', name: 'LTE Netherlands Cargo', category: 'freight', badgeClass: 'op-freight', bg: '#0369a1', color: '#ffffff', border: '#38bdf8' },
+    corridorId: 'betuweroute',
+    loco: 'Siemens Smartron',
+    cargo: '30x Graanwagens',
+    speed: 88,
+    segIdx: 6,
+    t: 0.40,
+    dir: -1
+  }
+];
+
+function initFreightFleet() {
+  if (appState.simulatedFreightFleet) return;
+  appState.simulatedFreightFleet = FREIGHT_FLEET_SEEDS.map(seed => ({ ...seed }));
+}
+
+function advanceFreightFleet(dt) {
+  initFreightFleet();
+  const fleet = appState.simulatedFreightFleet;
+  if (!fleet) return;
+
+  fleet.forEach(item => {
+    const corridor = CORRIDORS[item.corridorId];
+    if (!corridor || !corridor.stations || corridor.stations.length < 2) return;
+    const stations = corridor.stations;
+
+    if (item.segIdx < 0) item.segIdx = 0;
+    if (item.segIdx >= stations.length - 1) item.segIdx = stations.length - 2;
+
+    const s1 = stations[item.segIdx];
+    const s2 = stations[item.segIdx + 1];
+    const segLenKm = distanceKm(s1.lat, s1.lon, s2.lat, s2.lon);
+    const segLenM = Math.max(100, segLenKm * 1000);
+
+    const distMeters = (item.speed / 3.6) * dt;
+    const deltaT = distMeters / segLenM;
+
+    item.t += deltaT * item.dir;
+
+    if (item.t >= 1.0) {
+      if (item.segIdx < stations.length - 2) {
+        item.segIdx += 1;
+        item.t = 0.0;
+      } else {
+        item.dir = -1;
+        item.t = 1.0;
+      }
+    } else if (item.t <= 0.0) {
+      if (item.segIdx > 0) {
+        item.segIdx -= 1;
+        item.t = 1.0;
+      } else {
+        item.dir = 1;
+        item.t = 0.0;
+      }
+    }
+  });
+}
+
+function getLiveFreightTrains() {
+  initFreightFleet();
+  const fleet = appState.simulatedFreightFleet;
+  if (!fleet) return [];
+
+  const trains = [];
+  fleet.forEach(item => {
+    const corridor = CORRIDORS[item.corridorId];
+    if (!corridor || !corridor.stations || corridor.stations.length < 2) return;
+    const stations = corridor.stations;
+
+    const s1 = stations[item.segIdx];
+    const s2 = stations[item.segIdx + 1];
+    const t = Math.max(0, Math.min(1, item.t));
+
+    const lat = s1.lat + t * (s2.lat - s1.lat);
+    const lon = s1.lon + t * (s2.lon - s1.lon);
+
+    const op = item.customOp || OPERATORS[item.opKey] || OPERATORS.freight;
+    const isRev = item.dir === -1;
+    const destStation = isRev ? stations[0] : stations[stations.length - 1];
+    const origStation = isRev ? stations[stations.length - 1] : stations[0];
+    const targetStation = isRev ? s1 : s2;
+
+    const dLat = (s2.lat - s1.lat) * item.dir;
+    const dLon = (s2.lon - s1.lon) * item.dir;
+    const heading = Math.atan2(dLon * Math.cos(lat * Math.PI / 180), dLat) * 180 / Math.PI;
+
+    const trainId = `freight_${item.num}`;
+    const train = {
+      id: trainId,
+      trainNum: item.num,
+      matnummer: `${item.loco} • ${item.cargo}`,
+      matnrString: `Trein ${item.num} ${op.code} cargo @ ${item.speed} km/u`,
+      color: op.bg,
+      lat,
+      lon,
+      speed: item.speed,
+      delayMin: 0,
+      statusType: 'ontime',
+      isPech: false,
+      puncScore: 98,
+      gpsdata: 'Live Telemetrie Betuweroute / Havenspoorlijn',
+      operator: op,
+      unitsCount: 1,
+      isReverse: isRev,
+      fromStation: s1,
+      toStation: s2,
+      targetStation,
+      exactDestination: destStation.name,
+      locomotive: item.loco,
+      cargo: item.cargo,
+      corridorId: item.corridorId,
+      segmentIndex: item.segIdx,
+      segmentProgress: t,
+      segLenKm: distanceKm(s1.lat, s1.lon, s2.lat, s2.lon),
+      heading
+    };
+
+    train.service = {
+      serviceType: 'Goederentrein',
+      destination: destStation.name,
+      origin: origStation.name,
+      via: corridor.shortName,
+      operator: op,
+      platform: 'Goederenspoor',
+      displayTitle: `${op.code} #${item.num} naar ${destStation.name}`
+    };
+
+    trains.push(train);
+  });
+
+  return trains;
+}
+
 // Centrale selector voor alle actieve, gegroepeerde treinen
 export function getActiveParsedTrains() {
   const rawList = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+
+  // Integreer live goederenvloot op de corridors
+  const simFreight = getLiveFreightTrains();
+  const existingNums = new Set(rawList.map(t => t.trainNum));
+  simFreight.forEach(ft => {
+    if (!existingNums.has(ft.trainNum)) {
+      rawList.push(ft);
+    }
+  });
+
   return groupCoupledTrains(rawList);
 }
 
@@ -1979,10 +2268,23 @@ function determineTrainDirection(train, corridor) {
 function matchTrainToCorridor(train, corridor) {
   if (!corridor) return true;
 
-  // 1. Spoorwegmaatschappij filter:
-  // Als een specifiek traject wordt bekeken (bv. Arriva tussen Apeldoorn De Maten en Zutphen),
+  // 1. Spoorwegmaatschappij & Goederen filter:
+  const isFreightTrain = (train.operator && train.operator.category === 'freight') ||
+                         (train.trainNum && parseInt(train.trainNum, 10) >= 40000 && parseInt(train.trainNum, 10) <= 69999) ||
+                         /cargo|goederen|locon|lte|rtb|lineas|captrain|dbcargo|rfo/i.test(train.matnrString || '');
+
+  // Goederencorridors
+  if (corridor.category === 'freight' || corridor.id === 'freight-all') {
+    if (!isFreightTrain) return false;
+    if (corridor.id === 'freight-all') return true;
+  } else if (corridor.id !== 'all' && corridor.id !== 'custom') {
+    // Sluit goederentreinen uit van reguliere reizigerstrajecten
+    if (isFreightTrain) return false;
+  }
+
+  // Als een specifiek reizigerstraject wordt bekeken (bv. Arriva tussen Apeldoorn De Maten en Zutphen),
   // toon dan uitsluitend treinen van die maatschappij en geen NS treinen van kruisende lijnen!
-  if (corridor.primaryOpKey && corridor.primaryOpKey !== 'all') {
+  if (corridor.primaryOpKey && corridor.primaryOpKey !== 'all' && corridor.category !== 'freight') {
     const opCode = (train.operator && train.operator.code) ? train.operator.code.toLowerCase() : '';
     if (corridor.primaryOpKey === 'arriva' && !opCode.includes('arriva')) {
       return false; // Alleen Arriva treinen op Arriva trajecten
@@ -2172,8 +2474,120 @@ function updateLineOverview() {
 
   // ANDERS: Normale lijn- of landelijke radar modus
   const corridorKey = appState.activeCorridorKey;
-  const isAllMode = corridorKey === 'all' || appState.activeCategory === 'all';
+  const isFreightAllMode = corridorKey === 'freight-all';
+  const isAllMode = !isFreightAllMode && (corridorKey === 'all' || appState.activeCategory === 'all');
   const corridor = isAllMode ? null : CORRIDORS[corridorKey];
+
+  if (isFreightAllMode) {
+    if (titleEl) titleEl.textContent = '🚂 Landelijk Goederenvervoer & Vrachtcorridors';
+    if (metaEl) metaEl.textContent = 'DB Cargo • Lineas • Rail Force One • Captrain • RTB Cargo • Betuweroute & Havenspoorlijn';
+
+    const freightTrains = allParsed.filter(t => 
+      (t.operator && t.operator.category === 'freight') ||
+      (parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999) ||
+      /cargo|goederen|locon|lte|rtb|lineas|captrain|dbcargo|rfo/i.test(t.matnrString || '')
+    );
+
+    if (countEl) countEl.innerHTML = `Actieve goederentreinen op het spoor: <strong>${freightTrains.length}</strong>`;
+    if (statusFooterEl) statusFooterEl.textContent = `Goederenradar • ${freightTrains.length} goederentreinen live in beweging`;
+
+    if (diagramEl) {
+      const opCounts = {};
+      freightTrains.forEach(t => {
+        const c = t.operator.code;
+        opCounts[c] = (opCounts[c] || 0) + 1;
+      });
+
+      let overviewHtml = `
+        <div class="freight-dashboard-container">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+            <h3 style="font-size: 0.95rem; color: var(--ns-yellow); margin:0;">
+              🚂 Actieve Vrachtvervoerders in Nederland:
+            </h3>
+            <span style="font-size:0.75rem; background:rgba(220,38,38,0.25); border:1px solid #dc2626; color:#fca5a5; padding:2px 8px; border-radius:999px;">
+              Live Radar
+            </span>
+          </div>
+
+          <div class="freight-header-grid">
+      `;
+
+      for (const [opCode, count] of Object.entries(opCounts)) {
+        overviewHtml += `
+          <div class="freight-operator-card">
+            <div class="freight-op-top">
+              <span style="font-weight: 700; font-size: 0.8rem;">${opCode}</span>
+              <span class="freight-op-count">${count}</span>
+            </div>
+            <span style="font-size: 0.68rem; color: #94a3b8;">trein${count > 1 ? 'en' : ''} onderweg</span>
+          </div>
+        `;
+      }
+
+      overviewHtml += `
+          </div>
+
+          <div style="margin-top: 14px; margin-bottom: 14px;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--ns-yellow); margin-bottom: 8px;">
+              🎯 Snelle Satelliet Zoom naar Goederenemplacementen:
+            </div>
+            <div class="freight-yards-grid">
+              <button class="freight-yard-btn" onclick="window.jumpToFreightTerminal(51.9567, 4.0150, 15, 'Maasvlakte West')" type="button">⚓ Maasvlakte West</button>
+              <button class="freight-yard-btn" onclick="window.jumpToFreightTerminal(51.8750, 4.4350, 15, 'Waalhaven Zuid')" type="button">🏗️ Waalhaven Zuid</button>
+              <button class="freight-yard-btn" onclick="window.jumpToFreightTerminal(51.8389, 4.6067, 14, 'Kijfhoek Emplacement')" type="button">🔀 Kijfhoek Rangeerstation</button>
+              <button class="freight-yard-btn" onclick="window.jumpToFreightTerminal(51.8650, 5.2650, 14, 'Betuweroute Geldermalsen')" type="button">🛤️ Betuweroute</button>
+              <button class="freight-yard-btn" onclick="window.jumpToFreightTerminal(51.9189, 6.1367, 14, 'Zevenaar Grens')" type="button">🇩🇪 Zevenaar Grens</button>
+              <button class="freight-yard-btn" onclick="window.jumpToFreightTerminal(51.3650, 6.1850, 14, 'Venlo Grens')" type="button">🇩🇪 Venlo Grens</button>
+              <button class="freight-yard-btn" onclick="window.jumpToFreightTerminal(52.3086, 7.1583, 14, 'Bad Bentheim')" type="button">🇩🇪 Bad Bentheim</button>
+              <button class="freight-yard-btn" onclick="window.jumpToFreightTerminal(52.1480, 5.3620, 15, 'Amersfoort Bokkeduinen')" type="button">🏭 Amersfoort Goederen</button>
+            </div>
+          </div>
+
+          <div style="font-size: 0.82rem; font-weight: 700; color: #f8fafc; margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+            📋 Actuele Goederentreinen (Tik om direct Live te Volgen):
+          </div>
+          <div class="freight-trains-list">
+      `;
+
+      freightTrains.forEach(t => {
+        const op = t.operator;
+        const spdInfo = getSpeedBadgeInfo(t.speed);
+        const rawDest = t.exactDestination || (t.service ? t.service.destination : '') || 'Bestemming';
+        const isFollowed = appState.followedTrainId === t.id;
+
+        overviewHtml += `
+          <div class="freight-train-item ${isFollowed ? 'is-followed' : ''}" onclick="window.selectTrainAndCloseStation('${t.id}')">
+            <div class="freight-item-row1">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
+                <strong style="color:#ffffff; font-size:0.86rem;">Trein #${t.trainNum}</strong>
+                <span style="font-size:0.75rem; color:var(--ns-yellow); font-weight:700;">➔ ${rawDest}</span>
+              </div>
+              <span class="t-speed-badge ${spdInfo.cssClass}">${spdInfo.icon} ${t.speed} km/u</span>
+            </div>
+            <div class="freight-item-row2">
+              <span class="freight-cargo-desc">${t.matnummer || 'Zware Goederentrein'}</span>
+              <button class="btn-insp-follow" style="padding:2px 8px; font-size:0.7rem; flex:none;" onclick="event.stopPropagation(); window.startFollowingTrain('${t.id}');" type="button">
+                <span>🎯</span> Volg Live
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      overviewHtml += `
+          </div>
+        </div>
+      `;
+      diagramEl.innerHTML = overviewHtml;
+    }
+
+    let overviewTrains = freightTrains;
+    if (appState.motionFilter === 'moving') overviewTrains = overviewTrains.filter(t => t.speed > 5);
+    else if (appState.motionFilter === 'standing') overviewTrains = overviewTrains.filter(t => t.speed <= 5);
+    renderMapTrains(overviewTrains);
+    return;
+  }
 
   if (isAllMode) {
     if (titleEl) titleEl.textContent = 'Landelijke Satelliet Radar (Heel Nederland)';
@@ -2517,6 +2931,9 @@ function startRailMotionEngine() {
     const dt = Math.min(0.1, Math.max(0.001, (now - appState.lastSimTime) / 1000));
     appState.lastSimTime = now;
 
+    // Beweeg de actieve goederenvloot continu over de goederencorridors
+    advanceFreightFleet(dt);
+
     for (const [id, state] of appState.trainMotionStates.entries()) {
       const m = state.marker;
       if (!m || !appState.trainMarkers.has(id)) continue;
@@ -2586,6 +3003,19 @@ function startRailMotionEngine() {
             arrowEl.style.transform = `rotate(${Math.round(state.heading)}deg)`;
           }
         }
+      }
+    }
+
+    // Live camera follow voor de geselecteerde trein (bv. goederentrein)
+    if (appState.followedTrainId && appState.trainMotionStates.has(appState.followedTrainId)) {
+      const fState = appState.trainMotionStates.get(appState.followedTrainId);
+      if (appState.map && fState) {
+        if (!appState.lastFollowPan || (now - appState.lastFollowPan) > 300) {
+          appState.lastFollowPan = now;
+          appState.map.panTo([fState.curLat, fState.curLon], { animate: true, duration: 0.3 });
+        }
+        const hudSpd = document.getElementById('hudSpeedVal');
+        if (hudSpd) hudSpd.textContent = Math.round(fState.speed);
       }
     }
 
@@ -2843,9 +3273,10 @@ function renderMapTrains(trainList) {
           </div>
           <div class="clean-train-pin ${isDriving ? 'is-driving' : ''} ${isRev ? 'is-reverse' : ''}" style="background: ${op.border}; border-color: ${pinBorder};">
             <div class="train-pin-heading-arrow" style="transform: rotate(${Math.round(initHeading)}deg);" title="Rijrichting: ${Math.round(initHeading)}°">▲</div>
+            ${op.category === 'freight' ? '<span style="font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;">🚂</span>' : `
             <svg viewBox="0 0 24 24" width="14" height="14" fill="${op.color}">
               <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.5 0 6 .4 6 2H6c0-1.6 2.5-2 6-2zm-5 9c-.83 0-1.5-.67-1.5-1.5S6.17 10 7 10s1.5.67 1.5 1.5S7.83 13 7 13zm10 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-            </svg>
+            </svg>`}
           </div>
         </div>
       `;
@@ -2949,6 +3380,23 @@ window.selectTrain = (trainId) => {
     document.getElementById('inspPunc').className = `status-pill ${statusPillClass}`;
     document.getElementById('inspStatus').textContent = spdInfo.text;
     document.getElementById('inspGps').textContent = train.gpsdata;
+
+    const btnFollow = document.getElementById('btnInspFollowLive');
+    const btnFollowText = document.getElementById('btnInspFollowText');
+    if (btnFollow) {
+      const isFollowed = appState.followedTrainId === trainId;
+      btnFollow.classList.toggle('active', isFollowed);
+      if (btnFollowText) {
+        btnFollowText.textContent = isFollowed ? '⏹️ Stop Volgen' : 'Volg Live op Satelliet';
+      }
+      btnFollow.onclick = () => {
+        if (appState.followedTrainId === trainId) {
+          stopFollowingTrain();
+        } else {
+          startFollowingTrain(trainId);
+        }
+      };
+    }
   }
 
   // Geef de geselecteerde marker een opvallende gloed en open de tag direct
@@ -2966,6 +3414,80 @@ window.selectTrain = (trainId) => {
   });
 
   appState.map.flyTo([train.lat, train.lon], 14, { duration: 1.2 });
+};
+
+// =============================================================
+// Live Camera Follow & Goederen Navigatie
+// =============================================================
+export function startFollowingTrain(trainId) {
+  appState.followedTrainId = trainId;
+  const allTrains = getActiveParsedTrains();
+  const train = allTrains.find(t => t.id === trainId);
+  if (!train) return;
+
+  if (appState.map) {
+    appState.map.flyTo([train.lat, train.lon], 14, { duration: 0.8 });
+  }
+
+  const followBadge = document.getElementById('liveFollowBadge');
+  const followText = document.getElementById('liveFollowText');
+  const opCode = train.operator ? train.operator.code : 'Trein';
+  const rawDest = train.exactDestination || (train.service ? train.service.destination : '') || 'Bestemming';
+  if (followBadge && followText) {
+    followText.innerHTML = `🛰️ Volgt live: <strong>[${opCode}] #${train.trainNum}</strong> (${train.speed} km/u) ➔ ${rawDest}`;
+    followBadge.style.display = 'flex';
+  }
+
+  const btnFollow = document.getElementById('btnInspFollowLive');
+  const btnFollowText = document.getElementById('btnInspFollowText');
+  if (btnFollow) {
+    btnFollow.classList.add('active');
+    if (btnFollowText) btnFollowText.textContent = '⏹️ Stop Volgen';
+  }
+
+  const hud = document.getElementById('liveTrainHUD');
+  if (hud) {
+    hud.style.display = 'flex';
+    const trainTitleEl = document.getElementById('hudTrainTitle');
+    if (trainTitleEl) trainTitleEl.textContent = `${opCode} #${train.trainNum}`;
+    const hudBadge = document.getElementById('hudOpBadge');
+    if (hudBadge && train.operator) {
+      hudBadge.className = `op-badge ${train.operator.badgeClass || 'op-freight'}`;
+      hudBadge.textContent = `[${opCode}]`;
+    }
+    const hudRoute = document.getElementById('hudNextStationText');
+    if (hudRoute) hudRoute.innerHTML = `➔ <strong>${rawDest}</strong> &bull; ${train.matnummer || 'Goederen'}`;
+    const hudSpd = document.getElementById('hudSpeedVal');
+    if (hudSpd) hudSpd.textContent = train.speed;
+  }
+}
+
+export function stopFollowingTrain() {
+  appState.followedTrainId = null;
+  const followBadge = document.getElementById('liveFollowBadge');
+  if (followBadge) followBadge.style.display = 'none';
+
+  const btnFollow = document.getElementById('btnInspFollowLive');
+  const btnFollowText = document.getElementById('btnInspFollowText');
+  if (btnFollow) {
+    btnFollow.classList.remove('active');
+    if (btnFollowText) btnFollowText.textContent = 'Volg Live op Satelliet';
+  }
+
+  const hud = document.getElementById('liveTrainHUD');
+  if (hud && !appState.isTrackingUser) {
+    hud.style.display = 'none';
+  }
+}
+
+window.startFollowingTrain = startFollowingTrain;
+window.stopFollowingTrain = stopFollowingTrain;
+
+window.jumpToFreightTerminal = (lat, lon, zoom, name) => {
+  if (!appState.map) return;
+  stopFollowingTrain();
+  appState.map.flyTo([lat, lon], zoom || 15, { duration: 1.2 });
+  playAuthenticNSChime();
 };
 
 // =============================================================
@@ -4168,6 +4690,13 @@ function switchCorridor(corridorId) {
     select.value = corridorId;
   }
 
+  // Update de actieve status van de Goederen knop in de bovenbalk
+  const btnFreight = document.getElementById('btnHeaderFreight');
+  if (btnFreight) {
+    const isFreight = corridorId === 'freight-all' || (CORRIDORS[corridorId] && CORRIDORS[corridorId].category === 'freight');
+    btnFreight.classList.toggle('active', isFreight);
+  }
+
   const btnAllNL = document.getElementById('btnViewAllNL');
 
   if (corridorId === 'all') {
@@ -4356,6 +4885,23 @@ function setupNavigation() {
   // Knoppen: Forceer live verversing (zowel in planner als in bovenbalk)
   document.getElementById('btnForceRefresh')?.addEventListener('click', () => forceRefreshTrains());
   document.getElementById('btnHeaderForceRefresh')?.addEventListener('click', () => forceRefreshTrains());
+
+  // Knop: Goederenvervoer in de bovenbalk (1-klik toggle)
+  document.getElementById('btnHeaderFreight')?.addEventListener('click', () => {
+    if (appState.activeCorridorKey === 'freight-all') {
+      switchCorridor('all');
+    } else {
+      switchCorridor('freight-all');
+    }
+  });
+
+  // Stop Live Volgen knoppen
+  document.getElementById('btnStopLiveFollow')?.addEventListener('click', () => {
+    stopFollowingTrain();
+  });
+  document.getElementById('btnHudClose')?.addEventListener('click', () => {
+    stopFollowingTrain();
+  });
 
   // Snelle traject-knoppen (chips)
   document.querySelectorAll('.rp-chip-btn').forEach(btn => {
@@ -4932,8 +5478,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '332d706';
+const APP_VERSION = '2.7.0';
+const APP_BUILD_COMMIT = '15821c8';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
