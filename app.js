@@ -1346,7 +1346,7 @@ function initMap() {
     const clickLon = e.latlng.lng;
 
     // 1. Zoek dichtstbijzijnde live trein onder de vingertop (binnen 2.8 km)
-    const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+    const allParsed = getActiveParsedTrains();
     let nearestTrain = null;
     let minTrainDist = Infinity;
     allParsed.forEach(t => {
@@ -1786,7 +1786,88 @@ export function parseTrain(raw) {
   train.operator = detectOperator(train);
   train.service = getTrainServiceDetails(train);
   train.exactDestination = (train.service && train.service.destination && train.service.destination !== 'Eindbestemming') ? train.service.destination : '';
+  train.unitsCount = 1;
   return train;
+}
+
+// =============================================================
+// Gekoppelde Treinstellen Samenvoegen tot 1 Blokje met Cijfer
+// (Als er een trein rijdt met 2 aan elkaar gekoppelde treinen, toon 1 blokje met cijfer 1 of 2 of meer)
+// =============================================================
+export function groupCoupledTrains(trainList) {
+  if (!trainList || !trainList.length) return [];
+
+  const grouped = [];
+  const processed = new Set();
+
+  for (let i = 0; i < trainList.length; i++) {
+    if (processed.has(i)) continue;
+    const t = trainList[i];
+    processed.add(i);
+
+    const group = [t];
+    const num = t.trainNum;
+
+    // Koppel treinen met hetzelfde treinnummer binnen een redelijke fysieke afstand (< 4.0 km)
+    if (num && num !== '0') {
+      for (let j = i + 1; j < trainList.length; j++) {
+        if (processed.has(j)) continue;
+        const other = trainList[j];
+        if (other.trainNum === num) {
+          const d = distanceKm(t.lat, t.lon, other.lat, other.lon);
+          if (d <= 4.0) {
+            group.push(other);
+            processed.add(j);
+          }
+        }
+      }
+    }
+
+    if (group.length === 1) {
+      t.unitsCount = 1;
+      t.coupledMats = [t.matnummer || t.matnrString || 'Standaard'];
+      grouped.push(t);
+    } else {
+      const count = group.length;
+      const avgLat = group.reduce((sum, g) => sum + g.lat, 0) / count;
+      const avgLon = group.reduce((sum, g) => sum + g.lon, 0) / count;
+      const maxSpeed = Math.max(...group.map(g => g.speed || 0));
+      const maxDelay = Math.max(...group.map(g => g.delayMin || 0));
+      const hasPech = group.some(g => g.isPech);
+
+      const rawMats = group.map(g => g.matnummer || g.matnrString).filter(Boolean);
+      const uniqueMats = [...new Set(rawMats)];
+
+      const lead = group[0];
+      const opCode = lead.operator ? lead.operator.code.toLowerCase() : 'ns';
+      const mergedId = (num && num !== '0')
+        ? `train_${num}_${opCode}`
+        : `${lead.matnummer}_${lead.trainNum}`;
+
+      const merged = {
+        ...lead,
+        id: mergedId,
+        lat: avgLat,
+        lon: avgLon,
+        speed: maxSpeed,
+        delayMin: maxDelay,
+        isPech: hasPech,
+        statusType: hasPech ? 'pech' : (maxDelay >= 3 ? 'delayed' : 'ontime'),
+        unitsCount: count,
+        coupledMats: uniqueMats,
+        matnummer: `${count}x stel (${uniqueMats.join(' + ')})`
+      };
+      grouped.push(merged);
+    }
+  }
+
+  return grouped;
+}
+
+// Centrale selector voor alle actieve, gegroepeerde treinen
+export function getActiveParsedTrains() {
+  const rawList = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+  return groupCoupledTrains(rawList);
 }
 
 // Loodrechte projectie van een treincoördinaat op een spoorvak tussen Station A en Station B
@@ -1848,7 +1929,7 @@ function determineTrainDirection(train, corridor) {
 
   if (destName) {
     if (destName.includes(sStart.name.toLowerCase())) {
-      return { isReverse: true, targetStation: sStart, label: `⬅ Richting ${sStart.name}` };
+      return { isReverse: true, targetStation: sStart, label: `➔ Richting ${sStart.name}` };
     }
     if (destName.includes(sEnd.name.toLowerCase())) {
       return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
@@ -1861,7 +1942,7 @@ function determineTrainDirection(train, corridor) {
       const distToStart = distanceKm(destStation.lat, destStation.lon, sStart.lat, sStart.lon);
       const distToEnd = distanceKm(destStation.lat, destStation.lon, sEnd.lat, sEnd.lon);
       if (distToStart < distToEnd) {
-        return { isReverse: true, targetStation: sStart, label: `⬅ Richting ${sStart.name}` };
+        return { isReverse: true, targetStation: sStart, label: `➔ Richting ${sStart.name}` };
       } else {
         return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
       }
@@ -1870,7 +1951,7 @@ function determineTrainDirection(train, corridor) {
 
   if (origName) {
     if (origName.includes(sEnd.name.toLowerCase())) {
-      return { isReverse: true, targetStation: sStart, label: `⬅ Richting ${sStart.name}` };
+      return { isReverse: true, targetStation: sStart, label: `➔ Richting ${sStart.name}` };
     }
     if (origName.includes(sStart.name.toLowerCase())) {
       return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
@@ -1888,7 +1969,7 @@ function determineTrainDirection(train, corridor) {
     return {
       isReverse,
       targetStation: isReverse ? sStart : sEnd,
-      label: isReverse ? `⬅ Richting ${sStart.name}` : `➔ Richting ${sEnd.name}`
+      label: isReverse ? `➔ Richting ${sStart.name}` : `➔ Richting ${sEnd.name}`
     };
   }
 
@@ -2058,7 +2139,7 @@ function findNearestSegment(train, corridor) {
 // 7. Update het Overzicht (Statusknoppen & 1 Overzicht Alle Maatschappijen)
 // =============================================================
 function updateLineOverview() {
-  const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+  const allParsed = getActiveParsedTrains();
 
   // Tel landelijk aantal treinen per status
   const ontimeTrains = allParsed.filter(t => t.statusType === 'ontime');
@@ -2193,7 +2274,7 @@ function updateLineOverview() {
   if (countEl) {
     const revCount = matchedTrains.filter(t => t.isReverse).length;
     const fwdCount = matchedTrains.length - revCount;
-    countEl.innerHTML = `Actieve treinen: <strong>${matchedTrains.length}</strong> (➔ ${fwdCount} trajectrichting &bull; ⬅ ${revCount} tegentrein${revCount === 1 ? '' : 'en'})`;
+    countEl.innerHTML = `Actieve treinen: <strong>${matchedTrains.length}</strong> (➔ ${fwdCount} trajectrichting &bull; 🔄 ${revCount} tegentrein${revCount === 1 ? '' : 'en'})`;
   }
 
   // Bouw het heldere stationsdiagram met live snelheden & operator badges
@@ -2236,6 +2317,7 @@ function updateLineOverview() {
           const stFrom = isReverse ? nextSt.name : st.name;
           const stTo = isReverse ? st.name : nextSt.name;
           const exactDest = t.exactDestination || (t.service && t.service.destination && t.service.destination !== 'Eindbestemming' ? t.service.destination : '') || (isReverse ? stTo : (corridor.stations ? corridor.stations[corridor.stations.length - 1].name : stTo));
+          const unitsCount = t.unitsCount || 1;
 
           html += `
             <div class="train-corridor-card ${puncClass} ${isDriving ? 'is-driving-card' : ''} ${isReverse ? 'is-tegentrein' : ''}" data-train-id="${t.id}" onclick="window.selectTrain('${t.id}')">
@@ -2244,8 +2326,9 @@ function updateLineOverview() {
                   <div class="t-header-row">
                     <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
                     <span class="t-number">Trein ${t.trainNum}</span>
+                    <span class="tag-units-badge ${unitsCount > 1 ? 'is-multi' : ''}" style="margin-left: 3px;" title="${unitsCount} gekoppelde treinstel(len)">${unitsCount}</span>
                     <span class="t-direction-pill ${isReverse ? 'rev' : 'fwd'}">
-                      ${isReverse ? '⬅ Tegentrein' : '➔'} naar <strong>${exactDest}</strong>
+                      ${isReverse ? '<span class="rev-flag">Tegentrein</span> ' : ''}➔ naar <strong>${exactDest}</strong>
                     </span>
                   </div>
                   <div class="t-mat">${t.matnummer || op.name}</div>
@@ -2266,7 +2349,7 @@ function updateLineOverview() {
                     </div>
                   </div>
                   <div class="ttp-pct-badge ${isReverse ? 'rev-badge' : ''}">
-                    ${isDriving ? `⚡ Rijdt ${t.speed} km/u &bull; ${isReverse ? `⬅ Richting ${exactDest} (nadert ${stTo})` : `➔ Richting ${exactDest} (nadert ${stTo})`}` : `⏸ Halteert (${displayPct}%)`}
+                    ${isDriving ? `⚡ Rijdt ${t.speed} km/u &bull; ➔ Richting ${exactDest} (nadert ${stTo})` : `⏸ Halteert (${displayPct}%)`}
                   </div>
                 </div>
                 <span class="ttp-st-label to" title="${stTo}">${stTo}</span>
@@ -2392,6 +2475,7 @@ function renderUnifiedStatusView(allTrains, statusFilter) {
             <div class="ut-num-row">
               <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
               <span class="ut-num">Trein #${t.trainNum}</span>
+              <span class="tag-units-badge ${t.unitsCount > 1 ? 'is-multi' : ''}" style="margin-left: 3px;" title="${t.unitsCount || 1} gekoppelde treinstel(len)">${t.unitsCount || 1}</span>
               ${utDest ? `<span class="t-direction-pill fwd" style="font-size:0.68rem; padding:1px 6px;">➔ ${utDest}</span>` : ''}
               <span class="ut-mat">${t.matnummer || op.name}</span>
             </div>
@@ -2493,6 +2577,16 @@ function startRailMotionEngine() {
       }
 
       m.setLatLng([state.curLat, state.curLon]);
+
+      if (state.heading !== undefined) {
+        const el = m.getElement();
+        if (el) {
+          const arrowEl = el.querySelector('.train-pin-heading-arrow');
+          if (arrowEl) {
+            arrowEl.style.transform = `rotate(${Math.round(state.heading)}deg)`;
+          }
+        }
+      }
     }
 
     appState.railMotionRaf = requestAnimationFrame(stepRailMotion);
@@ -2704,29 +2798,52 @@ function renderMapTrains(trainList) {
           pin.classList.toggle('is-reverse', isRev);
         }
         const tag = el.querySelector('.clean-train-tag');
+        const unitsCount = t.unitsCount || 1;
         if (tag) {
           tag.className = `clean-train-tag ${trainCompactClass} ${posClass}`;
           tag.style.borderColor = isRev ? '#38bdf8' : op.border;
           tag.innerHTML = `
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
             <span class="tag-num">${t.trainNum}</span>
-            <span class="tag-dir ${isRev ? 'rev' : 'fwd'}">${arrow} ${destDisplay}</span>
+            <span class="tag-units-badge ${unitsCount > 1 ? 'is-multi' : ''}" title="${unitsCount} gekoppelde treinstel(len)">${unitsCount}</span>
+            <span class="tag-dir ${isRev ? 'rev' : 'fwd'}">➔ ${destDisplay}</span>
             <span class="tag-spd ${spdInfo.cssClass}">${spdInfo.label}</span>
           `;
         }
+        const arrowEl = el.querySelector('.train-pin-heading-arrow');
+        if (arrowEl && state && state.heading !== undefined) {
+          arrowEl.style.transform = `rotate(${Math.round(state.heading)}deg)`;
+        }
       }
     } else {
+      const unitsCount = t.unitsCount || 1;
       const pinBorder = isRev ? '#38bdf8' : statusBorder;
+
+      let initDir = { dLat: 0, dLon: 0 };
+      let initHeading = 0;
+      if (t.fromStation && t.toStation && t.fromStation.code !== t.toStation.code) {
+        const mult = isRev ? -1 : 1;
+        const dLat = (t.toStation.lat - t.fromStation.lat) * mult;
+        const dLon = (t.toStation.lon - t.fromStation.lon) * mult;
+        initDir = { dLat, dLon };
+        initHeading = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
+      } else if (!isNaN(parseInt(t.trainNum, 10)) && parseInt(t.trainNum, 10) > 0) {
+        const num = parseInt(t.trainNum, 10);
+        initHeading = (num % 2 === 0) ? 135 : 315;
+      }
+
       const html = `
-        <div class="clean-train-marker" title="[${op.code}] Trein ${t.trainNum} - ${t.speed} km/u (${isRev ? 'Tegentrein naar ' + rawDest : 'Naar ' + rawDest})">
+        <div class="clean-train-marker" title="[${op.code}] Trein ${t.trainNum} (${unitsCount} stel${unitsCount > 1 ? 'len' : ''}) - ${t.speed} km/u naar ${rawDest}">
           <div class="clean-train-tag ${trainCompactClass} ${posClass}" style="border-color: ${isRev ? '#38bdf8' : op.border};">
             <span class="tag-op" style="background:${op.bg}; color:${op.color};">[${op.code}]</span>
             <span class="tag-num">${t.trainNum}</span>
-            <span class="tag-dir ${isRev ? 'rev' : 'fwd'}">${arrow} ${destDisplay}</span>
+            <span class="tag-units-badge ${unitsCount > 1 ? 'is-multi' : ''}" title="${unitsCount} gekoppelde treinstel(len)">${unitsCount}</span>
+            <span class="tag-dir ${isRev ? 'rev' : 'fwd'}">➔ ${destDisplay}</span>
             <span class="tag-spd ${spdInfo.cssClass}">${spdInfo.label}</span>
           </div>
           <div class="clean-train-pin ${isDriving ? 'is-driving' : ''} ${isRev ? 'is-reverse' : ''}" style="background: ${op.border}; border-color: ${pinBorder};">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="${op.color}">
+            <div class="train-pin-heading-arrow" style="transform: rotate(${Math.round(initHeading)}deg);" title="Rijrichting: ${Math.round(initHeading)}°">▲</div>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="${op.color}">
               <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zm0 2c3.5 0 6 .4 6 2H6c0-1.6 2.5-2 6-2zm-5 9c-.83 0-1.5-.67-1.5-1.5S6.17 10 7 10s1.5.67 1.5 1.5S7.83 13 7 13zm10 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
             </svg>
           </div>
@@ -2743,16 +2860,6 @@ function renderMapTrains(trainList) {
       const marker = L.marker([t.lat, t.lon], { icon }).addTo(map);
       marker.on('click', () => window.selectTrain(t.id));
       appState.trainMarkers.set(t.id, marker);
-
-      let initDir = { dLat: 0, dLon: 0 };
-      let initHeading = 0;
-      if (t.fromStation && t.toStation && t.fromStation.code !== t.toStation.code) {
-        const mult = isRev ? -1 : 1;
-        const dLat = (t.toStation.lat - t.fromStation.lat) * mult;
-        const dLon = (t.toStation.lon - t.fromStation.lon) * mult;
-        initDir = { dLat, dLon };
-        initHeading = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
-      }
 
       const rawPct = (t.segmentProgress !== undefined) ? t.segmentProgress : 0.5;
       const initialDisplayPct = Math.max(5, Math.min(95, Math.round((isRev ? (1.0 - rawPct) : rawPct) * 100)));
@@ -2789,7 +2896,8 @@ function renderMapTrains(trainList) {
 // Selecteer een trein en zoom in op de satelliet
 window.selectTrain = (trainId) => {
   appState.selectedTrainId = trainId;
-  const train = appState.allLiveFeatures.map(parseTrain).find(t => t && t.id === trainId);
+  const allParsed = getActiveParsedTrains();
+  const train = allParsed.find(t => t && t.id === trainId);
   if (!train) return;
 
   playAuthenticNSChime();
@@ -2828,13 +2936,15 @@ window.selectTrain = (trainId) => {
       statusPillLabel = `+${train.delayMin || 2}m vertraagd`;
     }
 
+    const unitsCount = train.unitsCount || 1;
     const rawDest = train.exactDestination || (train.service && train.service.destination && train.service.destination !== 'Eindbestemming' ? train.service.destination : '') || (train.isReverse ? 'Beginstation' : 'Eindstation');
-    document.getElementById('inspTitle').textContent = `Trein #${train.trainNum} ➔ ${rawDest}`;
+    document.getElementById('inspTitle').textContent = `Trein #${train.trainNum} (${unitsCount} stel${unitsCount > 1 ? 'len' : ''}) ➔ ${rawDest}`;
     const destEl = document.getElementById('inspDestination');
     if (destEl) destEl.textContent = `➔ ${rawDest}`;
     document.getElementById('inspOperator').textContent = `${op.name} (${op.code})`;
     document.getElementById('inspSpeed').innerHTML = `<span class="t-speed-badge ${spdInfo.cssClass}">${spdInfo.icon} ${train.speed} km/u</span>`;
-    document.getElementById('inspMat').textContent = train.matnummer || 'Standaard materieel';
+    const matDisplay = train.matnummer || 'Standaard materieel';
+    document.getElementById('inspMat').innerHTML = `${unitsCount > 1 ? `<span class="t-units-pill is-multi">${unitsCount}x gekoppeld</span> ` : ''}${matDisplay}`;
     document.getElementById('inspPunc').textContent = statusPillLabel;
     document.getElementById('inspPunc').className = `status-pill ${statusPillClass}`;
     document.getElementById('inspStatus').textContent = spdInfo.text;
@@ -3281,7 +3391,7 @@ window.selectStation = (stationCode) => {
   }
 
   // Zoek alle treinen die aanwezig zijn of in aantocht zijn (binnen 18 km)
-  const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+  const allParsed = getActiveParsedTrains();
   const nearbyTrains = [];
 
   allParsed.forEach(t => {
@@ -3523,7 +3633,7 @@ window.selectTrainAndCloseComm = (trainId) => {
 
 // Realistische spoorwegcommunicatie generator op basis van échte actieve treinen
 function generateLiveRailwayMessage() {
-  const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+  const allParsed = getActiveParsedTrains();
   if (allParsed.length === 0) return;
 
   const corridorKey = appState.activeCorridorKey;
@@ -3705,7 +3815,10 @@ function detectAndShowMyTrain(openModal = true) {
 
 function startLiveTrainTracking(openModalOnFirstFix = false) {
   if (!navigator.geolocation) {
-    alert('GPS-locatie is niet beschikbaar in uw browser. Zorg dat locatietoegang is ingeschakeld.');
+    const helpBox = document.getElementById('myTrainGpsHelpBox');
+    if (helpBox) helpBox.style.display = 'block';
+    const statusPill = document.getElementById('myTrainSpeedStatus');
+    if (statusPill) statusPill.textContent = '⚠️ Browser ondersteunt geen GPS';
     return;
   }
 
@@ -3723,24 +3836,91 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
   appState.isTrackingUser = true;
   appState.isFollowingMyTrain = true;
 
+  const modal = document.getElementById('myTrainModal');
+  const helpBox = document.getElementById('myTrainGpsHelpBox');
+  if (helpBox) helpBox.style.display = 'none';
+
+  if (openModalOnFirstFix && modal) {
+    modal.style.display = 'flex';
+    const title = document.getElementById('myTrainTitle');
+    if (title) title.textContent = '📡 GPS Peiling in de Trein...';
+    const spd = document.getElementById('myTrainSpeed');
+    if (spd) spd.textContent = '...';
+    const statusPill = document.getElementById('myTrainSpeedStatus');
+    if (statusPill) statusPill.textContent = '📡 Verbinden met satelliet & masten';
+    const route = document.getElementById('myTrainRoute');
+    if (route) route.textContent = 'Locatievoorziening wordt geactiveerd in Safari / Chrome';
+    const seg = document.getElementById('myTrainSegment');
+    if (seg) seg.textContent = 'Druk op "Sta toe" als uw browser om toestemming vraagt.';
+    const meta = document.getElementById('myTrainGpsMeta');
+    if (meta) meta.textContent = 'Zoekt dichtstbijzijnde rijdende trein op het spoor...';
+  }
+
   if (appState.geoWatchId !== null) {
     navigator.geolocation.clearWatch(appState.geoWatchId);
     appState.geoWatchId = null;
   }
 
-  appState.geoWatchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      onLiveLocationFix(pos);
-    },
-    (err) => {
-      console.warn('GPS tracking waarschuwing:', err);
-      if (!appState.lastGpsFix) {
-        stopLiveTrainTracking();
-        alert('Kon uw GPS-positie niet bepalen. Controleer of locatietoegang is toegestaan in Safari/Chrome.');
-      }
-    },
-    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
-  );
+  // 1. Directe snelle warm-cache peiling (Wi-Fi / zendmasten) binnen 100ms
+  try {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        onLiveLocationFix(pos);
+      },
+      (err) => {
+        console.warn('Snelle positiebepaling wacht op watchPosition:', err?.code);
+      },
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 6000 }
+    );
+  } catch (e) {}
+
+  // 2. Continue watchPosition met automatische omschakeling bij getint glas / afscherming in de trein
+  let switchedToLowAccuracy = false;
+
+  function runWatch(opts) {
+    if (appState.geoWatchId !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(appState.geoWatchId);
+    }
+    appState.geoWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (helpBox) helpBox.style.display = 'none';
+        onLiveLocationFix(pos);
+      },
+      (err) => {
+        console.warn('GPS tracking waarschuwing:', err.code, err.message);
+
+        // Code 1: PERMISSION_DENIED (gebruiker heeft geweigerd of browser permissie staat uit)
+        if (err.code === 1) {
+          const statusPill = document.getElementById('myTrainSpeedStatus');
+          if (statusPill) {
+            statusPill.className = 'speed-status-pill yellow';
+            statusPill.textContent = '⚠️ Locatie niet toegestaan';
+          }
+          if (helpBox) helpBox.style.display = 'block';
+          return;
+        }
+
+        // Code 3: TIMEOUT of Code 2: POSITION_UNAVAILABLE
+        // BINNEN DE TREIN: Metaal en getint glas dempen GPS.
+        // Schakel direct over op zendmast-peiling die ALTIJD werkt!
+        if (!switchedToLowAccuracy) {
+          switchedToLowAccuracy = true;
+          const statusPill = document.getElementById('myTrainSpeedStatus');
+          if (statusPill) statusPill.textContent = '📶 Schakelt over naar zendmast-peiling...';
+          runWatch({ enableHighAccuracy: false, maximumAge: 30000, timeout: 30000 });
+        } else {
+          // Blijf luisteren en toon geruststellende status ipv plotseling te stoppen of een alert te tonen!
+          const statusPill = document.getElementById('myTrainSpeedStatus');
+          if (statusPill && !appState.lastGpsFix) {
+            statusPill.textContent = '🛰️ Signaal zoeken in trein (blijft actief)...';
+          }
+        }
+      },
+      opts
+    );
+  }
+
+  runWatch({ enableHighAccuracy: true, maximumAge: 20000, timeout: 25000 });
 }
 
 function stopLiveTrainTracking() {
@@ -3823,8 +4003,8 @@ function onLiveLocationFix(pos) {
     smoothMoveMarker(appState.userLocationMarker, userLat, userLon, 1200);
   }
 
-  // Zoek dichtstbijzijnde trein uit alle actuele treinen
-  const allParsed = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
+  // Zoek dichtstbijzijnde trein uit alle actuele treinen (inclusief gekoppelde treinstellen)
+  const allParsed = getActiveParsedTrains();
   let bestTrain = null;
   let bestScore = Infinity;
 
@@ -3927,15 +4107,16 @@ function onLiveLocationFix(pos) {
       🚆 <strong>Trein GPS:</strong> ${bestTrain.lat.toFixed(5)}, ${bestTrain.lon.toFixed(5)} &bull; Afstand tot trein: <strong>${distMeters} meter</strong>
     `;
   }
+  const unitsCount = bestTrain.unitsCount || 1;
   const modalTitle = document.getElementById('myTrainTitle');
-  if (modalTitle) modalTitle.textContent = `U zit in ${op.name} Trein #${bestTrain.trainNum}${myExactDest ? ` naar ${myExactDest}` : ''}`;
+  if (modalTitle) modalTitle.textContent = `U zit in ${op.name} Trein #${bestTrain.trainNum}${unitsCount > 1 ? ` (${unitsCount} stellen)` : ''}${myExactDest ? ` naar ${myExactDest}` : ''}`;
   const modalOpBadge = document.getElementById('myTrainOpBadge');
   if (modalOpBadge) {
     modalOpBadge.className = `op-badge ${op.badgeClass}`;
     modalOpBadge.textContent = `[${op.code}]`;
   }
   const modalOperator = document.getElementById('myTrainOperator');
-  if (modalOperator) modalOperator.textContent = `${op.name} (${bestTrain.matnummer || 'Standaard materieel'})`;
+  if (modalOperator) modalOperator.textContent = `${op.name} (${unitsCount > 1 ? `${unitsCount}x gekoppeld: ` : ''}${bestTrain.matnummer || 'Standaard materieel'})`;
   const modalMatnr = document.getElementById('myTrainMatnr');
   if (modalMatnr) modalMatnr.textContent = `Materieelcode: ${bestTrain.matnummer || 'NVT'} • Trein #${bestTrain.trainNum}`;
 
@@ -4523,6 +4704,18 @@ function setupNavigation() {
     if (modal) modal.style.display = 'none';
   });
 
+  // Handmatige lijnkeuze bij afgeschermde GPS / ontbrekende browser permissie
+  document.getElementById('btnGpsHelpPickLine')?.addEventListener('click', () => {
+    const modal = document.getElementById('myTrainModal');
+    if (modal) modal.style.display = 'none';
+    const bar = document.getElementById('routePlannerBar');
+    const btn = document.getElementById('btnToggleRoutePlanner');
+    if (bar) bar.style.display = 'block';
+    if (btn) btn.classList.add('active');
+    document.getElementById('routeFromSelect')?.focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
   // Centreer op Kaart
   document.getElementById('btnCenterMyTrain')?.addEventListener('click', () => {
     const modal = document.getElementById('myTrainModal');
@@ -4728,7 +4921,7 @@ function setupNavigation() {
   document.getElementById('trainSearchInput')?.addEventListener('input', (e) => {
     const q = e.target.value.trim();
     if (q.length >= 2) {
-      const match = appState.allLiveFeatures.map(parseTrain).find(t => t && (t.trainNum.includes(q) || t.operator.code.toLowerCase().includes(q.toLowerCase())));
+      const match = getActiveParsedTrains().find(t => t && (t.trainNum.includes(q) || t.operator.code.toLowerCase().includes(q.toLowerCase())));
       if (match) {
         window.selectTrain(match.id);
       }
@@ -4740,7 +4933,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.6.0';
-const APP_BUILD_COMMIT = '9ef5a42';
+const APP_BUILD_COMMIT = '6ace13f';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

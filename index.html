@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.6.0_9ef5a42">
-  <link rel="manifest" href="./manifest.json?v=2.6.0_9ef5a42">
+  <link rel="stylesheet" href="./style.css?v=2.6.0_6ace13f">
+  <link rel="manifest" href="./manifest.json?v=2.6.0_6ace13f">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -502,6 +502,21 @@
           </button>
         </div>
 
+        <!-- Hulpbox bij afgeschermde GPS of ontbrekende toestemming in Safari / Chrome -->
+        <div id="myTrainGpsHelpBox" class="my-train-gps-help-box" style="display: none;">
+          <div class="gps-help-title">⚠️ Locatievoorziening in de trein</div>
+          <div class="gps-help-content">
+            <p>In een rijdende trein (getint glas en metalen rijtuig) kan satellietontvangst vertraagd zijn of vraagt uw browser om toestemming:</p>
+            <ul class="gps-help-steps">
+              <li><strong>iPhone (Safari):</strong> Tik links van de URL op <code>aA</code> of het schuifjes-icoon ➔ <em>Website-instellingen</em> ➔ <em>Locatie: Sta toe</em> (of via iOS <em>Instellingen ➔ Safari ➔ Locatie</em>).</li>
+              <li><strong>Chrome (Android / Mac):</strong> Tik op het instellingen-icoon links van de adresbalk ➔ <em>Locatie inschakelen</em>.</li>
+            </ul>
+          </div>
+          <button id="btnGpsHelpPickLine" class="btn gps-help-btn" type="button">
+            🎯 Kies Mijn Traject / Station Direct Handmatig
+          </button>
+        </div>
+
         <div class="auto-detect-row">
           <label class="auto-detect-checkbox-label">
             <input type="checkbox" id="chkAutoDetectOnOpen">
@@ -789,7 +804,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.6.0_9ef5a42"></script>
-  <script type="module" src="./app.js?v=2.6.0_9ef5a42"></script>
+  <script src="./stations.js?v=2.6.0_6ace13f"></script>
+  <script type="module" src="./app.js?v=2.6.0_6ace13f"></script>
 </body>
 </html>
