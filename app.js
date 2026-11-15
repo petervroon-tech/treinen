@@ -515,7 +515,7 @@ export const CORRIDORS = {
   'havenlijn-twente': {
     id: 'havenlijn-twente',
     category: 'freight',
-    name: 'Waalhaven ➔ Kijfhoek ➔ Utrecht Goederen ➔ Deventer ➔ Hengelo ➔ Bad Bentheim',
+    name: 'Waalhaven ➔ Kijfhoek ➔ Utrecht Goederen ➔ Amersfoort ➔ Apeldoorn ➔ Deventer ➔ Almelo ➔ Hengelo ➔ Bad Bentheim',
     shortName: 'Havenspoorlijn & Oost-Goederen',
     badge: 'Cargo',
     operator: 'DB Cargo • RTB Cargo • Captrain',
@@ -526,7 +526,9 @@ export const CORRIDORS = {
       { code: 'KJH',  name: 'Kijfhoek Rangeerstation',lat: 51.8389, lon: 4.6067, terminal: false, sporen: 'Empl.'    },
       { code: 'UTG',  name: 'Utrecht Cartesiusweg',   lat: 52.0800, lon: 5.1150, terminal: false, sporen: 'Goederen' },
       { code: 'AMFB', name: 'Amersfoort Bokkeduinen', lat: 52.1480, lon: 5.3620, terminal: false, sporen: 'Empl.'    },
+      { code: 'APDG', name: 'Apeldoorn Goederenspoor',lat: 52.2094, lon: 5.9614, terminal: false, sporen: 'Goederen' },
       { code: 'DVG',  name: 'Deventer Goederenspoor', lat: 52.2575, lon: 6.1606, terminal: false, sporen: 'Goederen' },
+      { code: 'AMLG', name: 'Almelo Goederenspoor',   lat: 52.3578, lon: 6.6542, terminal: false, sporen: 'Goederen' },
       { code: 'HGLG', name: 'Hengelo Grensovergang',  lat: 52.2625, lon: 6.7936, terminal: false, sporen: 'Goederen' },
       { code: 'BBG',  name: 'Bad Bentheim Empl. (DE)',lat: 52.3086, lon: 7.1583, terminal: true,  sporen: 'DE Grens' }
     ]
@@ -939,149 +941,149 @@ export function getTrainServiceDetails(train, contextStation) {
   // 3. Blauwnet & Keolis & Qbuzz
   else if ((num >= 31200 && num <= 31299) || (num >= 7900 && num <= 7999)) {
     serviceType = 'Stoptrein Blauwnet';
-    destination = num % 2 === 0 ? 'Enschede' : 'Zwolle';
-    origin = num % 2 === 0 ? 'Zwolle' : 'Enschede';
+    destination = num % 2 !== 0 ? 'Enschede' : 'Zwolle';
+    origin = num % 2 !== 0 ? 'Zwolle' : 'Enschede';
     via = 'via Raalte, Nijverdal, Almelo';
     platform = '1';
   } else if (num >= 8500 && num <= 8599) {
     serviceType = 'Stoptrein Blauwnet';
-    destination = num % 2 === 0 ? 'Kampen' : 'Zwolle';
-    origin = num % 2 === 0 ? 'Zwolle' : 'Kampen';
+    destination = num % 2 !== 0 ? 'Zwolle' : 'Kampen';
+    origin = num % 2 !== 0 ? 'Kampen' : 'Zwolle';
     via = 'via Kampen Zuid';
     platform = '12';
   } else if (num >= 7100 && num <= 7199) {
     serviceType = 'Stoptrein Blauwnet';
-    destination = num % 2 === 0 ? 'Hardenberg' : 'Almelo';
-    origin = num % 2 === 0 ? 'Almelo' : 'Hardenberg';
+    destination = num % 2 !== 0 ? 'Hardenberg' : 'Almelo';
+    origin = num % 2 !== 0 ? 'Almelo' : 'Hardenberg';
     via = 'via Mariënberg';
   } else if (num >= 7200 && num <= 7299) {
     serviceType = 'Stoptrein Blauwnet';
-    destination = num % 2 === 0 ? 'Oldenzaal' : 'Zutphen';
-    origin = num % 2 === 0 ? 'Zutphen' : 'Oldenzaal';
+    destination = num % 2 !== 0 ? 'Oldenzaal' : 'Zutphen';
+    origin = num % 2 !== 0 ? 'Zutphen' : 'Oldenzaal';
     via = 'via Hengelo';
   } else if (num >= 36700 && num <= 36799) {
     serviceType = 'Stoptrein R-net';
-    destination = num % 2 === 0 ? 'Geldermalsen' : 'Dordrecht';
-    origin = num % 2 === 0 ? 'Dordrecht' : 'Geldermalsen';
+    destination = num % 2 !== 0 ? 'Geldermalsen' : 'Dordrecht';
+    origin = num % 2 !== 0 ? 'Dordrecht' : 'Geldermalsen';
     via = 'via Sliedrecht, Gorinchem';
     platform = '1';
   }
   // 4. NS Intercity Hoofdlijnen
   else if (num >= 500 && num <= 599) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Groningen' : 'Rotterdam Centraal';
-    origin = num % 2 === 0 ? 'Rotterdam Centraal' : 'Groningen';
+    destination = num % 2 !== 0 ? 'Groningen' : 'Rotterdam Centraal';
+    origin = num % 2 !== 0 ? 'Rotterdam Centraal' : 'Groningen';
     via = 'via Utrecht C, Zwolle, Assen';
   } else if (num >= 600 && num <= 699) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Leeuwarden' : 'Rotterdam Centraal';
-    origin = num % 2 === 0 ? 'Rotterdam Centraal' : 'Leeuwarden';
+    destination = num % 2 !== 0 ? 'Leeuwarden' : 'Rotterdam Centraal';
+    origin = num % 2 !== 0 ? 'Rotterdam Centraal' : 'Leeuwarden';
     via = 'via Utrecht C, Zwolle';
   } else if (num >= 700 && num <= 799) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Groningen' : 'Den Haag Centraal';
-    origin = num % 2 === 0 ? 'Den Haag Centraal' : 'Groningen';
+    destination = num % 2 !== 0 ? 'Groningen' : 'Den Haag Centraal';
+    origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Groningen';
     via = 'via Schiphol, Zwolle, Assen';
   } else if (num >= 800 && num <= 899) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Alkmaar / Schagen' : 'Maastricht';
-    origin = num % 2 === 0 ? 'Maastricht' : 'Alkmaar / Schagen';
+    destination = num % 2 !== 0 ? 'Maastricht' : 'Alkmaar / Schagen';
+    origin = num % 2 !== 0 ? 'Alkmaar / Schagen' : 'Maastricht';
     via = 'via Utrecht C, Eindhoven C';
   } else if (num >= 1100 && num <= 1199) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Eindhoven Centraal' : 'Den Haag Centraal';
-    origin = num % 2 === 0 ? 'Den Haag Centraal' : 'Eindhoven Centraal';
+    destination = num % 2 !== 0 ? 'Eindhoven Centraal' : 'Den Haag Centraal';
+    origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Eindhoven Centraal';
     via = 'via Breda, Rotterdam C, Delft';
   } else if (num >= 1400 && num <= 1499) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Deventer' : 'Rotterdam Centraal';
-    origin = num % 2 === 0 ? 'Rotterdam Centraal' : 'Deventer';
+    destination = num % 2 !== 0 ? 'Deventer' : 'Rotterdam Centraal';
+    origin = num % 2 !== 0 ? 'Rotterdam Centraal' : 'Deventer';
     via = 'via Utrecht C, Amersfoort C, Apeldoorn';
     platform = (stCode === 'APD') ? '3' : '1';
   } else if (num >= 1500 && num <= 1599) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Deventer' : 'Amsterdam Centraal';
-    origin = num % 2 === 0 ? 'Amsterdam Centraal' : 'Deventer';
+    destination = num % 2 !== 0 ? 'Deventer' : 'Amsterdam Centraal';
+    origin = num % 2 !== 0 ? 'Amsterdam Centraal' : 'Deventer';
     via = 'via Hilversum, Amersfoort C, Apeldoorn';
     platform = (stCode === 'APD') ? '3' : '1';
   } else if ((num >= 1600 && num <= 1799) || (num >= 11600 && num <= 11799)) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Enschede' : 'Den Haag Centraal';
-    origin = num % 2 === 0 ? 'Den Haag Centraal' : 'Enschede';
-    via = num % 2 === 0 ? 'via Deventer, Almelo, Hengelo' : 'via Amersfoort C, Utrecht C, Gouda';
+    destination = num % 2 !== 0 ? 'Enschede' : 'Den Haag Centraal';
+    origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Enschede';
+    via = num % 2 !== 0 ? 'via Deventer, Almelo, Hengelo' : 'via Amersfoort C, Utrecht C, Gouda';
     platform = (stCode === 'APD') ? '3' : '1';
   } else if (num >= 1800 && num <= 1899) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Leeuwarden' : 'Den Haag Centraal';
-    origin = num % 2 === 0 ? 'Den Haag Centraal' : 'Leeuwarden';
+    destination = num % 2 !== 0 ? 'Leeuwarden' : 'Den Haag Centraal';
+    origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Leeuwarden';
     via = 'via Schiphol, Zwolle, Heerenveen';
   } else if (num >= 2000 && num <= 2099) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Utrecht Centraal' : 'Den Haag Centraal';
-    origin = num % 2 === 0 ? 'Den Haag Centraal' : 'Utrecht Centraal';
+    destination = num % 2 !== 0 ? 'Utrecht Centraal' : 'Den Haag Centraal';
+    origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Utrecht Centraal';
     via = 'via Gouda';
   } else if (num >= 2100 && num <= 2299) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Vlissingen' : 'Amsterdam Centraal';
-    origin = num % 2 === 0 ? 'Amsterdam Centraal' : 'Vlissingen';
+    destination = num % 2 !== 0 ? 'Vlissingen' : 'Amsterdam Centraal';
+    origin = num % 2 !== 0 ? 'Amsterdam Centraal' : 'Vlissingen';
     via = 'via Leiden C, Den Haag HS, Rotterdam C';
   } else if (num >= 2400 && num <= 2499) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Dordrecht' : 'Lelystad Centrum';
-    origin = num % 2 === 0 ? 'Lelystad Centrum' : 'Dordrecht';
+    destination = num % 2 !== 0 ? 'Dordrecht' : 'Lelystad Centrum';
+    origin = num % 2 !== 0 ? 'Lelystad Centrum' : 'Dordrecht';
     via = 'via Schiphol, Leiden C, Den Haag HS';
   } else if (num >= 2600 && num <= 2699) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Amsterdam Centraal' : 'Almere Centrum';
-    origin = num % 2 === 0 ? 'Almere Centrum' : 'Amsterdam Centraal';
+    destination = num % 2 !== 0 ? 'Almere Centrum' : 'Amsterdam Centraal';
+    origin = num % 2 !== 0 ? 'Amsterdam Centraal' : 'Almere Centrum';
   } else if (num >= 2800 && num <= 2899) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Utrecht Centraal' : 'Rotterdam Centraal';
-    origin = num % 2 === 0 ? 'Rotterdam Centraal' : 'Utrecht Centraal';
+    destination = num % 2 !== 0 ? 'Utrecht Centraal' : 'Rotterdam Centraal';
+    origin = num % 2 !== 0 ? 'Rotterdam Centraal' : 'Utrecht Centraal';
     via = 'via Gouda';
   } else if (num >= 2900 && num <= 2999) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Maastricht' : 'Enkhuizen';
-    origin = num % 2 === 0 ? 'Enkhuizen' : 'Maastricht';
+    destination = num % 2 !== 0 ? 'Maastricht' : 'Enkhuizen';
+    origin = num % 2 !== 0 ? 'Enkhuizen' : 'Maastricht';
     via = 'via Amsterdam C, Utrecht C, Eindhoven C';
   } else if (num >= 3000 && num <= 3099) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Nijmegen' : 'Den Helder';
-    origin = num % 2 === 0 ? 'Den Helder' : 'Nijmegen';
+    destination = num % 2 !== 0 ? 'Nijmegen' : 'Den Helder';
+    origin = num % 2 !== 0 ? 'Den Helder' : 'Nijmegen';
     via = 'via Alkmaar, Amsterdam C, Utrecht C, Arnhem C';
   } else if (num >= 3100 && num <= 3199) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Nijmegen' : 'Schiphol Airport';
-    origin = num % 2 === 0 ? 'Schiphol Airport' : 'Nijmegen';
+    destination = num % 2 !== 0 ? 'Nijmegen' : 'Schiphol Airport';
+    origin = num % 2 !== 0 ? 'Schiphol Airport' : 'Nijmegen';
     via = 'via Utrecht C, Ede-Wageningen, Arnhem C';
   } else if (num >= 3200 && num <= 3299) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Rotterdam Centraal' : 'Arnhem Centraal';
-    origin = num % 2 === 0 ? 'Arnhem Centraal' : 'Rotterdam Centraal';
+    destination = num % 2 !== 0 ? 'Arnhem Centraal' : 'Rotterdam Centraal';
+    origin = num % 2 !== 0 ? 'Rotterdam Centraal' : 'Arnhem Centraal';
     via = 'via Ede-Wageningen, Utrecht C, Gouda';
   } else if (num >= 3400 && num <= 3499) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Alkmaar' : 'Haarlem';
-    origin = num % 2 === 0 ? 'Haarlem' : 'Alkmaar';
+    destination = num % 2 !== 0 ? 'Alkmaar' : 'Haarlem';
+    origin = num % 2 !== 0 ? 'Haarlem' : 'Alkmaar';
   } else if (num >= 3500 && num <= 3599) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Venlo' : 'Schiphol Airport';
-    origin = num % 2 === 0 ? 'Schiphol Airport' : 'Venlo';
+    destination = num % 2 !== 0 ? 'Venlo' : 'Schiphol Airport';
+    origin = num % 2 !== 0 ? 'Schiphol Airport' : 'Venlo';
     via = 'via Utrecht C, Eindhoven C';
   } else if (num >= 3600 && num <= 3699) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Roosendaal' : 'Zwolle';
-    origin = num % 2 === 0 ? 'Zwolle' : 'Roosendaal';
+    destination = num % 2 !== 0 ? 'Zwolle' : 'Roosendaal';
+    origin = num % 2 !== 0 ? 'Roosendaal' : 'Zwolle';
     via = 'via Deventer, Zutphen, Arnhem C, Breda';
   } else if (num >= 3700 && num <= 3799) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Venlo' : 'Dordrecht';
-    origin = num % 2 === 0 ? 'Dordrecht' : 'Venlo';
+    destination = num % 2 !== 0 ? 'Venlo' : 'Dordrecht';
+    origin = num % 2 !== 0 ? 'Dordrecht' : 'Venlo';
     via = 'via Breda, Tilburg, Eindhoven C';
   } else if (num >= 3900 && num <= 3999) {
     serviceType = 'Intercity';
-    destination = num % 2 === 0 ? 'Heerlen' : 'Enkhuizen';
-    origin = num % 2 === 0 ? 'Enkhuizen' : 'Heerlen';
+    destination = num % 2 !== 0 ? 'Heerlen' : 'Enkhuizen';
+    origin = num % 2 !== 0 ? 'Enkhuizen' : 'Heerlen';
     via = 'via Amsterdam C, Utrecht C, Eindhoven C';
   } else if (num >= 4500 && num <= 4599) {
     serviceType = 'Intercity';
@@ -1217,8 +1219,8 @@ export function getTrainServiceDetails(train, contextStation) {
     via = 'via Rotterdam C, Dordrecht';
   } else if (num >= 7000 && num <= 7099) {
     serviceType = 'Sprinter';
-    destination = num % 2 === 0 ? 'Enschede' : 'Apeldoorn';
-    origin = num % 2 === 0 ? 'Apeldoorn' : 'Enschede';
+    destination = num % 2 !== 0 ? 'Enschede' : 'Apeldoorn';
+    origin = num % 2 !== 0 ? 'Apeldoorn' : 'Enschede';
     via = 'via Deventer, Almelo, Hengelo';
     platform = (stCode === 'APD') ? '3b' : '1';
   } else if (num >= 7300 && num <= 7399) {
@@ -1279,11 +1281,13 @@ export function getTrainServiceDetails(train, contextStation) {
     serviceType = 'Goederentrein';
     if (train.exactDestination) {
       destination = train.exactDestination;
+    } else if (train.service && train.service.destination) {
+      destination = train.service.destination;
     } else {
-      destination = num % 2 === 0 ? 'Zevenaar Grens (DE)' : 'Kijfhoek Emplacement';
+      destination = num % 2 !== 0 ? 'Bad Bentheim Grens (DE)' : 'Kijfhoek Emplacement';
     }
-    origin = num % 2 === 0 ? 'Kijfhoek (Rotterdam)' : 'Zevenaar Grens (DE)';
-    via = 'via Betuweroute / Havenspoorlijn';
+    origin = (train.service && train.service.origin) ? train.service.origin : (num % 2 !== 0 ? 'Kijfhoek (Rotterdam)' : 'Bad Bentheim Grens (DE)');
+    via = (train.service && train.service.via) ? train.service.via : 'via Betuweroute / Havenspoorlijn';
   }
 
   // 7. Contextuele herleiding als de treinserie niet expliciet in de lijst staat
@@ -1946,8 +1950,8 @@ const FREIGHT_FLEET_SEEDS = [
     loco: 'TRAXX E 186 (Groen/Paars)',
     cargo: '24x Gesloten Goederenwagens (Papier & Stukgoed)',
     speed: 88,
-    segIdx: 3,
-    t: 0.20,
+    segIdx: 4,
+    t: 0.45,
     dir: 1
   },
   {
@@ -2090,11 +2094,14 @@ function getLiveFreightTrains() {
     const isRev = item.dir === -1;
     const destStation = isRev ? stations[0] : stations[stations.length - 1];
     const origStation = isRev ? stations[stations.length - 1] : stations[0];
-    const targetStation = isRev ? s1 : s2;
+    const fromSt = isRev ? s2 : s1;
+    const toSt = isRev ? s1 : s2;
+    const targetStation = toSt;
 
-    const dLat = (s2.lat - s1.lat) * item.dir;
-    const dLon = (s2.lon - s1.lon) * item.dir;
-    const heading = Math.atan2(dLon * Math.cos(lat * Math.PI / 180), dLat) * 180 / Math.PI;
+    const dLat = toSt.lat - fromSt.lat;
+    const dLon = toSt.lon - fromSt.lon;
+    let heading = Math.atan2(dLon * Math.cos(lat * Math.PI / 180), dLat) * 180 / Math.PI;
+    if (heading < 0) heading += 360;
 
     const trainId = `freight_${item.num}`;
     const train = {
@@ -2114,15 +2121,15 @@ function getLiveFreightTrains() {
       operator: op,
       unitsCount: 1,
       isReverse: isRev,
-      fromStation: s1,
-      toStation: s2,
+      fromStation: fromSt,
+      toStation: toSt,
       targetStation,
       exactDestination: destStation.name,
       locomotive: item.loco,
       cargo: item.cargo,
       corridorId: item.corridorId,
       segmentIndex: item.segIdx,
-      segmentProgress: t,
+      segmentProgress: isRev ? (1.0 - t) : t,
       segLenKm: distanceKm(s1.lat, s1.lon, s2.lat, s2.lon),
       heading
     };
@@ -2204,87 +2211,121 @@ function projectPointToSegmentKm(pLat, pLon, aLat, aLon, bLat, bLon) {
 
 // Bepaal nauwkeurig de rijrichting van een trein ten opzichte van het geselecteerde traject
 // (Heenrit A ➔ B vs. Tegentrein / Terugrit B ➔ A)
-function determineTrainDirection(train, corridor) {
+function determineTrainDirection(train, corridor, segmentIndex = null) {
   if (!corridor || !corridor.stations || corridor.stations.length < 2) {
     return { isReverse: false, targetStation: null, label: 'Voorwaarts' };
   }
 
-  const sStart = corridor.stations[0];
-  const sEnd = corridor.stations[corridor.stations.length - 1];
+  const stations = corridor.stations;
+  const sStart = stations[0];
+  const sEnd = stations[stations.length - 1];
 
-  // 1. Analyseer reisbestemming en vertrekstation uit train.service
-  const destName = (train.service && train.service.destination) ? train.service.destination.toLowerCase() : '';
-  const origName = (train.service && train.service.origin) ? train.service.origin.toLowerCase() : '';
+  // 1. Zoek expliciete reisbestemming en vertrekstation
+  let destName = (train.exactDestination || (train.service && train.service.destination) || '').trim();
+  let origName = (train.service && train.service.origin || '').trim();
+  if (destName === 'Eindbestemming' || destName === 'Bestemming') destName = '';
 
-  if (destName) {
-    if (destName.includes(sStart.name.toLowerCase())) {
-      return { isReverse: true, targetStation: sStart, label: `➔ Richting ${sStart.name}` };
-    }
-    if (destName.includes(sEnd.name.toLowerCase())) {
-      return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
-    }
+  const norm = str => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+  const dNorm = norm(destName);
+  const oNorm = norm(origName);
 
-    // Controleer via geografische afstand tot begin- of eindstation van het traject
-    const allSt = getAllStations();
-    const destStation = allSt.find(s => destName.includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(destName));
-    if (destStation) {
-      const distToStart = distanceKm(destStation.lat, destStation.lon, sStart.lat, sStart.lon);
-      const distToEnd = distanceKm(destStation.lat, destStation.lon, sEnd.lat, sEnd.lon);
-      if (distToStart < distToEnd) {
-        return { isReverse: true, targetStation: sStart, label: `➔ Richting ${sStart.name}` };
+  // Controleer of de bestemming direct een station op deze corridor is
+  let destIdx = -1;
+  if (dNorm) {
+    destIdx = stations.findIndex(s => {
+      const sNorm = norm(s.name);
+      return sNorm.includes(dNorm) || dNorm.includes(sNorm);
+    });
+  }
+
+  // Als we weten op welk baanvak-segment de trein zich bevindt:
+  if (segmentIndex !== null && segmentIndex !== undefined && segmentIndex >= 0) {
+    if (destIdx !== -1) {
+      if (destIdx > segmentIndex) {
+        // Bestemming ligt verderop op het traject richting sEnd (voorwaarts)
+        const targetSt = stations[destIdx];
+        return { isReverse: false, targetStation: targetSt, label: `➔ naar ${targetSt.name}` };
       } else {
-        return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
+        // Bestemming ligt achterop het traject richting sStart (tegentrein / terugrit)
+        const targetSt = stations[destIdx];
+        return { isReverse: true, targetStation: targetSt, label: `➔ naar ${targetSt.name}` };
       }
     }
   }
 
-  if (origName) {
-    if (origName.includes(sEnd.name.toLowerCase())) {
-      return { isReverse: true, targetStation: sStart, label: `➔ Richting ${sStart.name}` };
+  // 2. Controleer of de bestemming overeenkomt met begin- of eindstation van de corridor
+  if (dNorm) {
+    if (norm(sStart.name).includes(dNorm) || dNorm.includes(norm(sStart.name))) {
+      return { isReverse: true, targetStation: sStart, label: `➔ naar ${sStart.name}` };
     }
-    if (origName.includes(sStart.name.toLowerCase())) {
-      return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
+    if (norm(sEnd.name).includes(dNorm) || dNorm.includes(norm(sEnd.name))) {
+      return { isReverse: false, targetStation: sEnd, label: `➔ naar ${sEnd.name}` };
+    }
+
+    // Geografische nabijheid van een externe bestemming tot corridor begin of eind
+    const allSt = getAllStations();
+    const destStation = allSt.find(s => {
+      const sNorm = norm(s.name);
+      return sNorm.includes(dNorm) || dNorm.includes(sNorm);
+    });
+    if (destStation) {
+      const distToStart = distanceKm(destStation.lat, destStation.lon, sStart.lat, sStart.lon);
+      const distToEnd = distanceKm(destStation.lat, destStation.lon, sEnd.lat, sEnd.lon);
+      if (distToStart < distToEnd) {
+        return { isReverse: true, targetStation: sStart, label: `➔ naar ${destName || sStart.name}` };
+      } else {
+        return { isReverse: false, targetStation: sEnd, label: `➔ naar ${destName || sEnd.name}` };
+      }
     }
   }
 
-  // 2. Fallback op ProRail treinnummer pariteit (oneven = noord/west, even = zuid/oost)
+  // 3. Analyseer vertrekstation als indicatie
+  if (oNorm) {
+    if (norm(sStart.name).includes(oNorm) || oNorm.includes(norm(sStart.name))) {
+      return { isReverse: false, targetStation: sEnd, label: `➔ naar ${destName || sEnd.name}` };
+    }
+    if (norm(sEnd.name).includes(oNorm) || oNorm.includes(norm(sEnd.name))) {
+      return { isReverse: true, targetStation: sStart, label: `➔ naar ${destName || sStart.name}` };
+    }
+  }
+
+  // 4. Fallback op ProRail NS-treinnummer pariteit (oneven = oost/noord; even = west/zuid richting Randstad)
   const num = parseInt(train.trainNum, 10);
   if (!isNaN(num) && num > 0) {
     const isOdd = num % 2 !== 0;
     const dLon = sEnd.lon - sStart.lon;
-    const dLat = sEnd.lat - sStart.lat;
-    const isForwardEven = (Math.abs(dLon) >= Math.abs(dLat)) ? (dLon > 0) : (dLat < 0);
-    const isReverse = isForwardEven ? isOdd : !isOdd;
+    // dLon < -0.3 betekent dat de corridor westwaarts naar de Randstad loopt (bijv. Enschede -> Den Haag)
+    // Even treinen rijden voorwaarts naar Randstad, oneven treinen rijden tegentrein oostwaarts
+    const corridorIsWestbound = (dLon < -0.3);
+    const isReverse = corridorIsWestbound ? isOdd : !isOdd;
+    const targetSt = isReverse ? sStart : sEnd;
     return {
       isReverse,
-      targetStation: isReverse ? sStart : sEnd,
-      label: isReverse ? `➔ Richting ${sStart.name}` : `➔ Richting ${sEnd.name}`
+      targetStation: targetSt,
+      label: `➔ naar ${destName || targetSt.name}`
     };
   }
 
-  return { isReverse: false, targetStation: sEnd, label: `➔ Richting ${sEnd.name}` };
+  return { isReverse: false, targetStation: sEnd, label: `➔ naar ${destName || sEnd.name}` };
 }
 
 function matchTrainToCorridor(train, corridor) {
   if (!corridor) return true;
 
-  // 1. Spoorwegmaatschappij & Goederen filter:
+  // 1. Spoorwegmaatschappij & Goederen identificatie:
   const isFreightTrain = (train.operator && train.operator.category === 'freight') ||
                          (train.trainNum && parseInt(train.trainNum, 10) >= 40000 && parseInt(train.trainNum, 10) <= 69999) ||
                          /cargo|goederen|locon|lte|rtb|lineas|captrain|dbcargo|rfo/i.test(train.matnrString || '');
 
-  // Goederencorridors
+  // Goederencorridors: uitsluitend voor goederen
   if (corridor.category === 'freight' || corridor.id === 'freight-all') {
     if (!isFreightTrain) return false;
     if (corridor.id === 'freight-all') return true;
-  } else if (corridor.id !== 'all' && corridor.id !== 'custom') {
-    // Sluit goederentreinen uit van reguliere reizigerstrajecten
-    if (isFreightTrain) return false;
   }
 
   // Als een specifiek reizigerstraject wordt bekeken (bv. Arriva tussen Apeldoorn De Maten en Zutphen),
-  // toon dan uitsluitend treinen van die maatschappij en geen NS treinen van kruisende lijnen!
-  if (corridor.primaryOpKey && corridor.primaryOpKey !== 'all' && corridor.category !== 'freight') {
+  // filter dan reizigerstreinen op maatschappij, maar laat goederentreinen op gedeelde sporen altijd toe!
+  if (!isFreightTrain && corridor.primaryOpKey && corridor.primaryOpKey !== 'all' && corridor.category !== 'freight') {
     const opCode = (train.operator && train.operator.code) ? train.operator.code.toLowerCase() : '';
     if (corridor.primaryOpKey === 'arriva' && !opCode.includes('arriva')) {
       return false; // Alleen Arriva treinen op Arriva trajecten
@@ -2316,8 +2357,8 @@ function matchTrainToCorridor(train, corridor) {
         bestDist = proj.distKm;
         bestMatch = {
           segmentIndex: i,
-          fromStation: s1,
-          toStation: s2,
+          rawS1: s1,
+          rawS2: s2,
           segmentProgress: proj.t,
           segLenKm: proj.segLenKm,
           distFromS1: proj.t * proj.segLenKm,
@@ -2330,17 +2371,21 @@ function matchTrainToCorridor(train, corridor) {
   }
 
   const resolveCorridorDestination = (dirInfo, targetSt, toSt) => {
-    let exactDest = (train.service && train.service.destination && train.service.destination !== 'Eindbestemming')
+    let exactDest = (train.service && train.service.destination && train.service.destination !== 'Eindbestemming' && train.service.destination !== 'Bestemming')
       ? train.service.destination
       : '';
+    if (!exactDest && train.exactDestination && train.exactDestination !== 'Eindbestemming' && train.exactDestination !== 'Bestemming') {
+      exactDest = train.exactDestination;
+    }
+    if (!exactDest && targetSt && targetSt.name) {
+      exactDest = targetSt.name;
+    } else if (!exactDest && toSt && toSt.name) {
+      exactDest = toSt.name;
+    }
     if (!exactDest && corridor && corridor.stations && corridor.stations.length >= 2) {
       const sStart = corridor.stations[0];
       const sEnd = corridor.stations[corridor.stations.length - 1];
       exactDest = dirInfo.isReverse ? sStart.name : sEnd.name;
-    } else if (!exactDest && targetSt && targetSt.name) {
-      exactDest = targetSt.name;
-    } else if (!exactDest && toSt && toSt.name) {
-      exactDest = toSt.name;
     }
     if (!exactDest) {
       exactDest = dirInfo.isReverse ? 'Beginstation' : 'Eindstation';
@@ -2351,16 +2396,21 @@ function matchTrainToCorridor(train, corridor) {
   };
 
   if (bestMatch) {
-    const dirInfo = determineTrainDirection(train, corridor);
+    const dirInfo = determineTrainDirection(train, corridor, bestMatch.segmentIndex);
     bestMatch.isReverse = dirInfo.isReverse;
     bestMatch.dirLabel = dirInfo.label;
     bestMatch.targetStation = dirInfo.targetStation;
+
+    // Stel gerichte stations in: fromStation is waar de trein vandaan komt, toStation is waar de trein naartoe rijdt
+    bestMatch.fromStation = dirInfo.isReverse ? bestMatch.rawS2 : bestMatch.rawS1;
+    bestMatch.toStation = dirInfo.isReverse ? bestMatch.rawS1 : bestMatch.rawS2;
+
     bestMatch.exactDestination = resolveCorridorDestination(dirInfo, dirInfo.targetStation, bestMatch.toStation);
 
     // Garandeer dat een trein op het open baanvak tussen stations nooit op 0 km/u staat
     if (bestMatch.segmentProgress > 0.05 && bestMatch.segmentProgress < 0.95 && !train.isPech) {
       if (train.speed <= 5) {
-        train.speed = (train.operator && train.operator.code.toLowerCase().includes('arriva')) ? 90 : 110;
+        train.speed = isFreightTrain ? 85 : ((train.operator && train.operator.code.toLowerCase().includes('arriva')) ? 90 : 110);
       }
     }
     return bestMatch;
@@ -2373,14 +2423,16 @@ function matchTrainToCorridor(train, corridor) {
     if (d <= 1.2) {
       const segIdx = Math.min(i, Math.max(0, corridor.stations.length - 2));
       const sNext = corridor.stations[segIdx + 1] || s;
-      const dirInfo = determineTrainDirection(train, corridor);
+      const dirInfo = determineTrainDirection(train, corridor, segIdx);
       const exactDest = resolveCorridorDestination(dirInfo, dirInfo.targetStation, sNext);
+      const s1 = corridor.stations[segIdx];
+      const s2 = corridor.stations[segIdx + 1];
       return {
         segmentIndex: segIdx,
-        fromStation: s,
-        toStation: sNext,
-        segmentProgress: i === corridor.stations.length - 1 ? 1.0 : 0.0,
-        segLenKm: distanceKm(s.lat, s.lon, sNext.lat, sNext.lon),
+        fromStation: dirInfo.isReverse ? s2 : s1,
+        toStation: dirInfo.isReverse ? s1 : s2,
+        segmentProgress: dirInfo.isReverse ? 0.95 : 0.05,
+        segLenKm: distanceKm(s1.lat, s1.lon, s2.lat, s2.lon),
         distFromS1: 0,
         perpDistKm: d,
         projLat: s.lat,
@@ -3187,7 +3239,9 @@ function renderMapTrains(trainList) {
           const dLat = t.lat - state.lastRawLat;
           const dLon = t.lon - state.lastRawLon;
           state.dirVector = { dLat, dLon };
-          state.heading = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
+          let h = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
+          if (h < 0) h += 360;
+          state.heading = h;
           state.lastRawLat = t.lat;
           state.lastRawLon = t.lon;
 
@@ -3214,6 +3268,13 @@ function renderMapTrains(trainList) {
             state.driftLat = driftLat;
             state.driftLon = driftLon;
           }
+        } else if (t.fromStation && t.toStation && t.fromStation.code !== t.toStation.code) {
+          const dLat = t.toStation.lat - t.fromStation.lat;
+          const dLon = t.toStation.lon - t.fromStation.lon;
+          state.dirVector = { dLat, dLon };
+          let h = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
+          if (h < 0) h += 360;
+          state.heading = h;
         }
         state.speed = t.speed;
         state.isDriving = t.speed > 5;
@@ -3252,14 +3313,15 @@ function renderMapTrains(trainList) {
       let initDir = { dLat: 0, dLon: 0 };
       let initHeading = 0;
       if (t.fromStation && t.toStation && t.fromStation.code !== t.toStation.code) {
-        const mult = isRev ? -1 : 1;
-        const dLat = (t.toStation.lat - t.fromStation.lat) * mult;
-        const dLon = (t.toStation.lon - t.fromStation.lon) * mult;
+        const dLat = t.toStation.lat - t.fromStation.lat;
+        const dLon = t.toStation.lon - t.fromStation.lon;
         initDir = { dLat, dLon };
-        initHeading = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
+        let h = Math.atan2(dLon * Math.cos(t.lat * Math.PI / 180), dLat) * 180 / Math.PI;
+        if (h < 0) h += 360;
+        initHeading = h;
       } else if (!isNaN(parseInt(t.trainNum, 10)) && parseInt(t.trainNum, 10) > 0) {
         const num = parseInt(t.trainNum, 10);
-        initHeading = (num % 2 === 0) ? 135 : 315;
+        initHeading = (num % 2 === 0) ? 225 : 45;
       }
 
       const html = `
@@ -5478,8 +5540,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.7.0';
-const APP_BUILD_COMMIT = '3033ffc';
+const APP_VERSION = '2.7.1';
+const APP_BUILD_COMMIT = '728939d';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
