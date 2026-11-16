@@ -1773,9 +1773,21 @@ export function parseTrain(raw) {
 
   // Treinnummer detectie
   let trainNum = '';
-  const trMatch = matnrString.match(/trein\s+(\d+)/i);
-  if (trMatch) trainNum = trMatch[1];
-  else trainNum = matnummer.replace(/\D/g, '') || '0';
+  const trExplicit = matnrString.match(/(?:trein|rit|tr)\.?\s*(\d+)/i);
+  if (trExplicit) {
+    trainNum = trExplicit[1];
+  } else {
+    // Zoek 5-cijferig dienstregelingnummer (bv. 30418, 17855, 31250) of 4-cijferig (bv. 1450, 1642)
+    const m5 = matnrString.match(/\b([1-9]\d{4})\b/);
+    const m4 = matnrString.match(/\b([1-9]\d{3})\b/);
+    if (m5) trainNum = m5[1];
+    else if (m4) trainNum = m4[1];
+    else {
+      const anyNum = matnrString.match(/\b(\d+)\b/);
+      if (anyNum) trainNum = anyNum[1];
+      else trainNum = matnummer.replace(/\D/g, '') || '0';
+    }
+  }
 
   // Vertraging & Pech analyse
   let delayMin = 0;
@@ -4527,6 +4539,7 @@ function stopLiveTrainTracking() {
   appState.isTrackingUser = false;
   appState.isFollowingMyTrain = false;
   appState.lastGpsFix = null;
+  appState.userPreferredDirection = null;
   appState.openModalOnFirstFix = false;
 
   const btnHeader = document.getElementById('btnFindMyTrain');
@@ -4549,6 +4562,54 @@ function stopLiveTrainTracking() {
   if (bannerSub) bannerSub.textContent = 'Tik voor snelheid, volgend station & vertraging';
   if (bannerBtnText) bannerBtnText.textContent = '⚡ Toon Mijn Trein';
 }
+
+// 1-Tap wisselknop voor wanneer de tegentrein per ongeluk gekozen is
+window.switchMyTrainDirection = () => {
+  const currentTrain = appState.myTrain;
+  const allParsed = getActiveParsedTrains();
+  const userLat = appState.lastGpsFix ? appState.lastGpsFix.lat : (currentTrain ? currentTrain.lat : 52.2);
+  const userLon = appState.lastGpsFix ? appState.lastGpsFix.lon : (currentTrain ? currentTrain.lon : 6.0);
+
+  const currentDest = (currentTrain ? (currentTrain.exactDestination || (currentTrain.service && currentTrain.service.destination) || '') : '').toLowerCase();
+
+  // Zoek treinen op dezelfde lijn of in de buurt die de ANDERE kant op rijden
+  let candidates = allParsed.filter(t => {
+    if (currentTrain && t.id === currentTrain.id) return false;
+    const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
+    return !tDest.includes(currentDest) && distanceKm(userLat, userLon, t.lat, t.lon) <= 35;
+  });
+
+  const activeC = appState.activeCorridorKey && CORRIDORS[appState.activeCorridorKey];
+  if (activeC && candidates.length > 0) {
+    const corridorCandidates = candidates.filter(t => matchTrainToCorridor(t, activeC));
+    if (corridorCandidates.length > 0) candidates = corridorCandidates;
+  }
+
+  candidates.sort((a, b) => distanceKm(userLat, userLon, a.lat, a.lon) - distanceKm(userLat, userLon, b.lat, b.lon));
+
+  if (candidates.length > 0) {
+    const otherTrain = candidates[0];
+    appState.myTrain = otherTrain;
+    const newDest = otherTrain.exactDestination || (otherTrain.service && otherTrain.service.destination) || 'het andere eindpunt';
+    appState.userPreferredDirection = newDest;
+
+    playAuthenticNSChime();
+
+    // Ververs direct de weergave met de nieuwe trein
+    if (appState.lastGpsFix) {
+      onLiveLocationFix({
+        coords: {
+          latitude: appState.lastGpsFix.lat,
+          longitude: appState.lastGpsFix.lon,
+          accuracy: appState.lastGpsFix.acc || 15,
+          speed: (appState.lastGpsFix.speed ? appState.lastGpsFix.speed / 3.6 : 0)
+        }
+      });
+    } else {
+      updateLineOverview();
+    }
+  }
+};
 
 function onLiveLocationFix(pos) {
   const btnHeader = document.getElementById('btnFindMyTrain');
@@ -4614,11 +4675,31 @@ function onLiveLocationFix(pos) {
   let bestScore = Infinity;
   const activeCorridor = (appState.activeCorridorKey && appState.activeCorridorKey !== 'all') ? CORRIDORS[appState.activeCorridorKey] : null;
 
+  // Bepaal of de gebruiker zich in een duidelijke bewegingsrichting verplaatst
+  let userHeadingVector = null;
+  if (appState.lastGpsFix && appState.lastGpsFix.time) {
+    const dLat = userLat - appState.lastGpsFix.lat;
+    const dLon = userLon - appState.lastGpsFix.lon;
+    if (Math.hypot(dLat, dLon) > 0.00015) { // Meer dan ~15m verplaatst
+      userHeadingVector = { dLat, dLon };
+    }
+  }
+
   allParsed.forEach(t => {
     const d = distanceKm(userLat, userLon, t.lat, t.lon);
     let score = d;
 
-    // Als de gebruiker reeds een specifiek traject bekijkt (bv. Arriva Achterhoek), prioriteer die treinen
+    // 1. Voorkeursbestemming van de gebruiker (bv. handmatig gekozen "Apeldoorn" ipv "Zutphen")
+    if (appState.userPreferredDirection) {
+      const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
+      if (tDest.includes(appState.userPreferredDirection.toLowerCase())) {
+        score *= 0.25; // Sterke voorkeur voor de gewenste reisrichting!
+      } else {
+        score += 5.0;  // Tegentrein achterstellen
+      }
+    }
+
+    // 2. Als de gebruiker reeds een specifiek traject bekijkt (bv. Arriva Achterhoek), prioriteer die treinen
     if (activeCorridor) {
       if (activeCorridor.primaryOpKey && t.operator && t.operator.code.toLowerCase().includes(activeCorridor.primaryOpKey)) {
         score *= 0.65;
@@ -4628,7 +4709,19 @@ function onLiveLocationFix(pos) {
       }
     }
 
-    // Als gebruiker in een rijdende trein zit (>15 km/u), geef sterke voorkeur aan rijdende treinen!
+    // 3. Bewegingsrichting vergelijken: als gebruiker én trein rijden, beloon dezelfde richting en straf tegentrein af
+    if (userHeadingVector && t.toStation && t.fromStation) {
+      const tLatDiff = t.toStation.lat - t.fromStation.lat;
+      const tLonDiff = t.toStation.lon - t.fromStation.lon;
+      const dot = (userHeadingVector.dLat * tLatDiff) + (userHeadingVector.dLon * tLonDiff);
+      if (dot > 0) {
+        score *= 0.45; // Trein beweegt in exact dezelfde richting als de smartphone!
+      } else if (dot < 0) {
+        score += 8.0;  // Trein beweegt in tegengestelde richting (tegentrein passeert ons)!
+      }
+    }
+
+    // 4. Als gebruiker in een rijdende trein zit (>15 km/u), geef sterke voorkeur aan rijdende treinen!
     if (userSpeedKmh && userSpeedKmh > 15) {
       if (t.speed && t.speed > 15 && d < 4.0) {
         const speedDiff = Math.abs(t.speed - userSpeedKmh);
@@ -5698,8 +5791,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.7.3';
-const APP_BUILD_COMMIT = 'f7ab6e0';
+const APP_VERSION = '2.7.4';
+const APP_BUILD_COMMIT = '158a403';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

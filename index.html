@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.7.3_f7ab6e0">
-  <link rel="manifest" href="./manifest.json?v=2.7.3_f7ab6e0">
+  <link rel="stylesheet" href="./style.css?v=2.7.4_158a403">
+  <link rel="manifest" href="./manifest.json?v=2.7.4_158a403">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -430,6 +430,9 @@
         </div>
 
         <div class="hud-right-actions">
+          <button id="btnHudSwitchDir" onclick="window.switchMyTrainDirection()" class="hud-action-btn" type="button" title="Wissel naar tegentrein in de andere richting">
+            🔄 Wissel
+          </button>
           <button id="btnHudFollowToggle" class="hud-action-btn active" type="button" title="Blijf de trein automatisch volgen op de kaart">
             <span id="hudFollowIcon">📍</span> Volg
           </button>
@@ -481,6 +484,11 @@
             <div class="hero-line" id="myTrainRoute">📡 Bepalen van uw trein &amp; traject...</div>
             <div class="hero-segment" id="myTrainSegment">Zoekt dichtstbijzijnde rijdende trein op het spoor...</div>
             <div class="hero-gps-meta" id="myTrainGpsMeta">GPS verbinding wordt tot stand gebracht...</div>
+            <div style="margin-top: 8px;">
+              <button id="btnSwitchTrainDirection" onclick="window.switchMyTrainDirection()" type="button" style="background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.45); color: #38bdf8; border-radius: 999px; padding: 4px 12px; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                🔄 Verkeerde richting? Wissel naar andere eindpunt
+              </button>
+            </div>
           </div>
         </div>
 
@@ -824,7 +832,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.7.3_f7ab6e0"></script>
-  <script type="module" src="./app.js?v=2.7.3_f7ab6e0"></script>
+  <script src="./stations.js?v=2.7.4_158a403"></script>
+  <script type="module" src="./app.js?v=2.7.4_158a403"></script>
 </body>
 </html>
