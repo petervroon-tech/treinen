@@ -22,6 +22,11 @@
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
+}
+
 body {
   font-family: var(--font-family);
   background-color: var(--bg-dark);
@@ -30,6 +35,8 @@ body {
   height: 100dvh;
   width: 100vw;
   overflow: hidden;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
   display: flex;
   flex-direction: column;
   padding-top: env(safe-area-inset-top, 0);
@@ -112,14 +119,16 @@ body {
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
   position: relative;
 }
 
-/* De permanente linker sidebar met tabs */
+/* De permanente linker sidebar met tabs (alleen verticaal scrollen, nooit horizontaal) */
 .app-sidebar-tabs {
-  width: 260px;
-  min-width: 260px;
-  max-width: 260px;
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
   height: 100%;
   background: linear-gradient(180deg, #001438 0%, #000c24 100%);
   border-right: 1.5px solid rgba(56, 189, 248, 0.28);
@@ -128,7 +137,11 @@ body {
   z-index: 500;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.45);
   flex-shrink: 0;
-  overflow-y: auto;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-y: contain !important;
+  overscroll-behavior-x: none !important;
+  touch-action: pan-y !important;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -250,18 +263,20 @@ body {
   gap: 10px;
   text-align: left;
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: background 0.16s ease, border-color 0.16s ease;
   user-select: none;
   -webkit-user-select: none;
   outline: none;
   color: #f8fafc;
   width: 100%;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
 }
 
 .sidebar-tab-btn:hover {
-  background: rgba(56, 189, 248, 0.12);
-  border-color: rgba(56, 189, 248, 0.45);
-  transform: translateX(2px);
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.55);
   color: #ffffff;
 }
 
@@ -3552,6 +3567,12 @@ body {
     flex-shrink: 0 !important;
     z-index: 100 !important;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: contain !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .tab-secondary-text {
@@ -3595,6 +3616,12 @@ body {
     padding: 6px 3px !important;
     box-shadow: 2px 0 14px rgba(0, 0, 0, 0.5) !important;
     border-right: 1px solid rgba(56, 189, 248, 0.3) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: contain !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .sidebar-brand-header {
@@ -6329,12 +6356,10 @@ body {
 .nav-menu-item:hover {
   background: rgba(56, 189, 248, 0.12);
   border-color: rgba(56, 189, 248, 0.5);
-  transform: translateX(3px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 .nav-menu-item:active {
-  transform: translateX(0);
   background: rgba(56, 189, 248, 0.22);
 }
 
@@ -6398,7 +6423,6 @@ body {
 }
 
 .nav-menu-item:hover .menu-item-arrow {
-  transform: translateX(3px);
   color: #38bdf8;
 }
 

@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.8.5"
+DEFAULT_VERSION = "2.8.6"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -270,8 +270,8 @@ def update_version_json(sha=None, build_num=None):
     data["features"] = [
         {
             "tag": "Vaste Sidebar Links",
-            "title": "Permanent Vaste Sidebar met Tabs Links",
-            "desc": "Het menu aan de linkerkant staat permanent vast op alle apparaten (laptop, iPad en iPhone). Nooit meer verborgen of inklappend, altijd 1-klik directe navigatie.",
+            "title": "Permanent Vaste Sidebar (Alleen Up & Down)",
+            "desc": "Het menu aan de linkerkant staat permanent vast op alle apparaten (laptop, iPad en iPhone). Strikt beveiligd tegen horizontaal schuiven (left/right): uitsluitend soepel verticaal scrollen (up/down).",
             "icon": "🧭"
         },
         {

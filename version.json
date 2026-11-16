@@ -1,16 +1,16 @@
 {
-  "version": "2.8.5",
-  "commit": "c03cc8b",
-  "fullCommit": "c03cc8b51643b0e86b5ef7a71518e65b31fa36c7",
-  "buildTime": "2026-11-16T23:05:48Z",
+  "version": "2.8.6",
+  "commit": "d62ad5c",
+  "fullCommit": "d62ad5ca3ec3f77defe6d61e3ef30951d0e5fb75",
+  "buildTime": "2026-11-16T23:08:23Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
     {
       "tag": "Vaste Sidebar Links",
-      "title": "Permanent Vaste Sidebar met Tabs Links",
-      "desc": "Het menu aan de linkerkant staat permanent vast op alle apparaten (laptop, iPad en iPhone). Nooit meer verborgen of inklappend, altijd 1-klik directe navigatie.",
+      "title": "Permanent Vaste Sidebar (Alleen Up & Down)",
+      "desc": "Het menu aan de linkerkant staat permanent vast op alle apparaten (laptop, iPad en iPhone). Strikt beveiligd tegen horizontaal schuiven (left/right): uitsluitend soepel verticaal scrollen (up/down).",
       "icon": "🧭"
     },
     {
