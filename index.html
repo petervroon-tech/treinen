@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.8.4_c23d1e6">
-  <link rel="manifest" href="./manifest.json?v=2.8.4_c23d1e6">
+  <link rel="stylesheet" href="./style.css?v=2.8.5_c03cc8b">
+  <link rel="manifest" href="./manifest.json?v=2.8.5_c03cc8b">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -39,14 +39,11 @@
     </div>
   </aside>
 
-  <!-- BACKDROP VOOR INGEKLAPTE SIDEBAR OP MOBIEL/TABLET -->
-  <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
-
-  <!-- HOOFDLAYOUT WRAPPER (Zijbalk met tabs links, werkgebied rechts) -->
+  <!-- HOOFDLAYOUT WRAPPER (Vaste linker zijbalk met tabs links, werkgebied rechts) -->
   <div class="app-layout-wrapper">
 
-    <!-- LINKER SIDEBAR MET TABS (Vervangt het topmenu volledig) -->
-    <aside id="appSidebarLeft" class="app-sidebar-tabs" aria-label="Hoofdmenu en tabs aan de linkerkant">
+    <!-- VASTE LINKER SIDEBAR MET TABS (Permanent zichtbaar op elk apparaat) -->
+    <aside id="appSidebarLeft" class="app-sidebar-tabs" aria-label="Vast navigatiemenu aan de linkerkant">
       
       <!-- 1. Brand Logo & Versie bovenaan sidebar -->
       <div class="sidebar-brand-header">
@@ -58,7 +55,6 @@
             <span class="badge-refresh-icon">🔄</span>
           </button>
         </div>
-        <button id="btnCloseSidebar" class="sidebar-close-btn" type="button" aria-label="Sluit zijbalk">✕</button>
       </div>
 
       <!-- 2. Trajectkiezer Dropdown in de sidebar -->
@@ -279,27 +275,8 @@
       </div>
     </aside>
 
-    <!-- HOOFDINHOUD (Rechts van de sidebar op desktop/laptop) -->
+    <!-- HOOFDINHOUD (Permanent rechts van de vaste linker sidebar) -->
     <div class="app-main-viewport">
-      <!-- Slanke mobiele & tablet topbalk (alleen zichtbaar op mobiel/tablet als knoppenbalk ingeklapt is) -->
-      <header class="mobile-top-bar" aria-label="Mobiele statusbalk">
-        <button id="btnToggleSidebar" class="btn-sidebar-toggle" type="button" aria-label="Open navigatie sidebar tabs">
-          <span class="toggle-icon">☰</span>
-          <span class="toggle-label">Tabs</span>
-        </button>
-        <div class="mobile-brand-center">
-          <span class="ns-badge">PRO-RAIL</span>
-          <strong>&lt;treinen&gt;</strong>
-        </div>
-        <div class="mobile-quick-actions">
-          <button id="btnMobileInTrain" class="mobile-quick-btn in-train-btn" type="button" title="In de trein">
-            <span>🚆</span>
-          </button>
-          <button id="btnMobileRefresh" class="mobile-quick-btn refresh-btn" type="button" title="Live verversen">
-            <span>🔄</span>
-          </button>
-        </div>
-      </header>
 
   <!-- PRIMAIRE TRAJECTPLANNER (Kies Vertrek- en Aankomststation: Van ➔ Tot) -->
   <aside id="routePlannerBar" class="route-planner-bar">
@@ -1270,7 +1247,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.8.4_c23d1e6"></script>
-  <script type="module" src="./app.js?v=2.8.4_c23d1e6"></script>
+  <script src="./stations.js?v=2.8.5_c03cc8b"></script>
+  <script type="module" src="./app.js?v=2.8.5_c03cc8b"></script>
 </body>
 </html>

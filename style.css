@@ -3529,42 +3529,33 @@ body {
   }
 }
 
-/* 2. iPads, Tablets & Smartphones (< 1024px) */
-@media (max-width: 1023px) {
-  .mobile-top-bar {
-    display: flex !important;
-  }
-
-  .sidebar-close-btn {
-    display: flex !important;
-  }
-
-  .app-sidebar-tabs {
-    position: fixed !important;
-    inset: 0 auto 0 0 !important;
-    width: min(320px, 86vw) !important;
-    height: 100% !important;
-    height: 100dvh !important;
-    z-index: 10000 !important;
-    transform: translateX(-100%) !important;
-    transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    box-shadow: 14px 0 50px rgba(0, 0, 0, 0.85) !important;
-  }
-
-  .app-sidebar-tabs.sidebar-open {
-    transform: translateX(0) !important;
-  }
-
-  .sidebar-backdrop.active {
-    display: block !important;
-  }
-
+/* 2. iPads & Tablets (681px tot 1023px): Vaste Sidebar Links (210px breed) */
+@media (max-width: 1023px) and (min-width: 681px) {
   .app-layout-wrapper {
     display: flex !important;
-    flex-direction: column !important;
+    flex-direction: row !important;
     height: 100% !important;
     height: 100dvh !important;
     width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  .app-sidebar-tabs {
+    display: flex !important;
+    position: relative !important;
+    transform: none !important;
+    width: 210px !important;
+    min-width: 210px !important;
+    max-width: 210px !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    flex-shrink: 0 !important;
+    z-index: 100 !important;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .tab-secondary-text {
+    display: none !important;
   }
 
   .app-main-viewport {
@@ -3573,6 +3564,155 @@ body {
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
+    height: 100dvh !important;
+    width: calc(100vw - 210px) !important;
+    overflow: hidden !important;
+  }
+}
+
+/* 3. Smartphones & iPhones (<= 680px): Slank Vast Tab-Spoor Links (66px breed) */
+@media (max-width: 680px) {
+  .app-layout-wrapper {
+    display: flex !important;
+    flex-direction: row !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  .app-sidebar-tabs {
+    display: flex !important;
+    position: relative !important;
+    transform: none !important;
+    width: 66px !important;
+    min-width: 66px !important;
+    max-width: 66px !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    flex-shrink: 0 !important;
+    z-index: 100 !important;
+    padding: 6px 3px !important;
+    box-shadow: 2px 0 14px rgba(0, 0, 0, 0.5) !important;
+    border-right: 1px solid rgba(56, 189, 248, 0.3) !important;
+  }
+
+  .sidebar-brand-header {
+    padding: 6px 2px !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .sidebar-brand-header .brand-heading {
+    display: none !important;
+  }
+
+  .sidebar-brand-header .ns-badge {
+    font-size: 0.58rem !important;
+    padding: 2px 4px !important;
+  }
+
+  .sidebar-brand-header .app-version-badge {
+    font-size: 0.58rem !important;
+    padding: 1px 4px !important;
+  }
+
+  .sidebar-traject-section {
+    padding: 4px 2px !important;
+  }
+
+  .sidebar-label-tag {
+    display: none !important;
+  }
+
+  .sidebar-mini-apply-btn {
+    display: none !important;
+  }
+
+  .sidebar-traject-section .traject-dropdown-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .sidebar-traject-section .traject-select-dropdown {
+    padding: 3px 1px !important;
+    font-size: 0.60rem !important;
+    text-overflow: ellipsis !important;
+    height: 26px !important;
+    min-height: 26px !important;
+  }
+
+  .sidebar-group-title {
+    display: none !important;
+  }
+
+  .sidebar-tabs-list {
+    padding: 4px 1px !important;
+    gap: 5px !important;
+  }
+
+  .sidebar-tab-btn {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 6px 1px !important;
+    gap: 2px !important;
+    border-radius: 8px !important;
+    text-align: center !important;
+    min-height: 44px !important;
+  }
+
+  .tab-icon {
+    width: auto !important;
+    font-size: 1.15rem !important;
+    line-height: 1 !important;
+  }
+
+  .tab-text-box {
+    align-items: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .tab-primary-text {
+    font-size: 0.56rem !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 58px !important;
+    line-height: 1.1 !important;
+  }
+
+  .tab-secondary-text {
+    display: none !important;
+  }
+
+  .tab-pill {
+    display: none !important;
+  }
+
+  .sidebar-tabs-footer {
+    padding: 6px 2px !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .sidebar-footer-live {
+    display: none !important;
+  }
+
+  .app-main-viewport {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    width: calc(100vw - 66px) !important;
     overflow: hidden !important;
   }
 }
