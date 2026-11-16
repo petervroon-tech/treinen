@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.8.3"
+DEFAULT_VERSION = "2.8.4"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -269,9 +269,9 @@ def update_version_json(sha=None, build_num=None):
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
         {
-            "tag": "Zijpaneel Links",
-            "title": "Zijpaneel Hoofdmenu Links (Alle Apparaten)",
-            "desc": "Direct aan de linkerkant van het scherm geplaatst op laptop, iPad en iPhone. Toont per onderdeel alle details, actuele badges en directe bediening.",
+            "tag": "Sidebar Tabs Links",
+            "title": "Sidebar met Tabs Links (Vervangt Topmenu)",
+            "desc": "Het volledige topmenu is vertaald naar een dedicated linker navigatie-sidebar met verticale tabs. Aangepast voor laptop (vaste zijbalk zonder topbalk), iPad en iPhone (slide-in drawer).",
             "icon": "🧭"
         },
         {

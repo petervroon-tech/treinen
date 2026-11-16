@@ -5655,6 +5655,11 @@ function setupNavigation() {
       b.classList.toggle('active', b.getAttribute('data-view') === effectiveMode);
     });
 
+    // Sync actieve tab in de linker sidebar
+    document.querySelectorAll('.sidebar-tab-btn[data-view]').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-view') === effectiveMode);
+    });
+
     // Ververs Leaflet kaartafmetingen na CSS layout-transitie
     if (appState.map) {
       setTimeout(() => appState.map.invalidateSize(), 150);
@@ -6114,8 +6119,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.8.3';
-const APP_BUILD_COMMIT = 'ae85468';
+const APP_VERSION = '2.8.4';
+const APP_BUILD_COMMIT = 'c23d1e6';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -6492,6 +6497,84 @@ function initNavMenu() {
       }
     });
   });
+  // =============================================================
+  // 12d. Linker Sidebar met Navigatietabs (Laptop, iPad, iPhone)
+  // =============================================================
+  function initSidebarTabs() {
+    const sidebar = document.getElementById('appSidebarLeft');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const btnToggle = document.getElementById('btnToggleSidebar');
+    const btnClose = document.getElementById('btnCloseSidebar');
+
+    function openSidebar() {
+      sidebar?.classList.add('sidebar-open');
+      backdrop?.classList.add('active');
+      updateSidebarStatus();
+    }
+
+    function closeSidebar() {
+      sidebar?.classList.remove('sidebar-open');
+      backdrop?.classList.remove('active');
+    }
+
+    function toggleSidebar() {
+      if (sidebar?.classList.contains('sidebar-open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    }
+
+    function updateSidebarStatus() {
+      const textEl = document.getElementById('sidebarFooterTrainsText');
+      if (textEl) {
+        const count = appState.allLiveFeatures ? appState.allLiveFeatures.length : 0;
+        textEl.textContent = count > 0 ? `${count} treinen live` : 'Radar Live Online';
+      }
+    }
+
+    btnToggle?.addEventListener('click', toggleSidebar);
+    btnClose?.addEventListener('click', closeSidebar);
+    backdrop?.addEventListener('click', closeSidebar);
+
+    // Koppel weergave tabs (Satellietkaart, Treinenlijst, Gesplitst Scherm)
+    document.querySelectorAll('.sidebar-tab-btn[data-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.getAttribute('data-view');
+        if (window.setAppViewMode) {
+          window.setAppViewMode(view);
+        }
+        if (window.innerWidth < 1024) {
+          closeSidebar();
+        }
+      });
+    });
+
+    // Sluit de mobiele drawer bij het aanklikken van actietabs
+    document.querySelectorAll('.sidebar-tab-btn:not([data-view])').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (window.innerWidth < 1024) {
+          closeSidebar();
+        }
+      });
+    });
+
+    // Mobiele topbalk snelknoppen
+    document.getElementById('btnMobileInTrain')?.addEventListener('click', () => findMyTrain());
+    document.getElementById('btnMobileRefresh')?.addEventListener('click', () => forceRefreshTrains());
+
+    // Escape toets sluit mobiele zijbalk
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sidebar?.classList.contains('sidebar-open')) {
+        closeSidebar();
+      }
+    });
+
+    setInterval(updateSidebarStatus, 4500);
+    setTimeout(updateSidebarStatus, 1500);
+  }
+
+  initSidebarTabs();
 }
 
 // =============================================================

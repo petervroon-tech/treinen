@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.8.3_ae85468">
-  <link rel="manifest" href="./manifest.json?v=2.8.3_ae85468">
+  <link rel="stylesheet" href="./style.css?v=2.8.4_c23d1e6">
+  <link rel="manifest" href="./manifest.json?v=2.8.4_c23d1e6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -39,18 +39,17 @@
     </div>
   </aside>
 
-  <!-- Hoofdbalk: Schoon, Compact & Overzichtelijk (Eén slanke werkbalk) -->
-  <header class="app-header">
-    <div class="header-main-row">
-      <!-- Linker sectie: Menu Knop + Logo / Gele Versieknop + Traject Dropdown -->
-      <div class="header-top-subrow">
-        <!-- Hoofdmenu Knop: Aan de linkerkant van het scherm -->
-        <button id="btnOpenNavMenu" class="header-action-btn menu-btn" type="button" title="Hoofdmenu: open het navigatiemenu aan de linkerkant van het scherm">
-          <span class="btn-icon">☰</span>
-          <span class="btn-label-text">Menu</span>
-        </button>
+  <!-- BACKDROP VOOR INGEKLAPTE SIDEBAR OP MOBIEL/TABLET -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
-        <!-- Brand Logo & Gele Versieknop linksboven -->
+  <!-- HOOFDLAYOUT WRAPPER (Zijbalk met tabs links, werkgebied rechts) -->
+  <div class="app-layout-wrapper">
+
+    <!-- LINKER SIDEBAR MET TABS (Vervangt het topmenu volledig) -->
+    <aside id="appSidebarLeft" class="app-sidebar-tabs" aria-label="Hoofdmenu en tabs aan de linkerkant">
+      
+      <!-- 1. Brand Logo & Versie bovenaan sidebar -->
+      <div class="sidebar-brand-header">
         <div class="brand-box">
           <div class="ns-badge">PRO-RAIL</div>
           <h1 class="brand-heading">&lt;treinen&gt;</h1>
@@ -59,8 +58,18 @@
             <span class="badge-refresh-icon">🔄</span>
           </button>
         </div>
+        <button id="btnCloseSidebar" class="sidebar-close-btn" type="button" aria-label="Sluit zijbalk">✕</button>
+      </div>
 
-        <!-- Centraal Traject Dropdown Menu (Geen rijen vol knoppen meer) -->
+      <!-- 2. Trajectkiezer Dropdown in de sidebar -->
+      <div class="sidebar-traject-section">
+        <div class="sidebar-traject-header">
+          <span class="sidebar-label-tag">SPOORTRAJECT</span>
+          <button id="btnHeaderApplyRoute" class="sidebar-mini-apply-btn" type="button" title="Toon treinen op het gekozen traject">
+            <span class="btn-icon">🔍</span>
+            <span>Toon</span>
+          </button>
+        </div>
         <div class="traject-dropdown-container">
           <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject of heel Nederland">
             <option value="all">🌐 Heel Nederland — Alle treinen van alle maatschappijen</option>
@@ -100,101 +109,197 @@
         </div>
       </div>
 
-      <!-- Rechter Bediening: Compacte Knoppen bovenaan (Split screen, Toon treinen, In trein, Ververs, Heel NL, etc.) -->
-      <div class="header-tools-row">
-        <!-- Satellietkaart / Treinen Wisselknop (klein) -->
-        <button id="btnHeaderSplit" class="header-action-btn split-btn" type="button" title="Wissel tussen alleen satellietbeelden of alleen treinen op een station">
-          <span class="btn-icon">🛰️</span>
-          <span class="btn-label-text">Kaart</span>
+      <!-- 3. Verticale Navigatietabs Links -->
+      <nav class="sidebar-tabs-list" aria-label="Hoofdnavigatie tabs">
+
+        <!-- Categorie: Weergaves -->
+        <div class="sidebar-group-title">
+          <span class="group-dot"></span>
+          <span>WEERGAVES</span>
+        </div>
+
+        <button id="btnTabMap" class="sidebar-tab-btn" data-view="map" type="button" title="Toon alleen de satellietkaart">
+          <span class="tab-icon">🛰️</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Satellietkaart</span>
+            <span class="tab-secondary-text">Volledig scherm</span>
+          </div>
+          <span class="tab-pill">Kaart</span>
         </button>
 
-        <!-- Toon Treinen Knop (klein) -->
-        <button id="btnHeaderApplyRoute" class="header-action-btn apply-btn" type="button" title="Toon treinen op het gekozen traject">
-          <span class="btn-icon">🔍</span>
-          <span class="btn-label-text">Toon</span>
+        <button id="btnTabList" class="sidebar-tab-btn" data-view="list" type="button" title="Toon treinenlijst op station">
+          <span class="tab-icon">📋</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Treinenlijst</span>
+            <span class="tab-secondary-text">Perrons &amp; tijden</span>
+          </div>
+          <span class="tab-pill">Lijst</span>
         </button>
 
-        <!-- Goederenvervoer Knop: 1-klik toegang naar alle goederentreinen & live volgen -->
-        <button id="btnHeaderFreight" class="header-action-btn freight-btn" type="button" title="Goederenvervoer: Bekijk en volg live alle goederentreinen in Nederland (DB Cargo, Lineas, RFO, Betuweroute, Kijfhoek)">
-          <span class="btn-icon">🚂</span>
-          <span class="btn-label-text">Goederen</span>
+        <button id="btnTabSplit" class="sidebar-tab-btn active" data-view="split" type="button" title="Kaart en treinenlijst gelijktijdig naast elkaar">
+          <span class="tab-icon">🌗</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Gesplitst Scherm</span>
+            <span class="tab-secondary-text">Kaart &amp; lijst samen</span>
+          </div>
+          <span class="tab-pill tab-pill-split">Split</span>
         </button>
 
-        <!-- Live Spoorwebcams / Railcams Knop -->
-        <button id="btnHeaderRailcams" class="header-action-btn railcam-btn" type="button" title="Live Spoorwebcams: Bekijk live videobeelden van rijdende treinen langs het spoor">
-          <span class="btn-icon">📹</span>
-          <span class="btn-label-text">Live Cams</span>
+        <!-- Categorie: Live Reis & GPS Telemetrie -->
+        <div class="sidebar-group-title">
+          <span class="group-dot dot-cyan"></span>
+          <span>MIJN REIS &amp; TELEMETRIE</span>
+        </div>
+
+        <button id="btnFindMyTrain" class="sidebar-tab-btn tab-highlight" type="button" title="Ik zit in de trein: vind exact mijn trein via live GPS">
+          <span class="tab-icon pulse">🚆</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">In de Trein</span>
+            <span class="tab-secondary-text">GPS cockpit &amp; km/u</span>
+          </div>
+          <span class="tab-pill tab-pill-gps">Live GPS</span>
         </button>
 
-        <!-- Ik zit in de trein: Compacte GPS Knop (klein) -->
-        <button id="btnFindMyTrain" class="header-action-btn in-train-btn" type="button" title="Ik zit in de trein: vind exact mijn trein via live GPS coördinaten">
-          <span class="pulse-dot-beacon"></span>
-          <span class="btn-icon">🚆</span>
-          <span class="btn-label-text">In Trein</span>
+        <button id="btnToggleRoutePlanner" class="sidebar-tab-btn" type="button" title="Kies specifiek vertrek- en tot-station (Van ➔ Tot)">
+          <span class="tab-icon">🎯</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Traject Kiezen</span>
+            <span class="tab-secondary-text">Van ➔ Tot stations</span>
+          </div>
+          <span class="tab-pill">Planner</span>
         </button>
 
-        <!-- Ververs Info Knop (klein) -->
-        <button id="btnHeaderForceRefresh" class="header-action-btn refresh-btn" type="button" title="Ververs direct alle live treingegevens en GPS posities">
-          <span class="btn-icon">🔄</span>
-          <span class="btn-label-text">Ververs</span>
+        <button id="btnHeaderForceRefresh" class="sidebar-tab-btn" type="button" title="Ververs direct alle live treingegevens en GPS posities">
+          <span class="tab-icon">🔄</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Live Verversen</span>
+            <span class="tab-secondary-text">Posities &amp; vertraging</span>
+          </div>
+          <span class="tab-pill">Update</span>
         </button>
 
-        <!-- Heel Nederland Knop (klein) -->
-        <button id="btnHeaderClearRoute" class="header-action-btn nl-btn" type="button" title="Bekijk alle treinen in heel Nederland">
-          <span class="btn-icon">🌐</span>
-          <span class="btn-label-text">Heel NL</span>
+        <!-- Categorie: Radar & Live Media -->
+        <div class="sidebar-group-title">
+          <span class="group-dot dot-orange"></span>
+          <span>RADAR &amp; LIVE MEDIA</span>
+        </div>
+
+        <button id="btnHeaderFreight" class="sidebar-tab-btn" type="button" title="Goederenvervoer: Bekijk en volg live alle goederentreinen in Nederland">
+          <span class="tab-icon">🚂</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Goederenvervoer</span>
+            <span class="tab-secondary-text">DB Cargo, Lineas, Betuwe</span>
+          </div>
+          <span class="tab-pill tab-pill-orange">Vracht</span>
         </button>
 
-        <!-- Eigen Traject (Van ➔ Tot) Knop (klein) -->
-        <button id="btnToggleRoutePlanner" class="header-action-btn planner-btn" type="button" title="Kies specifiek vertrek- en tot-station (bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)">
-          <span class="btn-icon">🎯</span>
-          <span class="btn-label-text">Van / Tot</span>
+        <button id="btnHeaderRailcams" class="sidebar-tab-btn" type="button" title="Live Spoorwebcams: Bekijk live videobeelden langs het spoor">
+          <span class="tab-icon">📹</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">24/7 Live Railcams</span>
+            <span class="tab-secondary-text">Twello, Helmond, Cabine</span>
+          </div>
+          <span class="tab-pill tab-pill-red">HD Video</span>
         </button>
 
-        <!-- Live Vervoersinformatie & Spoor Communicatie Knop (klein) -->
-        <button id="btnOpenCommScreen" class="header-action-btn comm-btn" type="button" title="Live Vervoersinformatie &amp; Spoor Communicatie (GSM-R)">
-          <span class="btn-icon">📻</span>
-          <span class="btn-label-text">Vervoersinfo</span>
-          <span id="commUnreadBadge" class="comm-unread-badge">3</span>
+        <button id="btnHeaderClearRoute" class="sidebar-tab-btn" type="button" title="Bekijk alle treinen in heel Nederland">
+          <span class="tab-icon">🌐</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Heel Nederland</span>
+            <span class="tab-secondary-text">Landelijke spoorradar</span>
+          </div>
+          <span class="tab-pill">Landelijk</span>
         </button>
 
-        <!-- NS Gong Knop -->
-        <button id="btnPlayChime" class="header-action-btn chime-btn" type="button" title="Speel de authentieke 3-tonige NS stationsgong af">
-          <span class="btn-icon">🔔</span>
+        <button id="btnOpenCommScreen" class="sidebar-tab-btn" type="button" title="Live Vervoersinformatie &amp; Spoor Communicatie (GSM-R)">
+          <span class="tab-icon">📻</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Spoor Communicatie</span>
+            <span class="tab-secondary-text">GSM-R verkeersleiding</span>
+          </div>
+          <span id="commUnreadBadge" class="tab-pill tab-pill-badge">3</span>
         </button>
 
-        <!-- Geluid Toggle Knop -->
-        <button id="btnAudioToggle" class="header-action-btn audio-btn active" type="button" title="Geluidssignalen aan/uit">
+        <!-- Categorie: Systeem & Audio -->
+        <div class="sidebar-group-title">
+          <span class="group-dot dot-green"></span>
+          <span>ONDERSTEUNING &amp; AUDIO</span>
+        </div>
+
+        <button id="btnPlayChime" class="sidebar-tab-btn" type="button" title="Speel de authentieke 3-tonige NS stationsgong af">
+          <span class="tab-icon">🔔</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Stationsgong</span>
+            <span class="tab-secondary-text">3-Tonige NS melodie</span>
+          </div>
+          <span class="tab-pill">Audio</span>
+        </button>
+
+        <button id="btnOpenHelp" class="sidebar-tab-btn" type="button" title="Bekijk de complete handleiding en actuele mogelijkheden">
+          <span class="tab-icon">💡</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Handleiding</span>
+            <span class="tab-secondary-text">Mogelijkheden &amp; functies</span>
+          </div>
+          <span class="tab-pill tab-pill-green">Help</span>
+        </button>
+
+      </nav>
+
+      <!-- 4. Sidebar Footer met Live Status en Audio Toggle -->
+      <div class="sidebar-tabs-footer">
+        <div class="sidebar-footer-live">
+          <span class="live-pulse-dot">●</span>
+          <span id="sidebarFooterTrainsText">Radar Live Online</span>
+        </div>
+        <button id="btnAudioToggle" class="sidebar-audio-btn active" type="button" title="Geluidssignalen aan/uit">
           <span id="audioStatusText">🔊</span>
         </button>
+      </div>
 
-        <!-- Help / Handleiding Knop -->
-        <button id="btnOpenHelp" class="header-action-btn help-btn" type="button" title="Bekijk de complete handleiding en actuele mogelijkheden van de Treinen app">
-          <span class="btn-icon">💡</span>
-          <span class="btn-label-text">Help</span>
+      <!-- Onzichtbare compatibiliteitsknoppen -->
+      <div style="display: none;" aria-hidden="true">
+        <button id="btnHeaderSplit" type="button"></button>
+        <button id="btnOpenNavMenu" type="button"></button>
+        <button id="btnViewAllNL" type="button"></button>
+        <button id="btnFloatingFindTrain" type="button"></button>
+        <button id="btnFloatingComm" type="button"></button>
+        <button id="btnToggleLabelDensity" type="button"></button>
+        <button id="btnSatEsri" type="button"></button>
+        <button id="btnSatPdok" type="button"></button>
+        <button id="btnMapDark" type="button"></button>
+        <div id="lineSelectorNav"></div>
+        <div class="category-tabs">
+          <button class="cat-tab-btn" data-category="ns"></button>
+          <button class="cat-tab-btn" data-category="regional"></button>
+          <button class="cat-tab-btn" data-category="international"></button>
+          <button class="cat-tab-btn" data-category="freight"></button>
+          <button class="cat-tab-btn" data-category="all"></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- HOOFDINHOUD (Rechts van de sidebar op desktop/laptop) -->
+    <div class="app-main-viewport">
+      <!-- Slanke mobiele & tablet topbalk (alleen zichtbaar op mobiel/tablet als knoppenbalk ingeklapt is) -->
+      <header class="mobile-top-bar" aria-label="Mobiele statusbalk">
+        <button id="btnToggleSidebar" class="btn-sidebar-toggle" type="button" aria-label="Open navigatie sidebar tabs">
+          <span class="toggle-icon">☰</span>
+          <span class="toggle-label">Tabs</span>
         </button>
-      </div>
-    </div>
-
-    <!-- Onzichtbare compatibiliteitscontainers voor achterwaartse compatibiliteit -->
-    <div style="display: none;" aria-hidden="true">
-      <button id="btnViewAllNL" type="button"></button>
-      <button id="btnFloatingFindTrain" type="button"></button>
-      <button id="btnFloatingComm" type="button"></button>
-      <button id="btnToggleLabelDensity" type="button"></button>
-      <button id="btnSatEsri" type="button"></button>
-      <button id="btnSatPdok" type="button"></button>
-      <button id="btnMapDark" type="button"></button>
-      <div id="lineSelectorNav"></div>
-      <div class="category-tabs">
-        <button class="cat-tab-btn" data-category="ns"></button>
-        <button class="cat-tab-btn" data-category="regional"></button>
-        <button class="cat-tab-btn" data-category="international"></button>
-        <button class="cat-tab-btn" data-category="freight"></button>
-        <button class="cat-tab-btn" data-category="all"></button>
-      </div>
-    </div>
-  </header>
+        <div class="mobile-brand-center">
+          <span class="ns-badge">PRO-RAIL</span>
+          <strong>&lt;treinen&gt;</strong>
+        </div>
+        <div class="mobile-quick-actions">
+          <button id="btnMobileInTrain" class="mobile-quick-btn in-train-btn" type="button" title="In de trein">
+            <span>🚆</span>
+          </button>
+          <button id="btnMobileRefresh" class="mobile-quick-btn refresh-btn" type="button" title="Live verversen">
+            <span>🔄</span>
+          </button>
+        </div>
+      </header>
 
   <!-- PRIMAIRE TRAJECTPLANNER (Kies Vertrek- en Aankomststation: Van ➔ Tot) -->
   <aside id="routePlannerBar" class="route-planner-bar">
@@ -475,6 +580,8 @@
     </section>
 
   </div>
+  </div> <!-- sluit .app-main-viewport -->
+  </div> <!-- sluit .app-layout-wrapper -->
 
   <!-- UNIVERSEEL HOOFDMENU MODAL (Zijpaneel aan de linkerkant voor alle apparaten) -->
   <aside id="appNavMenuModal" class="nav-menu-modal" role="dialog" aria-modal="true" aria-labelledby="navMenuTitle" style="display: none;">
@@ -1163,7 +1270,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.8.3_ae85468"></script>
-  <script type="module" src="./app.js?v=2.8.3_ae85468"></script>
+  <script src="./stations.js?v=2.8.4_c23d1e6"></script>
+  <script type="module" src="./app.js?v=2.8.4_c23d1e6"></script>
 </body>
 </html>

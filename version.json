@@ -1,16 +1,16 @@
 {
-  "version": "2.8.3",
-  "commit": "ae85468",
-  "fullCommit": "ae854687375c36dcd5cfd2d67ab6221bfbe7d407",
-  "buildTime": "2026-11-16T22:48:32Z",
+  "version": "2.8.4",
+  "commit": "c23d1e6",
+  "fullCommit": "c23d1e63ffd81a70e20b6e8bf631e4d7c2755b17",
+  "buildTime": "2026-11-16T23:00:43Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
     {
-      "tag": "Zijpaneel Links",
-      "title": "Zijpaneel Hoofdmenu Links (Alle Apparaten)",
-      "desc": "Direct aan de linkerkant van het scherm geplaatst op laptop, iPad en iPhone. Toont per onderdeel alle details, actuele badges en directe bediening.",
+      "tag": "Sidebar Tabs Links",
+      "title": "Sidebar met Tabs Links (Vervangt Topmenu)",
+      "desc": "Het volledige topmenu is vertaald naar een dedicated linker navigatie-sidebar met verticale tabs. Aangepast voor laptop (vaste zijbalk zonder topbalk), iPad en iPhone (slide-in drawer).",
       "icon": "🧭"
     },
     {
