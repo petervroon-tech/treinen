@@ -1304,14 +1304,18 @@ export function getTrainServiceDetails(train, contextStation) {
       destination = train.toStation.name;
     } else if (contextStation && contextStation.name) {
       destination = contextStation.name;
-    } else if (appState && appState.activeCorridorKey && CORRIDORS[appState.activeCorridorKey]) {
-      const actCorridor = CORRIDORS[appState.activeCorridorKey];
-      if (actCorridor.stations && actCorridor.stations.length >= 2) {
-        destination = (train.isReverse ? actCorridor.stations[0].name : actCorridor.stations[actCorridor.stations.length - 1].name);
-      }
     }
     if (!destination || destination === 'Eindbestemming') {
-      destination = (num % 2 === 0) ? 'Utrecht Centraal' : 'Amsterdam Centraal';
+      const opCode = (op && op.code) ? op.code.toLowerCase() : '';
+      if (opCode.includes('arriva')) {
+        destination = (num % 2 === 0) ? 'Apeldoorn' : 'Zutphen';
+      } else if (opCode.includes('blauwnet') || opCode.includes('keolis')) {
+        destination = (num % 2 === 0) ? 'Enschede' : 'Zwolle';
+      } else if (opCode.includes('qbuzz')) {
+        destination = (num % 2 === 0) ? 'Dordrecht' : 'Geldermalsen';
+      } else {
+        destination = (num % 2 === 0) ? 'Utrecht Centraal' : 'Amsterdam Centraal';
+      }
     }
     via = 'Vastgesteld dienstregelingtraject';
   }
@@ -4398,6 +4402,17 @@ function detectAndShowMyTrain(openModal = true) {
   const modal = document.getElementById('myTrainModal');
   if (appState.isTrackingUser && appState.myTrain) {
     if (openModal && modal) modal.style.display = 'flex';
+    // Direct live verversen van alle gegevens in de modal op basis van de laatste fix
+    if (appState.lastGpsFix) {
+      onLiveLocationFix({
+        coords: {
+          latitude: appState.lastGpsFix.lat,
+          longitude: appState.lastGpsFix.lon,
+          accuracy: appState.lastGpsFix.acc || 15,
+          speed: (appState.lastGpsFix.speed ? appState.lastGpsFix.speed / 3.6 : 0)
+        }
+      });
+    }
     return;
   }
 
@@ -4571,18 +4586,24 @@ window.switchMyTrainDirection = () => {
   const userLon = appState.lastGpsFix ? appState.lastGpsFix.lon : (currentTrain ? currentTrain.lon : 6.0);
 
   const currentDest = (currentTrain ? (currentTrain.exactDestination || (currentTrain.service && currentTrain.service.destination) || '') : '').toLowerCase();
+  const currentOpCode = (currentTrain && currentTrain.operator && currentTrain.operator.code) ? currentTrain.operator.code.toLowerCase() : '';
 
-  // Zoek treinen op dezelfde lijn of in de buurt die de ANDERE kant op rijden
+  // Zoek treinen in de buurt van dezelfde vervoerder die de ANDERE kant op rijden (volledig onafhankelijk van het geselecteerde traject)
   let candidates = allParsed.filter(t => {
     if (currentTrain && t.id === currentTrain.id) return false;
     const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
-    return !tDest.includes(currentDest) && distanceKm(userLat, userLon, t.lat, t.lon) <= 35;
+    const tOpCode = (t.operator && t.operator.code) ? t.operator.code.toLowerCase() : '';
+    const dist = distanceKm(userLat, userLon, t.lat, t.lon);
+    const opMatches = (currentOpCode && tOpCode) ? (currentOpCode === tOpCode) : true;
+    return opMatches && !tDest.includes(currentDest) && dist <= 30;
   });
 
-  const activeC = appState.activeCorridorKey && CORRIDORS[appState.activeCorridorKey];
-  if (activeC && candidates.length > 0) {
-    const corridorCandidates = candidates.filter(t => matchTrainToCorridor(t, activeC));
-    if (corridorCandidates.length > 0) candidates = corridorCandidates;
+  if (candidates.length === 0) {
+    candidates = allParsed.filter(t => {
+      if (currentTrain && t.id === currentTrain.id) return false;
+      const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
+      return !tDest.includes(currentDest) && distanceKm(userLat, userLon, t.lat, t.lon) <= 30;
+    });
   }
 
   candidates.sort((a, b) => distanceKm(userLat, userLon, a.lat, a.lon) - distanceKm(userLat, userLon, b.lat, b.lon));
@@ -4669,12 +4690,6 @@ function onLiveLocationFix(pos) {
     smoothMoveMarker(appState.userLocationMarker, userLat, userLon, 1200);
   }
 
-  // Zoek dichtstbijzijnde trein uit alle actuele treinen (inclusief gekoppelde treinstellen)
-  const allParsed = getActiveParsedTrains();
-  let bestTrain = null;
-  let bestScore = Infinity;
-  const activeCorridor = (appState.activeCorridorKey && appState.activeCorridorKey !== 'all') ? CORRIDORS[appState.activeCorridorKey] : null;
-
   // Bepaal of de gebruiker zich in een duidelijke bewegingsrichting verplaatst
   let userHeadingVector = null;
   if (appState.lastGpsFix && appState.lastGpsFix.time) {
@@ -4685,31 +4700,27 @@ function onLiveLocationFix(pos) {
     }
   }
 
+  // Zoek dichtstbijzijnde trein uit ALLE actuele treinen in Nederland (VOLLEDIG ONAFHANKELIJK van het geselecteerde traject)
+  const allParsed = getActiveParsedTrains();
+  let bestTrain = null;
+  let bestScore = Infinity;
+
   allParsed.forEach(t => {
     const d = distanceKm(userLat, userLon, t.lat, t.lon);
+    if (d > 12.0) return; // Te ver weg om de trein van de gebruiker te zijn
     let score = d;
 
-    // 1. Voorkeursbestemming van de gebruiker (bv. handmatig gekozen "Apeldoorn" ipv "Zutphen")
+    // 1. Voorkeursbestemming van de gebruiker (indien handmatig gewisseld via de wisselknop)
     if (appState.userPreferredDirection) {
       const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
       if (tDest.includes(appState.userPreferredDirection.toLowerCase())) {
-        score *= 0.25; // Sterke voorkeur voor de gewenste reisrichting!
+        score *= 0.25; // Sterke voorkeur voor de gewenste reisrichting
       } else {
-        score += 5.0;  // Tegentrein achterstellen
+        score += 6.0;  // Tegentrein achterstellen
       }
     }
 
-    // 2. Als de gebruiker reeds een specifiek traject bekijkt (bv. Arriva Achterhoek), prioriteer die treinen
-    if (activeCorridor) {
-      if (activeCorridor.primaryOpKey && t.operator && t.operator.code.toLowerCase().includes(activeCorridor.primaryOpKey)) {
-        score *= 0.65;
-      }
-      if (activeCorridor.seriesPattern && activeCorridor.seriesPattern.test(t.trainNum)) {
-        score *= 0.5;
-      }
-    }
-
-    // 3. Bewegingsrichting vergelijken: als gebruiker én trein rijden, beloon dezelfde richting en straf tegentrein af
+    // 2. Bewegingsrichting vergelijken: telefoon beweegt fysiek mee in dezelfde richting als de trein
     if (userHeadingVector && t.toStation && t.fromStation) {
       const tLatDiff = t.toStation.lat - t.fromStation.lat;
       const tLonDiff = t.toStation.lon - t.fromStation.lon;
@@ -4721,7 +4732,7 @@ function onLiveLocationFix(pos) {
       }
     }
 
-    // 4. Als gebruiker in een rijdende trein zit (>15 km/u), geef sterke voorkeur aan rijdende treinen!
+    // 3. Als gebruiker in een rijdende trein zit (>15 km/u), geef sterke voorkeur aan rijdende treinen!
     if (userSpeedKmh && userSpeedKmh > 15) {
       if (t.speed && t.speed > 15 && d < 4.0) {
         const speedDiff = Math.abs(t.speed - userSpeedKmh);
@@ -4745,37 +4756,28 @@ function onLiveLocationFix(pos) {
   appState.myTrain = bestTrain;
   const distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
 
-  // Bepaal nauwkeurig de corridor, het gepasseerde station en het eerstvolgende station
+  // Zoek over ALLE bekende corridors naar de beste fysieke match voor deze specifieke trein
+  // (ONAFHANKELIJK van het geselecteerde traject in de bovenbalk)
   let matchedCorridor = null;
   let corridorMatch = null;
+  let minScore = Infinity;
 
-  // 1. Controleer eerst de huidige actieve corridor
-  if (appState.activeCorridorKey && appState.activeCorridorKey !== 'all' && CORRIDORS[appState.activeCorridorKey]) {
-    const actC = CORRIDORS[appState.activeCorridorKey];
-    const m = matchTrainToCorridor(bestTrain, actC);
-    if (m && typeof m === 'object' && m.perpDistKm <= 3.0) {
-      matchedCorridor = actC;
-      corridorMatch = m;
-    }
-  }
+  for (const cKey in CORRIDORS) {
+    const c = CORRIDORS[cKey];
+    if (c.id === 'all' || c.id === 'freight-all' || c.id === 'custom' || c.isCustomRoute) continue;
+    if (!c.stations || c.stations.length < 2) continue;
 
-  // 2. Zoek anders over alle bekende corridors naar de beste fysieke match
-  if (!corridorMatch) {
-    let minScore = Infinity;
-    for (const cKey in CORRIDORS) {
-      const c = CORRIDORS[cKey];
-      if (c.id === 'all' || c.id === 'freight-all' || c.id === 'custom') continue;
-      if (!c.stations || c.stations.length < 2) continue;
-
-      const isSeriesMatch = c.seriesPattern && bestTrain.trainNum && c.seriesPattern.test(bestTrain.trainNum);
-      const m = matchTrainToCorridor(bestTrain, c);
-      if (m && typeof m === 'object' && m.perpDistKm <= 3.5) {
-        const score = isSeriesMatch ? (m.perpDistKm * 0.4) : m.perpDistKm;
-        if (score < minScore) {
-          minScore = score;
-          matchedCorridor = c;
-          corridorMatch = m;
-        }
+    const isSeriesMatch = c.seriesPattern && bestTrain.trainNum && c.seriesPattern.test(bestTrain.trainNum);
+    const isOpMatch = c.primaryOpKey && bestTrain.operator && bestTrain.operator.code.toLowerCase().includes(c.primaryOpKey);
+    const m = matchTrainToCorridor(bestTrain, c);
+    if (m && typeof m === 'object' && m.perpDistKm <= 4.0) {
+      let score = m.perpDistKm;
+      if (isSeriesMatch) score *= 0.2;
+      if (isOpMatch) score *= 0.3;
+      if (score < minScore) {
+        minScore = score;
+        matchedCorridor = c;
+        corridorMatch = m;
       }
     }
   }
@@ -4784,15 +4786,31 @@ function onLiveLocationFix(pos) {
   let nextStation = null;
   let distToNextKm = 0;
   let distFromPrevKm = 0;
+  let isHalting = false;
   let myExactDest = bestTrain.exactDestination || (bestTrain.service && bestTrain.service.destination && bestTrain.service.destination !== 'Eindbestemming' ? bestTrain.service.destination : '');
 
   if (matchedCorridor && corridorMatch) {
     const stations = matchedCorridor.stations;
     const segIdx = corridorMatch.segmentIndex;
-    const isRev = corridorMatch.isReverse;
+    let isRev = corridorMatch.isReverse;
 
-    // Bij voorwaartse rit (A -> B): vertrokken van stations[segIdx], onderweg naar stations[segIdx + 1]
-    // Bij tegentrein (B -> A): vertrokken van stations[segIdx + 1], onderweg naar stations[segIdx]
+    // Fysieke verificatie van de reisrichting via GPS beweging van de smartphone:
+    if (userHeadingVector && segIdx >= 0 && segIdx < stations.length - 1) {
+      const s1 = stations[segIdx];
+      const s2 = stations[segIdx + 1];
+      const segDLat = s2.lat - s1.lat;
+      const segDLon = s2.lon - s1.lon;
+      const dot = (userHeadingVector.dLat * segDLat) + (userHeadingVector.dLon * segDLon);
+      if (Math.abs(dot) > 1e-7) {
+        isRev = (dot < 0);
+      }
+    } else if (appState.userPreferredDirection) {
+      const s0Match = stations[0].name.toLowerCase().includes(appState.userPreferredDirection.toLowerCase());
+      const snMatch = stations[stations.length - 1].name.toLowerCase().includes(appState.userPreferredDirection.toLowerCase());
+      if (s0Match) isRev = true;
+      else if (snMatch) isRev = false;
+    }
+
     if (!isRev) {
       prevStation = stations[segIdx];
       nextStation = stations[segIdx + 1];
@@ -4802,45 +4820,71 @@ function onLiveLocationFix(pos) {
     }
 
     if (!myExactDest) {
-      myExactDest = corridorMatch.exactDestination || (isRev ? stations[0].name : stations[stations.length - 1].name);
+      myExactDest = isRev ? stations[0].name : stations[stations.length - 1].name;
     }
 
-    // Schakel automatisch het actieve traject om naar de trein waarin de gebruiker zit
-    if (appState.activeCorridorKey !== matchedCorridor.id) {
-      appState.activeCorridorKey = matchedCorridor.id;
-      const select = document.getElementById('trajectSelect');
-      if (select) select.value = matchedCorridor.id;
-      updateLineOverview();
+    distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
+    distFromPrevKm = distanceKm(bestTrain.lat, bestTrain.lon, prevStation.lat, prevStation.lon);
+
+    // Controleer of de trein halteert op een station (< 400m en snelheid <= 15 km/u)
+    if (distToNextKm <= 0.40 && (userSpeedKmh === null || userSpeedKmh <= 15)) {
+      prevStation = nextStation;
+      const curIdx = stations.findIndex(s => s.code === prevStation.code);
+      if (!isRev && curIdx >= 0 && curIdx < stations.length - 1) {
+        nextStation = stations[curIdx + 1];
+      } else if (isRev && curIdx > 0) {
+        nextStation = stations[curIdx - 1];
+      }
+      distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
+      distFromPrevKm = 0;
+      isHalting = true;
+    } else if (distFromPrevKm <= 0.45 && (userSpeedKmh === null || userSpeedKmh <= 15)) {
+      isHalting = true;
     }
+
+    // Bewaar het gedetecteerde traject van de trein ZONDER het geselecteerde traject in de bovenbalk te overschrijven
+    appState.myTrainCorridor = matchedCorridor;
   } else {
-    // Intelligente fallback: sorteer stations ten opzichte van de reisbestemming
+    // Intelligente geometrische stationsdetectie langs het spoor via alle 397 stations
     const allSt = getAllStations().filter(s => s.sporen !== 'Goederen' && s.sporen !== 'DE Grens');
-    allSt.sort((a, b) => distanceKm(bestTrain.lat, bestTrain.lon, a.lat, a.lon) - distanceKm(bestTrain.lat, bestTrain.lon, b.lat, b.lon));
-    const st1 = allSt[0] || { name: 'Station nabij', code: 'NS' };
-    const st2 = allSt[1] || { name: 'Volgend station', code: 'NS' };
-
-    if (myExactDest) {
+    let vLat = 0, vLon = 0;
+    if (userHeadingVector) {
+      vLat = userHeadingVector.dLat;
+      vLon = userHeadingVector.dLon;
+    } else if (myExactDest) {
       const destSt = allSt.find(s => s.name.toLowerCase().includes(myExactDest.toLowerCase()));
       if (destSt) {
-        const d1 = distanceKm(st1.lat, st1.lon, destSt.lat, destSt.lon);
-        const d2 = distanceKm(st2.lat, st2.lon, destSt.lat, destSt.lon);
-        if (d1 < d2) {
-          nextStation = st1;
-          prevStation = st2;
-        } else {
-          nextStation = st2;
-          prevStation = st1;
-        }
+        vLat = destSt.lat - bestTrain.lat;
+        vLon = destSt.lon - bestTrain.lon;
       }
     }
-    if (!nextStation) {
-      nextStation = st2;
-      prevStation = st1;
-    }
-  }
+    const vLen = Math.hypot(vLat, vLon);
 
-  distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
-  distFromPrevKm = distanceKm(bestTrain.lat, bestTrain.lon, prevStation.lat, prevStation.lon);
+    const nearby = allSt.map(s => {
+      const dLat = s.lat - bestTrain.lat;
+      const dLon = s.lon - bestTrain.lon;
+      const dist = distanceKm(bestTrain.lat, bestTrain.lon, s.lat, s.lon);
+      let tLong = 0;
+      let dPerp = dist;
+      if (vLen > 0.0001) {
+        tLong = (dLat * vLat + dLon * vLon) / (vLen * vLen);
+        const pLat = bestTrain.lat + tLong * vLat;
+        const pLon = bestTrain.lon + tLong * vLon;
+        dPerp = distanceKm(s.lat, s.lon, pLat, pLon);
+      }
+      return { station: s, dist, tLong, dPerp };
+    }).filter(x => x.dist <= 35 && x.dPerp <= 4.0);
+
+    const upcoming = nearby.filter(x => x.tLong > 0).sort((a, b) => a.dist - b.dist);
+    const passed = nearby.filter(x => x.tLong <= 0).sort((a, b) => a.dist - b.dist);
+
+    nextStation = upcoming[0] ? upcoming[0].station : (nearby[1] ? nearby[1].station : { name: 'Eerstvolgend station', code: 'NS', lat: bestTrain.lat, lon: bestTrain.lon });
+    prevStation = passed[0] ? passed[0].station : (nearby[0] ? nearby[0].station : { name: 'Vorig station', code: 'NS', lat: bestTrain.lat, lon: bestTrain.lon });
+
+    distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
+    distFromPrevKm = distanceKm(bestTrain.lat, bestTrain.lon, prevStation.lat, prevStation.lon);
+    isHalting = distFromPrevKm <= 0.45 && (userSpeedKmh === null || userSpeedKmh <= 15);
+  }
 
   // Bepaal de veilige, realistische rijsnelheid van de trein (nooit 400+ km/u)
   let maxPermissibleSpeed = 140; // Standaard maximum op Nederlands spoor (ATB)
@@ -4870,7 +4914,6 @@ function onLiveLocationFix(pos) {
   const etaMin = effectiveSpeed > 10 ? Math.max(1, Math.round((distToNextKm / effectiveSpeed) * 60)) : null;
   const op = bestTrain.operator;
   const spdInfo = getSpeedBadgeInfo(effectiveSpeed);
-  const isHalting = distFromPrevKm <= 0.45 && effectiveSpeed <= 15;
 
   // Update de snelle banner bovenaan het lijnoverzicht
   const quickBanner = document.getElementById('inTrainQuickBanner');
@@ -4974,9 +5017,25 @@ function onLiveLocationFix(pos) {
   if (modalSegment) {
     modalSegment.textContent = isHalting
       ? `Halteert op station ${prevStation.name} (Spoor ${prevStation.sporen || 1}) • Eerstvolgende: ${nextStation.name}`
-      : `Tussen ${prevStation.name} en ${nextStation.name} (➔ naar ${myExactDest})`;
+      : `Baanvak tussen ${prevStation.name} en ${nextStation.name} (➔ naar ${myExactDest})`;
   }
-  if (modalSegment) modalSegment.textContent = `Baanvak nabij ${closestStation.name} (richting ${nextStation.name})`;
+
+  // Toon optionele knop om het traject van deze trein op de kaart te openen
+  const btnCorridor = document.getElementById('btnViewCorridorOnMap');
+  if (btnCorridor) {
+    if (matchedCorridor) {
+      btnCorridor.style.display = 'inline-flex';
+      btnCorridor.textContent = `🛤️ Toon Traject (${matchedCorridor.shortName || matchedCorridor.name})`;
+      btnCorridor.onclick = () => {
+        switchCorridor(matchedCorridor.id);
+        const modal = document.getElementById('myTrainModal');
+        if (modal) modal.style.display = 'none';
+        if (window.setAppViewMode) window.setAppViewMode('map');
+      };
+    } else {
+      btnCorridor.style.display = 'none';
+    }
+  }
 
   // Als gevraagd om direct de modal te openen bij eerste fix:
   if (appState.openModalOnFirstFix) {
@@ -5791,8 +5850,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.7.4';
-const APP_BUILD_COMMIT = '158a403';
+const APP_VERSION = '2.7.5';
+const APP_BUILD_COMMIT = 'f54a345';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
