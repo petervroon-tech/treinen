@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.7.2"
+DEFAULT_VERSION = "2.7.3"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()

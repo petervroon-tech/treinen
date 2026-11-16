@@ -1648,6 +1648,10 @@ function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMi
 
   // Als de externe feed een actuele positieve snelheid meldt: opslaan en direct gebruiken
   if (explicitSpeed !== null && explicitSpeed > 0) {
+    // Veiligheidssperre: als een externe feed ooit een foutieve waarde meldt (> 200 km/u)
+    if (explicitSpeed > 200) {
+      explicitSpeed = 130;
+    }
     appState.trainSpeedTracker.set(trainId, {
       lat,
       lon,
@@ -4563,18 +4567,27 @@ function onLiveLocationFix(pos) {
   const now = Date.now();
 
   // Bereken de live rijsnelheid in km/u (hardware GPS van de smartphone)
-  let userSpeedKmh = null;
+  let rawGpsSpeed = null;
   if (typeof pos.coords.speed === 'number' && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
-    userSpeedKmh = Math.round(pos.coords.speed * 3.6);
-  } else if (appState.lastGpsFix) {
+    rawGpsSpeed = Math.round(pos.coords.speed * 3.6);
+  } else if (appState.lastGpsFix && appState.lastGpsFix.time) {
     const dtSeconds = (now - appState.lastGpsFix.time) / 1000;
-    if (dtSeconds > 1 && dtSeconds < 15) {
+    // Bereken delta uitsluitend als beide metingen betrouwbaar zijn (geen zendmastsprong van 200-500m)
+    if (dtSeconds >= 1.5 && dtSeconds <= 20 && userAcc <= 50 && (appState.lastGpsFix.acc || 10) <= 50) {
       const dKm = distanceKm(appState.lastGpsFix.lat, appState.lastGpsFix.lon, userLat, userLon);
-      userSpeedKmh = Math.round((dKm / dtSeconds) * 3600);
+      rawGpsSpeed = Math.round((dKm / dtSeconds) * 3600);
     }
   }
 
-  appState.lastGpsFix = { lat: userLat, lon: userLon, time: now, speed: userSpeedKmh };
+  // Filter GPS-sprongen en absurde meetfouten (geen enkele reguliere trein in NL rijdt 400+ km/u)
+  let userSpeedKmh = null;
+  if (rawGpsSpeed !== null) {
+    if (rawGpsSpeed >= 3 && rawGpsSpeed <= 160) {
+      userSpeedKmh = rawGpsSpeed;
+    }
+  }
+
+  appState.lastGpsFix = { lat: userLat, lon: userLon, time: now, speed: userSpeedKmh, acc: userAcc };
 
   // Update of maak "U bevindt zich hier" marker op de kaart
   if (!appState.userLocationMarker) {
@@ -4736,7 +4749,31 @@ function onLiveLocationFix(pos) {
   distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
   distFromPrevKm = distanceKm(bestTrain.lat, bestTrain.lon, prevStation.lat, prevStation.lon);
 
-  const effectiveSpeed = (userSpeedKmh !== null && userSpeedKmh > 3) ? userSpeedKmh : (bestTrain.speed || 0);
+  // Bepaal de veilige, realistische rijsnelheid van de trein (nooit 400+ km/u)
+  let maxPermissibleSpeed = 140; // Standaard maximum op Nederlands spoor (ATB)
+  const opCode = (bestTrain && bestTrain.operator && bestTrain.operator.code) ? bestTrain.operator.code.toLowerCase() : '';
+  if (opCode.includes('arriva') || opCode.includes('blauwnet') || opCode.includes('qbuzz') || opCode.includes('keolis')) {
+    maxPermissibleSpeed = 130; // Regionale lijnen (bv. Apeldoorn - Zutphen)
+  } else if (bestTrain && bestTrain.operator && bestTrain.operator.category === 'hsl') {
+    maxPermissibleSpeed = 200;
+  }
+
+  let effectiveSpeed = 0;
+  if (userSpeedKmh !== null && userSpeedKmh >= 3 && userSpeedKmh <= maxPermissibleSpeed) {
+    if (bestTrain && typeof bestTrain.speed === 'number' && bestTrain.speed > 5 && bestTrain.speed <= maxPermissibleSpeed) {
+      effectiveSpeed = Math.round(0.7 * userSpeedKmh + 0.3 * bestTrain.speed);
+    } else {
+      effectiveSpeed = userSpeedKmh;
+    }
+  } else if (bestTrain && typeof bestTrain.speed === 'number' && bestTrain.speed > 0) {
+    effectiveSpeed = Math.min(maxPermissibleSpeed, bestTrain.speed);
+  } else {
+    effectiveSpeed = opCode.includes('arriva') ? 90 : 110;
+  }
+
+  if (effectiveSpeed > maxPermissibleSpeed) {
+    effectiveSpeed = maxPermissibleSpeed;
+  }
   const etaMin = effectiveSpeed > 10 ? Math.max(1, Math.round((distToNextKm / effectiveSpeed) * 60)) : null;
   const op = bestTrain.operator;
   const spdInfo = getSpeedBadgeInfo(effectiveSpeed);
@@ -5661,8 +5698,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.7.2';
-const APP_BUILD_COMMIT = '599ff82';
+const APP_VERSION = '2.7.3';
+const APP_BUILD_COMMIT = 'f7ab6e0';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
