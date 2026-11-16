@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.8.2"
+DEFAULT_VERSION = "2.8.3"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -269,9 +269,9 @@ def update_version_json(sha=None, build_num=None):
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
         {
-            "tag": "Hoofdmenu Hub",
-            "title": "Universeel Hoofdmenu & Snelle Navigatie",
-            "desc": "Kies direct elk onderdeel van de applicatie met 1 klik: weergaves, live cockpit, 24/7 railcams, goederenvervoer en radio. Speciaal geoptimaliseerd voor iPad, iPhone en laptop.",
+            "tag": "Zijpaneel Links",
+            "title": "Zijpaneel Hoofdmenu Links (Alle Apparaten)",
+            "desc": "Direct aan de linkerkant van het scherm geplaatst op laptop, iPad en iPhone. Toont per onderdeel alle details, actuele badges en directe bediening.",
             "icon": "🧭"
         },
         {

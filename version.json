@@ -1,16 +1,16 @@
 {
-  "version": "2.8.2",
-  "commit": "29a4f3a",
-  "fullCommit": "29a4f3a4133aad147b0fe92d3b422d14cb7e2b39",
-  "buildTime": "2026-11-16T22:41:14Z",
+  "version": "2.8.3",
+  "commit": "ae85468",
+  "fullCommit": "ae854687375c36dcd5cfd2d67ab6221bfbe7d407",
+  "buildTime": "2026-11-16T22:48:32Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
     {
-      "tag": "Hoofdmenu Hub",
-      "title": "Universeel Hoofdmenu & Snelle Navigatie",
-      "desc": "Kies direct elk onderdeel van de applicatie met 1 klik: weergaves, live cockpit, 24/7 railcams, goederenvervoer en radio. Speciaal geoptimaliseerd voor iPad, iPhone en laptop.",
+      "tag": "Zijpaneel Links",
+      "title": "Zijpaneel Hoofdmenu Links (Alle Apparaten)",
+      "desc": "Direct aan de linkerkant van het scherm geplaatst op laptop, iPad en iPhone. Toont per onderdeel alle details, actuele badges en directe bediening.",
       "icon": "🧭"
     },
     {

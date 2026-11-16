@@ -6114,8 +6114,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.8.2';
-const APP_BUILD_COMMIT = '29a4f3a';
+const APP_VERSION = '2.8.3';
+const APP_BUILD_COMMIT = 'ae85468';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -6372,6 +6372,22 @@ function openNavMenu() {
   const tag = document.getElementById('navMenuVersionTag');
   if (tag) {
     tag.innerHTML = `ProRail Live Radar &bull; Universeel Menu <strong>${verStr}</strong>${commitStr ? ` (${commitStr})` : ''}`;
+  }
+
+  // Update live treinenaantal en actieve modus in het menu
+  const count = appState.allLiveFeatures ? appState.allLiveFeatures.length : 0;
+  const summaryEl = document.getElementById('navLiveTrainsSummary');
+  if (summaryEl) {
+    summaryEl.textContent = count > 0 ? `${count} treinen live op het spoor` : 'Radar Online • Live Telemetrie';
+  }
+
+  const badgeEl = document.getElementById('navActiveViewBadge');
+  if (badgeEl) {
+    const layout = document.getElementById('mainLayout');
+    let currentMode = 'Satelliet';
+    if (layout?.classList.contains('view-split')) currentMode = 'Split Screen';
+    else if (layout?.classList.contains('view-list')) currentMode = 'Treinenlijst';
+    badgeEl.textContent = currentMode;
   }
 }
 

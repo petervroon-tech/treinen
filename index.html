@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.8.2_29a4f3a">
-  <link rel="manifest" href="./manifest.json?v=2.8.2_29a4f3a">
+  <link rel="stylesheet" href="./style.css?v=2.8.3_ae85468">
+  <link rel="manifest" href="./manifest.json?v=2.8.3_ae85468">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -42,8 +42,14 @@
   <!-- Hoofdbalk: Schoon, Compact & Overzichtelijk (Eén slanke werkbalk) -->
   <header class="app-header">
     <div class="header-main-row">
-      <!-- Linker sectie: Logo / Gele Versieknop + Traject Dropdown -->
+      <!-- Linker sectie: Menu Knop + Logo / Gele Versieknop + Traject Dropdown -->
       <div class="header-top-subrow">
+        <!-- Hoofdmenu Knop: Aan de linkerkant van het scherm -->
+        <button id="btnOpenNavMenu" class="header-action-btn menu-btn" type="button" title="Hoofdmenu: open het navigatiemenu aan de linkerkant van het scherm">
+          <span class="btn-icon">☰</span>
+          <span class="btn-label-text">Menu</span>
+        </button>
+
         <!-- Brand Logo & Gele Versieknop linksboven -->
         <div class="brand-box">
           <div class="ns-badge">PRO-RAIL</div>
@@ -96,12 +102,6 @@
 
       <!-- Rechter Bediening: Compacte Knoppen bovenaan (Split screen, Toon treinen, In trein, Ververs, Heel NL, etc.) -->
       <div class="header-tools-row">
-        <!-- Hoofdmenu Knop: Toegang tot elk onderdeel van de app -->
-        <button id="btnOpenNavMenu" class="header-action-btn menu-btn" type="button" title="Hoofdmenu: kies direct elk onderdeel van de app">
-          <span class="btn-icon">☰</span>
-          <span class="btn-label-text">Menu</span>
-        </button>
-
         <!-- Satellietkaart / Treinen Wisselknop (klein) -->
         <button id="btnHeaderSplit" class="header-action-btn split-btn" type="button" title="Wissel tussen alleen satellietbeelden of alleen treinen op een station">
           <span class="btn-icon">🛰️</span>
@@ -476,13 +476,11 @@
 
   </div>
 
-  <!-- UNIVERSEEL HOOFDMENU MODAL (Aangepast voor iPad, iPhone en Laptop) -->
+  <!-- UNIVERSEEL HOOFDMENU MODAL (Zijpaneel aan de linkerkant voor alle apparaten) -->
   <aside id="appNavMenuModal" class="nav-menu-modal" role="dialog" aria-modal="true" aria-labelledby="navMenuTitle" style="display: none;">
     <div class="nav-menu-backdrop" id="navMenuBackdrop"></div>
     <div class="nav-menu-dialog">
-      <div class="ios-drag-handle" aria-hidden="true"></div>
-      
-      <!-- Modal Header -->
+      <!-- Modal Header bovenaan linkerpaneel -->
       <div class="nav-menu-header">
         <div class="nav-menu-title-wrap">
           <div class="nav-menu-icon-main">🧭</div>
@@ -494,21 +492,36 @@
         <button id="btnCloseNavMenu" class="btn-close-modal" type="button" aria-label="Menu sluiten">✕</button>
       </div>
 
-      <!-- Modal Body (Scrollable) -->
+      <!-- Live Systeem Statusbar in het menu -->
+      <div class="nav-menu-summary-bar">
+        <div class="nav-summary-item">
+          <span class="nav-summary-pulse">●</span>
+          <span id="navLiveTrainsSummary">Radar Online &bull; Live Telemetrie</span>
+        </div>
+        <div class="nav-summary-item">
+          <span class="nav-summary-label">Modus:</span>
+          <span id="navActiveViewBadge" class="nav-summary-pill">Satelliet</span>
+        </div>
+      </div>
+
+      <!-- Modal Body (Scrollable lijst met elk onderdeel compleet zichtbaar) -->
       <div class="nav-menu-body">
         
         <!-- Categorie 1: Weergaves & Schermindeling -->
         <section class="nav-menu-section">
           <div class="nav-section-title">
             <span class="nav-section-dot"></span>
-            <span>Weergaves &amp; Schermindeling</span>
+            <span>1. Weergaves &amp; Schermindeling</span>
           </div>
           <div class="nav-menu-grid">
             <button type="button" class="nav-menu-item" data-nav="view-map">
               <div class="menu-item-icon-box icon-sat">🛰️</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Alleen Satellietkaart</span>
-                <span class="menu-item-desc">Volledig scherm satellietsporen, wissels en live treinen</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Alleen Satellietkaart</span>
+                  <span class="menu-pill-info">60 FPS Volledig</span>
+                </div>
+                <span class="menu-item-desc">Schermvullende satellietbeelden van sporen, wissels en live treinen met vloeiende beweging.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -516,8 +529,11 @@
             <button type="button" class="nav-menu-item" data-nav="view-list">
               <div class="menu-item-icon-box icon-list">📋</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Treinenlijst &amp; Vertrektijden</span>
-                <span class="menu-item-desc">Overzicht van treinen en perrons op station</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Treinenlijst &amp; Vertrektijden</span>
+                  <span class="menu-pill-info">Perrons &amp; Tijden</span>
+                </div>
+                <span class="menu-item-desc">Overzicht van passerende en vertrekkende treinen met perronnummers, vertragingen en materieel.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -525,19 +541,22 @@
             <button type="button" class="nav-menu-item" data-nav="view-split">
               <div class="menu-item-icon-box icon-split">🌗</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Gesplitst Scherm (Split)</span>
-                <span class="menu-item-desc">Kaart en treinenlijst tegelijk naast of boven elkaar</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Gesplitst Scherm (Split)</span>
+                  <span class="menu-pill-info">Split-View</span>
+                </div>
+                <span class="menu-item-desc">Kaart en treinenlijst tegelijk naast elkaar op laptops/iPads of boven elkaar op de smartphone.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
           </div>
         </section>
 
-        <!-- Categorie 2: Mijn Reis & Live GPS -->
+        <!-- Categorie 2: Mijn Reis & Live GPS Telemetrie -->
         <section class="nav-menu-section">
           <div class="nav-section-title">
             <span class="nav-section-dot dot-cyan"></span>
-            <span>Mijn Reis &amp; Live GPS</span>
+            <span>2. Mijn Reis &amp; Live GPS Telemetrie</span>
           </div>
           <div class="nav-menu-grid">
             <button type="button" class="nav-menu-item item-highlight" data-nav="in-train">
@@ -545,9 +564,9 @@
               <div class="menu-item-content">
                 <div class="menu-item-badge-wrap">
                   <span class="menu-item-title">In de Trein (GPS Cockpit)</span>
-                  <span class="menu-pill-pulse">Live</span>
+                  <span class="menu-pill-pulse">📡 Live GPS</span>
                 </div>
-                <span class="menu-item-desc">Snelheid in km/u, komend station &amp; eindbestemming</span>
+                <span class="menu-item-desc">Automatische treindetectie, actuele snelheid in km/u (nooit 0 km/u op open spoor), volgend station en richtingwisselaar.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -555,8 +574,11 @@
             <button type="button" class="nav-menu-item" data-nav="custom-route">
               <div class="menu-item-icon-box icon-route">🎯</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Traject Kiezen (Van ➔ Tot)</span>
-                <span class="menu-item-desc">Kies een specifiek spoortraject of stationspaar</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Traject Kiezen (Van ➔ Tot)</span>
+                  <span class="menu-pill-info">Van ➔ Tot</span>
+                </div>
+                <span class="menu-item-desc">Selecteer zelf uw begin- en eindstation met automatische geheugenfunctie en snelle wisselknop.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -564,26 +586,32 @@
             <button type="button" class="nav-menu-item" data-nav="force-refresh">
               <div class="menu-item-icon-box icon-refresh">🔄</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Live Verversen</span>
-                <span class="menu-item-desc">Haal direct nieuwste treinen en GPS-posities op</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Live Telemetrie Verversen</span>
+                  <span class="menu-pill-info">Real-time</span>
+                </div>
+                <span class="menu-item-desc">Haalt direct de nieuwste GPS-locaties, vertragingen en materieelwijzigingen op uit de databron.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
           </div>
         </section>
 
-        <!-- Categorie 3: Radar, Specials & Media -->
+        <!-- Categorie 3: Radar, Specials & Live Media -->
         <section class="nav-menu-section">
           <div class="nav-section-title">
             <span class="nav-section-dot dot-orange"></span>
-            <span>Radar, Specials &amp; Live Media</span>
+            <span>3. Radar, Specials &amp; Live Media</span>
           </div>
           <div class="nav-menu-grid">
             <button type="button" class="nav-menu-item" data-nav="freight">
               <div class="menu-item-icon-box icon-freight">🚂</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Goederenvervoer Live</span>
-                <span class="menu-item-desc">DB Cargo, Lineas, Betuweroute &amp; havens</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Goederenvervoer Live</span>
+                  <span class="menu-pill-orange">Vrachtvervoer</span>
+                </div>
+                <span class="menu-item-desc">Volg direct alle goederentreinen in Nederland (DB Cargo, Lineas, Captrain, Betuweroute, Kijfhoek en havenlijnen).</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -595,7 +623,7 @@
                   <span class="menu-item-title">24/7 Live Railcams</span>
                   <span class="menu-pill-red">HD Video</span>
                 </div>
-                <span class="menu-item-desc">Twello, Helmond, Zandvoort en cabineritten</span>
+                <span class="menu-item-desc">Live videobeelden van camera's langs het spoor bij Twello, Helmond, Zandvoort en cabineritten inclusief radar.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -603,8 +631,11 @@
             <button type="button" class="nav-menu-item" data-nav="corridor-all">
               <div class="menu-item-icon-box icon-nl">🌐</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Heel Nederland (Landelijke Radar)</span>
-                <span class="menu-item-desc">Toon alle treinen in het hele land op de kaart</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Heel Nederland (Landelijke Radar)</span>
+                  <span class="menu-pill-info">Landelijk</span>
+                </div>
+                <span class="menu-item-desc">Bekijk alle actieve treinen van alle maatschappijen tegelijkertijd in het hele Nederlandse spoorwegnetwerk.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -612,8 +643,11 @@
             <button type="button" class="nav-menu-item" data-nav="layer-dark">
               <div class="menu-item-icon-box icon-dark">🌙</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Nachtradar / Donkere Kaart</span>
-                <span class="menu-item-desc">Wissel naar rustige donkere spoorkaart</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Nachtradar / Donkere Kaart</span>
+                  <span class="menu-pill-info">OLED Donker</span>
+                </div>
+                <span class="menu-item-desc">Schakel over naar een rustige, contrastrijke donkere vectorkaart. Prettig 's avonds en energiezuinig.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -621,26 +655,32 @@
             <button type="button" class="nav-menu-item" data-nav="comm">
               <div class="menu-item-icon-box icon-radio">📻</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Spoor Communicatie (Radio)</span>
-                <span class="menu-item-desc">Live berichten van ProRail &amp; treindienstleiders</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Spoor Communicatie (Radio)</span>
+                  <span class="menu-pill-info">GSM-R Audio</span>
+                </div>
+                <span class="menu-item-desc">Luister live mee naar storingsberichten en mobilofooncommunicatie tussen machinisten en ProRail verkeersleiding.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
           </div>
         </section>
 
-        <!-- Categorie 4: Ondersteuning & Beheer -->
+        <!-- Categorie 4: Ondersteuning & Systeem -->
         <section class="nav-menu-section">
           <div class="nav-section-title">
             <span class="nav-section-dot dot-green"></span>
-            <span>Ondersteuning &amp; Systeem</span>
+            <span>4. Ondersteuning &amp; Systeem</span>
           </div>
           <div class="nav-menu-grid">
             <button type="button" class="nav-menu-item" data-nav="help">
               <div class="menu-item-icon-box icon-help">💡</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">Handleiding &amp; Mogelijkheden</span>
-                <span class="menu-item-desc">Dynamisch gesynchroniseerde functies en uitleg</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">Handleiding &amp; Mogelijkheden</span>
+                  <span class="menu-pill-green">Altijd Actueel</span>
+                </div>
+                <span class="menu-item-desc">Bekijk de complete gebruikershandleiding en actuele functies, dynamisch gesynchroniseerd met de applicatie-build.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -648,8 +688,11 @@
             <button type="button" class="nav-menu-item" data-nav="reload-cache">
               <div class="menu-item-icon-box icon-sync">🔄</div>
               <div class="menu-item-content">
-                <span class="menu-item-title">App &amp; Cache Vernieuwen</span>
-                <span class="menu-item-desc">Laad direct de allernieuwste versie online</span>
+                <div class="menu-item-badge-wrap">
+                  <span class="menu-item-title">App &amp; Cache Vernieuwen</span>
+                  <span class="menu-pill-info">GitHub CI/CD</span>
+                </div>
+                <span class="menu-item-desc">Laad direct de allernieuwste softwareversie online vanaf GitHub en leeg verouderde browserbestanden.</span>
               </div>
               <span class="menu-item-arrow">➔</span>
             </button>
@@ -1120,7 +1163,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.8.2_29a4f3a"></script>
-  <script type="module" src="./app.js?v=2.8.2_29a4f3a"></script>
+  <script src="./stations.js?v=2.8.3_ae85468"></script>
+  <script type="module" src="./app.js?v=2.8.3_ae85468"></script>
 </body>
 </html>
