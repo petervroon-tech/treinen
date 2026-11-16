@@ -6114,8 +6114,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.8.1';
-const APP_BUILD_COMMIT = '3d09b3d';
+const APP_VERSION = '2.8.2';
+const APP_BUILD_COMMIT = '29a4f3a';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -6359,6 +6359,126 @@ function initHelpModal() {
 }
 
 // =============================================================
+// 12c. Universeel Hoofdmenu & Navigatie (iPad, iPhone, Laptop)
+// =============================================================
+function openNavMenu() {
+  const modal = document.getElementById('appNavMenuModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('btnOpenNavMenu')?.classList.add('active');
+
+  const verStr = `v${appBuildMeta.version || APP_VERSION}`;
+  const commitStr = appBuildMeta.commit || APP_BUILD_COMMIT;
+  const tag = document.getElementById('navMenuVersionTag');
+  if (tag) {
+    tag.innerHTML = `ProRail Live Radar &bull; Universeel Menu <strong>${verStr}</strong>${commitStr ? ` (${commitStr})` : ''}`;
+  }
+}
+
+function closeNavMenu() {
+  const modal = document.getElementById('appNavMenuModal');
+  if (modal) modal.style.display = 'none';
+  document.getElementById('btnOpenNavMenu')?.classList.remove('active');
+}
+
+function initNavMenu() {
+  const modal = document.getElementById('appNavMenuModal');
+  const btnOpen = document.getElementById('btnOpenNavMenu');
+  const btnDock = document.getElementById('btnDockMenu');
+  const btnClose = document.getElementById('btnCloseNavMenu');
+  const btnCloseFooter = document.getElementById('btnCloseNavMenuFooter');
+  const backdrop = document.getElementById('navMenuBackdrop');
+
+  btnOpen?.addEventListener('click', () => {
+    if (modal && modal.style.display === 'flex') {
+      closeNavMenu();
+    } else {
+      openNavMenu();
+    }
+  });
+
+  btnDock?.addEventListener('click', openNavMenu);
+  btnClose?.addEventListener('click', closeNavMenu);
+  btnCloseFooter?.addEventListener('click', closeNavMenu);
+  backdrop?.addEventListener('click', closeNavMenu);
+
+  modal?.addEventListener('click', (e) => {
+    if (e.target.id === 'appNavMenuModal') {
+      closeNavMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+      closeNavMenu();
+    }
+  });
+
+  // Koppel alle menu interactieve kaarten
+  const navButtons = modal?.querySelectorAll('[data-nav]');
+  navButtons?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-nav');
+      closeNavMenu();
+
+      switch (target) {
+        case 'view-map':
+          if (window.setAppViewMode) window.setAppViewMode('map');
+          break;
+        case 'view-list':
+          if (window.setAppViewMode) window.setAppViewMode('list');
+          break;
+        case 'view-split':
+          if (window.setAppViewMode) window.setAppViewMode('split');
+          break;
+        case 'in-train':
+          findMyTrain();
+          break;
+        case 'custom-route':
+          const bar = document.getElementById('routePlannerBar');
+          const toggleBtn = document.getElementById('btnToggleRoutePlanner');
+          if (bar) {
+            bar.style.display = 'block';
+            toggleBtn?.classList.add('active');
+            document.getElementById('routeFromSelect')?.focus();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (appState.map) {
+              setTimeout(() => appState.map.invalidateSize(), 80);
+            }
+          }
+          break;
+        case 'force-refresh':
+          forceRefreshTrains();
+          break;
+        case 'freight':
+          switchCorridor('freight-all');
+          if (window.setAppViewMode) window.setAppViewMode('map');
+          break;
+        case 'railcams':
+          openRailcamModal(appState.activeRailcamId || 'twello');
+          break;
+        case 'corridor-all':
+          switchCorridor('all');
+          if (window.setAppViewMode) window.setAppViewMode('map');
+          break;
+        case 'layer-dark':
+          switchLayer('dark');
+          break;
+        case 'comm':
+          if (window.openCommScreen) window.openCommScreen();
+          break;
+        case 'help':
+          openHelpModal();
+          break;
+        case 'reload-cache':
+          window.location.reload(true);
+          break;
+      }
+    });
+  });
+}
+
+// =============================================================
 // 13. Start Applicatie
 // =============================================================
 async function init() {
@@ -6370,6 +6490,7 @@ async function init() {
   initCommunicationEngine();
   initVersionManagement();
   initHelpModal();
+  initNavMenu();
 
   populateLineButtons('ns');
   // Start direct met het laatst opgezochte Van ➔ Tot traject (zodat de keuze voor Tot behouden blijft als standaard)

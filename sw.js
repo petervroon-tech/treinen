@@ -1,5 +1,5 @@
 // Treinen Service Worker - Versiebeheer & Offline Cache
-const APP_VERSION = '2.8.1';
+const APP_VERSION = '2.8.2';
 const CACHE_NAME = `treinen-cache-v${APP_VERSION}`;
 
 const PRECACHE_ASSETS = [
