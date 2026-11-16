@@ -5067,8 +5067,8 @@ export const RAILCAMS = [
     lon: 6.1042,
     badge: 'LIVE 24/7',
     corridorName: 'Apeldoorn ➔ Deventer',
-    youtubeUrl: 'https://www.youtube.com/@dutchradar/live',
-    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=LIVE+RailCam+Twello+DutchRadar&autoplay=1&mute=1'
+    youtubeUrl: 'https://www.youtube.com/watch?v=E0yQjnJnot0',
+    embedUrl: 'https://www.youtube-nocookie.com/embed/E0yQjnJnot0?autoplay=1&mute=1'
   },
   {
     id: 'helmond',
@@ -5079,8 +5079,8 @@ export const RAILCAMS = [
     lon: 5.6322,
     badge: 'LIVE 24/7',
     corridorName: 'Eindhoven ➔ Helmond ➔ Venlo',
-    youtubeUrl: 'https://www.youtube.com/@MarioRailcamNL/live',
-    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=RailCam+Netherlands+Mierlo-Hout+Live&autoplay=1&mute=1'
+    youtubeUrl: 'https://www.youtube.com/watch?v=TOlyziCWZwY',
+    embedUrl: 'https://www.youtube-nocookie.com/embed/TOlyziCWZwY?autoplay=1&mute=1'
   },
   {
     id: 'zandvoort',
@@ -5091,8 +5091,8 @@ export const RAILCAMS = [
     lon: 4.5348,
     badge: 'LIVE',
     corridorName: 'Haarlem ➔ Zandvoort aan Zee',
-    youtubeUrl: 'https://www.youtube.com/@livefeedzandvoort/live',
-    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=Live+Railcam+Zandvoort&autoplay=1&mute=1'
+    youtubeUrl: 'https://www.youtube.com/watch?v=KXecsG2aO48',
+    embedUrl: 'https://www.youtube-nocookie.com/embed/KXecsG2aO48?autoplay=1&mute=1'
   },
   {
     id: 'cabview-apeldoorn-zutphen',
@@ -5103,8 +5103,8 @@ export const RAILCAMS = [
     lon: 5.9675,
     badge: 'CABVIEW 4K',
     corridorName: 'Apeldoorn ➔ Zutphen',
-    youtubeUrl: 'https://www.youtube.com/results?search_query=cabview+apeldoorn+zutphen',
-    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=cabview+apeldoorn+zutphen+arriva&autoplay=1'
+    youtubeUrl: 'https://www.youtube.com/watch?v=kmRbiAwbEs0',
+    embedUrl: 'https://www.youtube-nocookie.com/embed/kmRbiAwbEs0?autoplay=1'
   },
   {
     id: 'cabview-utrecht-amsterdam',
@@ -5115,8 +5115,8 @@ export const RAILCAMS = [
     lon: 5.1103,
     badge: 'CABVIEW 4K',
     corridorName: 'Utrecht Centraal ➔ Amsterdam Centraal',
-    youtubeUrl: 'https://www.youtube.com/results?search_query=cabview+utrecht+amsterdam',
-    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=cabview+utrecht+amsterdam+intercity&autoplay=1'
+    youtubeUrl: 'https://www.youtube.com/watch?v=YIrH2nZUOMQ',
+    embedUrl: 'https://www.youtube-nocookie.com/embed/YIrH2nZUOMQ?autoplay=1'
   }
 ];
 
@@ -5207,14 +5207,16 @@ export function openRailcamModal(camId = 'twello') {
 
   const iframe = document.getElementById('railcamIframe');
   if (iframe) {
-    if (iframe.src !== cam.embedUrl) {
-      iframe.src = cam.embedUrl;
-    }
+    iframe.src = cam.embedUrl;
   }
 
   const extBtn = document.getElementById('btnRailcamExternal');
   if (extBtn) {
     extBtn.href = cam.youtubeUrl;
+  }
+  const quickBtn = document.getElementById('btnRailcamQuickOpen');
+  if (quickBtn) {
+    quickBtn.href = cam.youtubeUrl;
   }
 
   const centerBtn = document.getElementById('btnRailcamCenterMap');
@@ -6112,8 +6114,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.8.0';
-const APP_BUILD_COMMIT = '4be1c82';
+const APP_VERSION = '2.8.1';
+const APP_BUILD_COMMIT = '3d09b3d';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
