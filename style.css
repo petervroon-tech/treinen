@@ -386,6 +386,32 @@ body {
   box-shadow: 0 0 14px rgba(220, 38, 38, 0.55);
 }
 
+/* Live Spoorwebcams / Railcams Knop in Bovenbalk */
+.header-action-btn.railcam-btn {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #fca5a5;
+  font-weight: 750;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.header-action-btn.railcam-btn:hover {
+  background: rgba(239, 68, 68, 0.32);
+  border-color: #ef4444;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.header-action-btn.railcam-btn.active {
+  background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%);
+  border-color: #f87171;
+  color: #ffffff;
+  font-weight: 850;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
+}
+
 .pulse-dot-beacon {
   width: 8px;
   height: 8px;
@@ -5209,4 +5235,294 @@ body {
     justify-content: center;
     font-size: 0.7rem;
   }
+}
+
+/* =============================================================
+   14. Live Spoorwebcams & Railcams Player & Kaart Markers
+   ============================================================= */
+
+/* Kaart Pin voor Railcams */
+.clean-railcam-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.clean-railcam-marker {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.94);
+  border: 2px solid #ef4444;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.55), 0 4px 10px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clean-railcam-marker:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.85);
+}
+
+.railcam-pin-pulse {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid rgba(239, 68, 68, 0.7);
+  animation: pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  pointer-events: none;
+}
+
+.railcam-pin-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.railcam-pin-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  background: rgba(9, 14, 26, 0.92);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #f8fafc;
+  font-size: 0.64rem;
+  font-weight: 750;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Railcam Modal & Dialog */
+.railcam-dialog {
+  max-width: 740px !important;
+  width: 95vw !important;
+}
+
+.live-dot-pulse-red {
+  width: 9px;
+  height: 9px;
+  background: #ef4444;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+  animation: pulseDot 1.5s infinite;
+}
+
+.railcam-tabs-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.railcam-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.railcam-tab-btn {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.railcam-tab-btn:hover {
+  background: rgba(30, 41, 59, 0.85);
+  color: #f8fafc;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.railcam-tab-btn.active {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  color: #ffffff;
+  font-weight: 750;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+}
+
+.railcam-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.railcam-video-frame-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #020617;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+}
+
+.railcam-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.railcam-loading-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #020617;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.railcam-loading-placeholder.show {
+  opacity: 1;
+}
+
+.railcam-meta-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.railcam-desc-line {
+  font-size: 0.86rem;
+  color: #f8fafc;
+}
+
+.railcam-desc-line strong {
+  color: #38bdf8;
+}
+
+.railcam-sub-text {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+/* Live Treinen Radar Box */
+.railcam-radar-box {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.railcam-radar-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: #cbd5e1;
+}
+
+.badge-radar-count {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.badge-radar-count.has-trains {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.45);
+  font-weight: 750;
+}
+
+.railcam-trains-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.railcam-train-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.76rem;
+}
+
+.railcam-train-row:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.train-row-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.train-row-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.row-dest {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.row-dist {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.row-eta {
+  color: #e2e8f0;
+  font-size: 0.72rem;
+}
+
+.row-eta.passing-now {
+  color: #ef4444;
+  font-weight: 850;
+  animation: pulseDot 1s infinite;
+}
+
+.railcam-no-trains {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
 }

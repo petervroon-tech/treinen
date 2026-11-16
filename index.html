@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.7.5_f54a345">
-  <link rel="manifest" href="./manifest.json?v=2.7.5_f54a345">
+  <link rel="stylesheet" href="./style.css?v=2.8.0_4be1c82">
+  <link rel="manifest" href="./manifest.json?v=2.8.0_4be1c82">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -112,6 +112,12 @@
         <button id="btnHeaderFreight" class="header-action-btn freight-btn" type="button" title="Goederenvervoer: Bekijk en volg live alle goederentreinen in Nederland (DB Cargo, Lineas, RFO, Betuweroute, Kijfhoek)">
           <span class="btn-icon">🚂</span>
           <span class="btn-label-text">Goederen</span>
+        </button>
+
+        <!-- Live Spoorwebcams / Railcams Knop -->
+        <button id="btnHeaderRailcams" class="header-action-btn railcam-btn" type="button" title="Live Spoorwebcams: Bekijk live videobeelden van rijdende treinen langs het spoor">
+          <span class="btn-icon">📹</span>
+          <span class="btn-label-text">Live Cams</span>
         </button>
 
         <!-- Ik zit in de trein: Compacte GPS Knop (klein) -->
@@ -393,6 +399,11 @@
             <option value="moving">🚄 Alleen rijdend</option>
             <option value="standing">🅿️ Alleen stilstaand</option>
           </select>
+
+          <!-- Snelle Live Railcams Knop op Kaart -->
+          <button id="btnMapRailcamsToggle" class="btn btn-secondary btn-sm" type="button" title="Toon of open live railcams langs het spoor" style="border-radius: 999px; padding: 4px 10px; font-size: 0.72rem; color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);">
+            📹 Cams
+          </button>
         </div>
 
         <div class="map-search-box">
@@ -663,6 +674,69 @@
     </div>
   </aside>
 
+  <!-- LIVE RAILCAM & SPOORWEG VIDEO PLAYER MODAL -->
+  <aside id="railcamModal" class="my-train-modal railcam-modal" role="dialog" aria-modal="true" aria-labelledby="railcamModalTitle" style="display: none;">
+    <div class="my-train-dialog railcam-dialog">
+      <div class="ios-drag-handle" aria-hidden="true"></div>
+      
+      <div class="my-train-header railcam-header">
+        <div class="my-train-title-group">
+          <span class="live-dot-pulse-red" aria-hidden="true"></span>
+          <h3 id="railcamModalTitle" class="my-train-heading">📹 Live Railcam</h3>
+          <span id="railcamBadgeTag" class="modal-version-tag" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);">LIVE 24/7</span>
+        </div>
+        <button id="btnCloseRailcamModal" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
+      </div>
+
+      <!-- Camera Keuzestrook (Pills) -->
+      <div class="railcam-tabs-bar" id="railcamTabsBar" role="tablist" aria-label="Kies een railcam">
+        <!-- Wordt dynamisch gevuld met beschikbare camera's -->
+      </div>
+
+      <div class="railcam-body">
+        <!-- 16:9 Video Embed Venster -->
+        <div class="railcam-video-frame-container">
+          <iframe id="railcamIframe" class="railcam-iframe" src="" title="Live Spoorweg Webcam" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          <div id="railcamLoadingPlaceholder" class="railcam-loading-placeholder">
+            <span class="pulse-dot-beacon" style="background:#ef4444;"></span>
+            <span>Live videobeeld verbinden...</span>
+          </div>
+        </div>
+
+        <!-- Camera Info & Live Radar Treinen Nadering -->
+        <div class="railcam-meta-box">
+          <div class="railcam-desc-line">
+            <strong id="railcamCamName">RailCam Twello</strong> &bull; <span id="railcamCorridorDesc">Spoorlijn Apeldoorn ➔ Deventer</span>
+          </div>
+          <div class="railcam-sub-text" id="railcamCamDesc">
+            Live beelden van voorbijrijdende treinen langs het spoor.
+          </div>
+        </div>
+
+        <!-- Live Treinen Radar bij deze Camera -->
+        <div class="railcam-radar-box">
+          <div class="railcam-radar-title">
+            <span>📡 Live Radar: Treinen nabij deze camera</span>
+            <span id="railcamRadarCount" class="badge-radar-count">0 in de buurt</span>
+          </div>
+          <div id="railcamApproachingTrains" class="railcam-trains-list">
+            <!-- Dynamisch gevuld met treinen binnen 6.5 km -->
+          </div>
+        </div>
+
+        <!-- Actieknoppen onderin -->
+        <div class="my-train-actions" style="margin-top: 12px;">
+          <a id="btnRailcamExternal" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-follow" style="text-decoration: none; justify-content: center; background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);">
+            <span>🌐 Open Live op YouTube (Full HD &amp; Chat)</span>
+          </a>
+          <button id="btnRailcamCenterMap" class="btn btn-secondary" type="button">
+            🗺️ Toon op Kaart
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
   <!-- Help & Handleiding Modal (zoals in vroonphoto met dynamische actuele functielijst) -->
   <aside id="helpModal" class="help-modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle" style="display: none;">
     <div class="help-backdrop"></div>
@@ -835,7 +909,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.7.5_f54a345"></script>
-  <script type="module" src="./app.js?v=2.7.5_f54a345"></script>
+  <script src="./stations.js?v=2.8.0_4be1c82"></script>
+  <script type="module" src="./app.js?v=2.8.0_4be1c82"></script>
 </body>
 </html>

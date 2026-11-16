@@ -552,6 +552,9 @@ const appState = {
   layers: {},
   routePolyline: null,
   stationMarkers: [],
+  railcamMarkers: [],
+  activeRailcamId: 'twello',
+  showRailcams: true,
   trainMarkers: new Map(),
   trainMotionStates: new Map(),
   railMotionRaf: null,
@@ -1375,6 +1378,7 @@ function initMap() {
   esri.addTo(map);
   appState.map = map;
   appState.layers = { esri, pdok, dark };
+  renderRailcamMarkers();
 
   // Vingeraanraking op de satellietkaart: activeer direct station of trein onder je vinger
   map.on('click', (e) => {
@@ -5051,6 +5055,245 @@ function onLiveLocationFix(pos) {
 }
 
 // =============================================================
+// 11b. Live Spoorweg Webcams (Railcams) & Video Cockpit
+// =============================================================
+export const RAILCAMS = [
+  {
+    id: 'twello',
+    name: 'RailCam Twello (Apeldoorn ➔ Deventer)',
+    shortName: 'Twello (IJssellijn)',
+    description: '24/7 Live stream van de spoorwegovergang Stationsstraat Twello. Druk spoorwegknooppunt met Intercity\'s, Arriva, IC Berlijn en zwaar goederenvervoer over de IJsselbrug.',
+    lat: 52.2384,
+    lon: 6.1042,
+    badge: 'LIVE 24/7',
+    corridorName: 'Apeldoorn ➔ Deventer',
+    youtubeUrl: 'https://www.youtube.com/@dutchradar/live',
+    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=LIVE+RailCam+Twello+DutchRadar&autoplay=1&mute=1'
+  },
+  {
+    id: 'helmond',
+    name: 'RailCam Helmond (Mierlo-Hout)',
+    shortName: 'Helmond (Brabant)',
+    description: '24/7 Live stream langs het drukke spoor tussen Eindhoven en Venlo. Vele malen per uur NS Intercity\'s en internationale goederentreinen van DB Cargo en Lineas.',
+    lat: 51.4673,
+    lon: 5.6322,
+    badge: 'LIVE 24/7',
+    corridorName: 'Eindhoven ➔ Helmond ➔ Venlo',
+    youtubeUrl: 'https://www.youtube.com/@MarioRailcamNL/live',
+    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=RailCam+Netherlands+Mierlo-Hout+Live&autoplay=1&mute=1'
+  },
+  {
+    id: 'zandvoort',
+    name: 'RailCam Zandvoort aan Zee',
+    shortName: 'Zandvoort',
+    description: 'Live zicht op het spoor en perrons van station Zandvoort aan Zee en de naderende kusttreinen.',
+    lat: 52.3752,
+    lon: 4.5348,
+    badge: 'LIVE',
+    corridorName: 'Haarlem ➔ Zandvoort aan Zee',
+    youtubeUrl: 'https://www.youtube.com/@livefeedzandvoort/live',
+    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=Live+Railcam+Zandvoort&autoplay=1&mute=1'
+  },
+  {
+    id: 'cabview-apeldoorn-zutphen',
+    name: 'Cabview: Apeldoorn ➔ Zutphen (Machinist POV)',
+    shortName: 'Cabview Apeldoorn ➔ Zutphen',
+    description: 'Meekijken door de voorruit van de machinist: Arriva Spurt over de Veluwe via Apeldoorn De Maten, Klarenbeek en Voorst-Empe naar Zutphen.',
+    lat: 52.2094,
+    lon: 5.9675,
+    badge: 'CABVIEW 4K',
+    corridorName: 'Apeldoorn ➔ Zutphen',
+    youtubeUrl: 'https://www.youtube.com/results?search_query=cabview+apeldoorn+zutphen',
+    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=cabview+apeldoorn+zutphen+arriva&autoplay=1'
+  },
+  {
+    id: 'cabview-utrecht-amsterdam',
+    name: 'Cabview: Utrecht Centraal ➔ Amsterdam Centraal',
+    shortName: 'Cabview Utrecht ➔ Amsterdam',
+    description: 'Meekijken vanuit de cabine over het viersporige traject langs Breukelen en de Vechtstreek.',
+    lat: 52.0894,
+    lon: 5.1103,
+    badge: 'CABVIEW 4K',
+    corridorName: 'Utrecht Centraal ➔ Amsterdam Centraal',
+    youtubeUrl: 'https://www.youtube.com/results?search_query=cabview+utrecht+amsterdam',
+    embedUrl: 'https://www.youtube-nocookie.com/embed?listType=search&list=cabview+utrecht+amsterdam+intercity&autoplay=1'
+  }
+];
+
+export function renderRailcamMarkers() {
+  if (!appState.map) return;
+  if (appState.railcamMarkers && appState.railcamMarkers.length > 0) {
+    appState.railcamMarkers.forEach(m => m.remove());
+    appState.railcamMarkers = [];
+  }
+
+  if (!appState.showRailcams) return;
+
+  RAILCAMS.forEach(cam => {
+    const icon = L.divIcon({
+      className: 'clean-railcam-div-icon',
+      html: `
+        <div class="clean-railcam-marker" title="${cam.name} (Live Video)">
+          <div class="railcam-pin-pulse"></div>
+          <div class="railcam-pin-icon">📹</div>
+          <span class="railcam-pin-label">${cam.shortName}</span>
+        </div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+
+    const marker = L.marker([cam.lat, cam.lon], { icon, zIndexOffset: 2500 }).addTo(appState.map);
+
+    marker.bindTooltip(`<strong>📹 ${cam.name}</strong><br><span style="color:#fca5a5;">🔴 LIVE VIDEO • Tik om te kijken</span>`, {
+      direction: 'top',
+      offset: [0, -14],
+      className: 'custom-glass-tooltip'
+    });
+
+    marker.on('click', (e) => {
+      if (e.originalEvent) e.originalEvent.stopPropagation();
+      openRailcamModal(cam.id);
+    });
+
+    appState.railcamMarkers.push(marker);
+  });
+}
+
+function renderRailcamTabs() {
+  const tabsBar = document.getElementById('railcamTabsBar');
+  if (!tabsBar) return;
+
+  tabsBar.innerHTML = RAILCAMS.map(cam => {
+    const isActive = cam.id === appState.activeRailcamId;
+    return `
+      <button class="railcam-tab-btn ${isActive ? 'active' : ''}" type="button" data-cam-id="${cam.id}">
+        <span>📹 ${cam.shortName}</span>
+      </button>
+    `;
+  }).join('');
+
+  tabsBar.querySelectorAll('.railcam-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-cam-id');
+      if (id) openRailcamModal(id);
+    });
+  });
+}
+
+export function openRailcamModal(camId = 'twello') {
+  const cam = RAILCAMS.find(c => c.id === camId) || RAILCAMS[0];
+  appState.activeRailcamId = cam.id;
+
+  const modal = document.getElementById('railcamModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  // Activeer knop in bovenbalk
+  document.getElementById('btnHeaderRailcams')?.classList.add('active');
+
+  renderRailcamTabs();
+
+  const title = document.getElementById('railcamModalTitle');
+  if (title) title.textContent = `📹 ${cam.name}`;
+  const badge = document.getElementById('railcamBadgeTag');
+  if (badge) badge.textContent = cam.badge;
+  const nameEl = document.getElementById('railcamCamName');
+  if (nameEl) nameEl.textContent = cam.name;
+  const corridorEl = document.getElementById('railcamCorridorDesc');
+  if (corridorEl) corridorEl.textContent = cam.corridorName;
+  const descEl = document.getElementById('railcamCamDesc');
+  if (descEl) descEl.textContent = cam.description;
+
+  const iframe = document.getElementById('railcamIframe');
+  if (iframe) {
+    if (iframe.src !== cam.embedUrl) {
+      iframe.src = cam.embedUrl;
+    }
+  }
+
+  const extBtn = document.getElementById('btnRailcamExternal');
+  if (extBtn) {
+    extBtn.href = cam.youtubeUrl;
+  }
+
+  const centerBtn = document.getElementById('btnRailcamCenterMap');
+  if (centerBtn) {
+    centerBtn.onclick = () => {
+      modal.style.display = 'none';
+      if (window.setAppViewMode) window.setAppViewMode('map');
+      if (appState.map) appState.map.flyTo([cam.lat, cam.lon], 15, { duration: 1.0 });
+    };
+  }
+
+  updateRailcamRadarApproaching(cam);
+}
+
+export function closeRailcamModal() {
+  const modal = document.getElementById('railcamModal');
+  if (modal) modal.style.display = 'none';
+  document.getElementById('btnHeaderRailcams')?.classList.remove('active');
+  const iframe = document.getElementById('railcamIframe');
+  if (iframe) iframe.src = '';
+}
+
+function updateRailcamRadarApproaching(cam) {
+  const listEl = document.getElementById('railcamApproachingTrains');
+  const countBadge = document.getElementById('railcamRadarCount');
+  if (!listEl) return;
+
+  const allParsed = getActiveParsedTrains();
+  const nearby = [];
+
+  allParsed.forEach(t => {
+    const d = distanceKm(cam.lat, cam.lon, t.lat, t.lon);
+    if (d <= 6.5) {
+      const spd = t.speed > 10 ? t.speed : 70;
+      const etaSec = Math.round((d / spd) * 3600);
+      const etaMin = Math.round(etaSec / 60);
+      nearby.push({ train: t, distKm: d, etaSec, etaMin });
+    }
+  });
+
+  nearby.sort((a, b) => a.distKm - b.distKm);
+
+  if (countBadge) {
+    countBadge.textContent = `${nearby.length} ${nearby.length === 1 ? 'trein' : 'treinen'} in de buurt`;
+    countBadge.className = nearby.length > 0 ? 'badge-radar-count has-trains' : 'badge-radar-count';
+  }
+
+  if (nearby.length === 0) {
+    listEl.innerHTML = `
+      <div class="railcam-no-trains">
+        <span>⏱️ Momenteel geen treinen binnen 6.5 km van deze camera.</span>
+        <span style="font-size: 0.72rem; color: #94a3b8;">Volgende passage wordt live gedetecteerd via satellietradar...</span>
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = nearby.map(item => {
+    const t = item.train;
+    const op = t.operator;
+    const dest = t.exactDestination || (t.service && t.service.destination) || 'Eindbestemming';
+    const etaText = item.distKm <= 0.45 ? '⚡ Passeert nu de camera!' : (item.etaSec < 90 ? `Passeert over ~${item.etaSec} sec` : `Passeert over ~${item.etaMin} min`);
+    return `
+      <div class="railcam-train-row">
+        <div class="train-row-left">
+          <span class="op-badge ${op.badgeClass}">[${op.code}]</span>
+          <strong>Trein #${t.trainNum}</strong>
+          <span class="row-dest">➔ ${dest}</span>
+        </div>
+        <div class="train-row-right">
+          <span class="row-dist">${item.distKm.toFixed(1)} km</span>
+          <span class="row-eta ${item.distKm <= 0.45 ? 'passing-now' : ''}">${etaText}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// =============================================================
 // 11. Knoppen, Filters & Navigatie
 // =============================================================
 function switchCorridor(corridorId) {
@@ -5264,6 +5507,25 @@ function setupNavigation() {
       switchCorridor('all');
     } else {
       switchCorridor('freight-all');
+    }
+  });
+
+  // Knop: Live Spoorwebcams / Railcams in de bovenbalk & op kaart
+  document.getElementById('btnHeaderRailcams')?.addEventListener('click', () => {
+    openRailcamModal(appState.activeRailcamId || 'twello');
+  });
+
+  document.getElementById('btnMapRailcamsToggle')?.addEventListener('click', () => {
+    openRailcamModal(appState.activeRailcamId || 'twello');
+  });
+
+  document.getElementById('btnCloseRailcamModal')?.addEventListener('click', () => {
+    closeRailcamModal();
+  });
+
+  document.getElementById('railcamModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'railcamModal') {
+      closeRailcamModal();
     }
   });
 
@@ -5850,8 +6112,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.7.5';
-const APP_BUILD_COMMIT = 'f54a345';
+const APP_VERSION = '2.8.0';
+const APP_BUILD_COMMIT = '4be1c82';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -6127,6 +6389,13 @@ async function init() {
       if (data && data.features) {
         appState.allLiveFeatures = data.features;
         updateLineOverview();
+
+        // Werk live naderende treinen bij als de railcam speler openstaat
+        const rModal = document.getElementById('railcamModal');
+        if (rModal && rModal.style.display !== 'none' && appState.activeRailcamId) {
+          const activeCam = RAILCAMS.find(c => c.id === appState.activeRailcamId);
+          if (activeCam) updateRailcamRadarApproaching(activeCam);
+        }
       }
     } catch (e) {
       console.warn('Poll waarschuwing:', e);
