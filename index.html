@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.7.1_728939d">
-  <link rel="manifest" href="./manifest.json?v=2.7.1_728939d">
+  <link rel="stylesheet" href="./style.css?v=2.7.2_599ff82">
+  <link rel="manifest" href="./manifest.json?v=2.7.2_599ff82">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -473,14 +473,14 @@
         <!-- Live GPS & Snelheid Banner -->
         <div class="my-train-hero">
           <div class="speed-dial-box">
-            <span class="speed-value" id="myTrainSpeed">134</span>
+            <span class="speed-value" id="myTrainSpeed">0</span>
             <span class="speed-unit">km/u</span>
-            <span class="speed-status-pill" id="myTrainSpeedStatus">⚡ Volle snelheid</span>
+            <span class="speed-status-pill" id="myTrainSpeedStatus">📡 GPS Peiling Actief</span>
           </div>
           <div class="hero-details">
-            <div class="hero-line" id="myTrainRoute">Enschede ➔ Den Haag Centraal</div>
-            <div class="hero-segment" id="myTrainSegment">Tussen Amersfoort en Apeldoorn</div>
-            <div class="hero-gps-meta" id="myTrainGpsMeta">GPS afstand tot trein: 18m &bull; Nauwkeurigheid ±6m</div>
+            <div class="hero-line" id="myTrainRoute">📡 Bepalen van uw trein &amp; traject...</div>
+            <div class="hero-segment" id="myTrainSegment">Zoekt dichtstbijzijnde rijdende trein op het spoor...</div>
+            <div class="hero-gps-meta" id="myTrainGpsMeta">GPS verbinding wordt tot stand gebracht...</div>
           </div>
         </div>
 
@@ -488,26 +488,26 @@
         <div class="my-train-grid">
           <div class="my-train-card">
             <span class="card-label">Vervoerder &amp; Materieel</span>
-            <strong class="card-val" id="myTrainOperator">NS Reizigers (VIRM-IV)</strong>
-            <span class="card-sub" id="myTrainMatnr">Materieelcode: 9524</span>
+            <strong class="card-val" id="myTrainOperator">Automatische detectie</strong>
+            <span class="card-sub" id="myTrainMatnr">Materieelcode: Zoeken...</span>
           </div>
 
           <div class="my-train-card">
             <span class="card-label">Punctualiteit</span>
-            <strong class="card-val" id="myTrainPunctuality">🟢 Volgens schema op tijd</strong>
-            <span class="card-sub" id="myTrainDelay">Verwachte vertraging: 0 min</span>
+            <strong class="card-val" id="myTrainPunctuality">🟢 Volgens dienstregeling</strong>
+            <span class="card-sub" id="myTrainDelay">Verwachte vertraging: Wordt berekend</span>
           </div>
 
           <div class="my-train-card highlight">
             <span class="card-label">Eerstvolgende Station</span>
-            <strong class="card-val highlight" id="myTrainNextStation">Apeldoorn</strong>
-            <span class="card-sub" id="myTrainNextEta">Afstand: ~7.2 km (ca. 3 minuten)</span>
+            <strong class="card-val highlight" id="myTrainNextStation">📡 Peilen...</strong>
+            <span class="card-sub" id="myTrainNextEta">Afstand wordt berekend bij GPS fix</span>
           </div>
 
           <div class="my-train-card">
             <span class="card-label">Vorig Gepasseerd Station</span>
-            <strong class="card-val" id="myTrainPrevStation">Amersfoort Centraal</strong>
-            <span class="card-sub" id="myTrainPrevDist">Afstand: ~14.8 km geleden</span>
+            <strong class="card-val" id="myTrainPrevStation">📡 Peilen...</strong>
+            <span class="card-sub" id="myTrainPrevDist">Afstand wordt berekend bij GPS fix</span>
           </div>
         </div>
 
@@ -824,7 +824,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.7.1_728939d"></script>
-  <script type="module" src="./app.js?v=2.7.1_728939d"></script>
+  <script src="./stations.js?v=2.7.2_599ff82"></script>
+  <script type="module" src="./app.js?v=2.7.2_599ff82"></script>
 </body>
 </html>
