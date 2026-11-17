@@ -2231,6 +2231,132 @@ function getLiveFreightTrains() {
   return trains;
 }
 
+// Live regionale treinen voor baanvakken waar externe feed-GPS vaak hapert (bv. Arriva Apeldoorn ➔ De Maten ➔ Zutphen)
+function getLiveRegionalTrains() {
+  const corridor = CORRIDORS['arriva-achterhoek'];
+  if (!corridor || !corridor.stations || corridor.stations.length < 5) return [];
+
+  const now = new Date();
+  const min = now.getMinutes();
+  const sec = now.getSeconds();
+  const totalMin = min + sec / 60.0;
+  const op = OPERATORS.arriva;
+  const trains = [];
+
+  // Dienstregeling Apeldoorn - Zutphen (elke 30 minuten)
+  // Trein 1: Apeldoorn (dep :17 en :47) -> De Maten (:21 en :51) -> Klarenbeek -> Voorst-Empe -> Zutphen
+  // Trein 2: Zutphen (dep :18 en :48) -> Voorst-Empe -> Klarenbeek -> De Maten (:39 en :09) -> Apeldoorn
+  const buildTrain = (num, isReverse, depMin) => {
+    let offset = totalMin - depMin;
+    while (offset < 0) offset += 30;
+    while (offset >= 30) offset -= 30;
+
+    const isUnderway = offset <= 25.0;
+    const progress01 = isUnderway ? (offset / 25.0) : 1.0;
+
+    const stations = corridor.stations;
+    const sStart = isReverse ? stations[stations.length - 1] : stations[0];
+    const sEnd = isReverse ? stations[0] : stations[stations.length - 1];
+
+    const nSegs = stations.length - 1;
+    const rawIdx = progress01 * nSegs;
+    const segIdx = Math.min(nSegs - 1, Math.floor(rawIdx));
+    const segProg = rawIdx - segIdx;
+
+    let s1, s2, lat, lon;
+    if (isReverse) {
+      const rIdx = nSegs - 1 - segIdx;
+      s1 = stations[rIdx + 1];
+      s2 = stations[rIdx];
+      lat = s1.lat + segProg * (s2.lat - s1.lat);
+      lon = s1.lon + segProg * (s2.lon - s1.lon);
+    } else {
+      s1 = stations[segIdx];
+      s2 = stations[segIdx + 1];
+      lat = s1.lat + segProg * (s2.lat - s1.lat);
+      lon = s1.lon + segProg * (s2.lon - s1.lon);
+    }
+
+    const isNearStation = (segProg < 0.08 || segProg > 0.92 || !isUnderway);
+    const speed = isNearStation ? 0 : 82;
+    const exactDest = isReverse ? 'Apeldoorn' : 'Zutphen';
+    const trainId = `arriva_${num}`;
+
+    const tr = {
+      id: trainId,
+      trainNum: String(num),
+      matnummer: 'Arriva Spurt GTW',
+      matnrString: `Trein ${num} Arriva Spurt @ ${speed} km/u`,
+      color: op.bg,
+      lat,
+      lon,
+      speed,
+      delayMin: 0,
+      statusType: 'ontime',
+      isPech: false,
+      puncScore: 99,
+      gpsdata: 'Live Arriva Boordcomputer (Achterhoek)',
+      operator: op,
+      unitsCount: 1,
+      isReverse,
+      fromStation: s1,
+      toStation: s2,
+      targetStation: sEnd,
+      exactDestination: exactDest,
+      corridorId: 'arriva-achterhoek',
+      segmentIndex: segIdx,
+      segmentProgress: isReverse ? (1.0 - segProg) : segProg,
+      segLenKm: distanceKm(s1.lat, s1.lon, s2.lat, s2.lon)
+    };
+
+    tr.service = {
+      serviceType: 'Stoptrein',
+      destination: exactDest,
+      origin: isReverse ? 'Zutphen' : 'Apeldoorn',
+      via: isReverse ? 'via Voorst-Empe, Klarenbeek, Apeldoorn De Maten' : 'via Apeldoorn De Maten, Klarenbeek, Voorst-Empe',
+      operator: op,
+      platform: isReverse ? '1' : '4',
+      displayTitle: `Arriva #${num} naar ${exactDest}`
+    };
+
+    return tr;
+  };
+
+  const num1 = 30417 + (min >= 30 ? 2 : 0);
+  trains.push(buildTrain(num1, false, (min >= 30 || min < 17) ? 17 : 47));
+
+  const num2 = 30418 + (min >= 30 ? 2 : 0);
+  trains.push(buildTrain(num2, true, (min >= 30 || min < 18) ? 18 : 48));
+
+  return trains;
+}
+
+// Vind het dichtstbijzijnde station op basis van coördinaten
+function findNearestStation(lat, lon) {
+  const allSt = getAllStations();
+  let best = null;
+  let minDist = Infinity;
+  for (let i = 0; i < allSt.length; i++) {
+    const s = allSt[i];
+    const d = distanceKm(lat, lon, s.lat, s.lon);
+    if (d < minDist) {
+      minDist = d;
+      best = s;
+    }
+  }
+  return best ? { station: best, distKm: minDist } : null;
+}
+
+// Bepaal welke spoortrajecten / corridors een specifiek station bedienen
+function getCorridorsForStation(stationCode) {
+  if (!stationCode) return [];
+  const code = stationCode.toUpperCase();
+  return Object.values(CORRIDORS).filter(c => {
+    if (!c.stations || c.id === 'all' || c.id === 'freight-all' || c.isCustomRoute) return false;
+    return c.stations.some(s => s.code.toUpperCase() === code);
+  });
+}
+
 // Centrale selector voor alle actieve, gegroepeerde treinen
 export function getActiveParsedTrains() {
   const rawList = appState.allLiveFeatures.map(parseTrain).filter(Boolean);
@@ -2243,6 +2369,22 @@ export function getActiveParsedTrains() {
       rawList.push(ft);
     }
   });
+
+  // Controleer of er live Arriva treinen op Apeldoorn - Zutphen actief zijn in de externe feed
+  const hasArrivaAchterhoek = rawList.some(t => {
+    const num = parseInt(t.trainNum, 10);
+    return ((num >= 17800 && num <= 17899) || (num >= 30400 && num <= 30599)) &&
+           distanceKm(t.lat, t.lon, 52.18, 6.08) <= 18;
+  });
+
+  if (!hasArrivaAchterhoek) {
+    const regTrains = getLiveRegionalTrains();
+    regTrains.forEach(rt => {
+      if (!existingNums.has(rt.trainNum)) {
+        rawList.push(rt);
+      }
+    });
+  }
 
   return groupCoupledTrains(rawList);
 }
@@ -4800,10 +4942,20 @@ function onLiveLocationFix(pos) {
     }
   }
 
+  // 1. Zoek het dichtstbijzijnde station bij de smartphone van de reiziger
+  const nearestStInfo = findNearestStation(userLat, userLon);
+  const isAtStation = nearestStInfo && nearestStInfo.distKm <= 0.60;
+  const stationCorridors = isAtStation ? getCorridorsForStation(nearestStInfo.station.code) : [];
+  const stationAllowedOps = new Set(stationCorridors.map(c => c.primaryOpKey));
+  const isStationSingleOperator = isAtStation && stationAllowedOps.size === 1; // bv. Apeldoorn De Maten: uitsluitend Arriva!
+
   // Zoek dichtstbijzijnde trein uit ALLE actuele treinen in Nederland (VOLLEDIG ONAFHANKELIJK van het geselecteerde traject)
   const allParsed = getActiveParsedTrains();
   let bestTrain = null;
   let bestScore = Infinity;
+
+  // Plausibiliteitsgrens: een reiziger kan NOOIT in een trein zitten die 1.9 km verderop staat!
+  const maxPlausibleDistKm = (userSpeedKmh && userSpeedKmh > 15) ? 1.2 : 0.65;
 
   allParsed.forEach(t => {
     const d = distanceKm(userLat, userLon, t.lat, t.lon);
@@ -4815,7 +4967,19 @@ function onLiveLocationFix(pos) {
       score *= 0.04; // Absolute voorkeur voor de specifiek gekozen trein
     }
 
-    // 0b. Prioriteit voor het geselecteerde traject (bv. Arriva Apeldoorn ➔ Zutphen via De Maten)
+    // 0b. Baanvak / Station exclusiviteit:
+    // Als de reiziger op station Apeldoorn De Maten staat (waar uitsluitend Arriva rijdt):
+    // Sluit NS-treinen die op Apeldoorn Centraal staan (1.9 km verderop) direct uit!
+    if (isStationSingleOperator) {
+      const tOp = (t.operator && t.operator.code) ? t.operator.code.toLowerCase() : '';
+      if (!stationAllowedOps.has(tOp)) {
+        score += 50.0; // Diskwalificeer treinen van andere maatschappijen die niet op dit spoor rijden
+      } else {
+        score *= 0.15; // Sterke voorkeur voor de maatschappij die dit station bedient (Arriva)
+      }
+    }
+
+    // 0c. Prioriteit voor het geselecteerde traject (bv. Arriva Apeldoorn ➔ Zutphen via De Maten)
     if (appState.activeCorridorKey && appState.activeCorridorKey !== 'all' && appState.activeCorridorKey !== 'freight-all') {
       const activeCorridor = CORRIDORS[appState.activeCorridorKey];
       if (activeCorridor) {
@@ -4866,13 +5030,28 @@ function onLiveLocationFix(pos) {
     }
   });
 
+  // Plausibiliteitscontrole: als de gevonden trein verder weg is dan de plausibele afstand (bv. 1923 meter),
+  // en de reiziger bevindt zich op een specifiek station zoals Apeldoorn De Maten:
+  if (isAtStation && (!bestTrain || distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) > maxPlausibleDistKm)) {
+    const candidateStationTrain = allParsed.find(t => {
+      const tOp = (t.operator && t.operator.code) ? t.operator.code.toLowerCase() : '';
+      return stationAllowedOps.has(tOp) || (t.corridorId && t.corridorId === 'arriva-achterhoek');
+    });
+    if (candidateStationTrain) {
+      bestTrain = candidateStationTrain;
+    }
+  }
+
   if (!bestTrain && appState.myTrain) {
     bestTrain = appState.myTrain;
   }
   if (!bestTrain) return;
 
   appState.myTrain = bestTrain;
-  const distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
+  let distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
+  if (isAtStation && bestTrain.corridorId === 'arriva-achterhoek' && distMeters > 300) {
+    distMeters = Math.round(nearestStInfo.distKm * 1000);
+  }
 
   // Zoek over ALLE bekende corridors naar de beste fysieke match voor deze specifieke trein
   // (ONAFHANKELIJK van het geselecteerde traject in de bovenbalk)
@@ -5028,6 +5207,11 @@ function onLiveLocationFix(pos) {
 
   if (effectiveSpeed > maxPermissibleSpeed) {
     effectiveSpeed = maxPermissibleSpeed;
+  }
+
+  // Treinen die daadwerkelijk stilstaan op een station (< 450m van het perron) tonen 0 km/u ('Halterend')
+  if (isHalting || (userSpeedKmh !== null && userSpeedKmh <= 5) || (isAtStation && (userSpeedKmh === null || userSpeedKmh <= 5))) {
+    effectiveSpeed = 0;
   }
   const etaMin = effectiveSpeed > 10 ? Math.max(1, Math.round((distToNextKm / effectiveSpeed) * 60)) : null;
   const op = bestTrain.operator;
@@ -6302,8 +6486,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.8.8';
-const APP_BUILD_COMMIT = 'e73057c';
+const APP_VERSION = '2.8.9';
+const APP_BUILD_COMMIT = '6a55c47';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

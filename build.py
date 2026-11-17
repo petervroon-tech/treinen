@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.8.8"
+DEFAULT_VERSION = "2.8.9"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -268,6 +268,12 @@ def update_version_json(sha=None, build_num=None):
 
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
+        {
+            "tag": "Regionaal & De Maten",
+            "title": "Baanvak & Station Exclusiviteit (Apeldoorn De Maten)",
+            "desc": "Detecteert nauwkeurig uw station (zoals Apeldoorn De Maten) en koppelt direct aan het actieve Arriva baanvak. Voorkomt dat treinen van andere lijnen (zoals NS op Apeldoorn Centraal op 1.9 km afstand) worden gematcht.",
+            "icon": "🚊"
+        },
         {
             "tag": "Station Treinkiezer",
             "title": "Slimme Station Trein-Selectie (Meerdere Treinen op Perrons)",

@@ -1,12 +1,18 @@
 {
-  "version": "2.8.8",
-  "commit": "e73057c",
-  "fullCommit": "e73057c5db4c23a6ebd05573a2e089f37bf03d19",
-  "buildTime": "2026-11-17T14:56:51Z",
+  "version": "2.8.9",
+  "commit": "6a55c47",
+  "fullCommit": "6a55c4748957b78efb2d94f0f9f84ef47c9f6aad",
+  "buildTime": "2026-11-17T15:07:24Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
+    {
+      "tag": "Regionaal & De Maten",
+      "title": "Baanvak & Station Exclusiviteit (Apeldoorn De Maten)",
+      "desc": "Detecteert nauwkeurig uw station (zoals Apeldoorn De Maten) en koppelt direct aan het actieve Arriva baanvak. Voorkomt dat treinen van andere lijnen (zoals NS op Apeldoorn Centraal op 1.9 km afstand) worden gematcht.",
+      "icon": "🚊"
+    },
     {
       "tag": "Station Treinkiezer",
       "title": "Slimme Station Trein-Selectie (Meerdere Treinen op Perrons)",
