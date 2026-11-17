@@ -4636,6 +4636,7 @@ function stopLiveTrainTracking() {
   appState.isFollowingMyTrain = false;
   appState.lastGpsFix = null;
   appState.userPreferredDirection = null;
+  appState.userLockedTrainId = null;
   appState.openModalOnFirstFix = false;
 
   const btnHeader = document.getElementById('btnFindMyTrain');
@@ -4659,17 +4660,27 @@ function stopLiveTrainTracking() {
   if (bannerBtnText) bannerBtnText.textContent = '⚡ Toon Mijn Trein';
 }
 
-// 1-Tap wisselknop voor wanneer de tegentrein per ongeluk gekozen is
+// 1-Tap wisselknop: wisselt direct tussen treinen op hetzelfde station, of naar de andere richting
 window.switchMyTrainDirection = () => {
   const currentTrain = appState.myTrain;
   const allParsed = getActiveParsedTrains();
   const userLat = appState.lastGpsFix ? appState.lastGpsFix.lat : (currentTrain ? currentTrain.lat : 52.2);
   const userLon = appState.lastGpsFix ? appState.lastGpsFix.lon : (currentTrain ? currentTrain.lon : 6.0);
 
+  // 1. Controleer of de gebruiker zich op een station bevindt met meerdere treinen aanwezig (< 850m)
+  const stationTrains = allParsed.filter(t => distanceKm(userLat, userLon, t.lat, t.lon) <= 0.85);
+  if (stationTrains.length >= 2) {
+    const curIdx = currentTrain ? stationTrains.findIndex(t => t.id === currentTrain.id) : -1;
+    const nextIdx = (curIdx + 1) % stationTrains.length;
+    const nextTrain = stationTrains[nextIdx];
+    window.selectMyTrain(nextTrain.id);
+    return;
+  }
+
+  // 2. Geen ander perron / stationstrein: zoek treinen in de buurt die de ANDERE kant op rijden
   const currentDest = (currentTrain ? (currentTrain.exactDestination || (currentTrain.service && currentTrain.service.destination) || '') : '').toLowerCase();
   const currentOpCode = (currentTrain && currentTrain.operator && currentTrain.operator.code) ? currentTrain.operator.code.toLowerCase() : '';
 
-  // Zoek treinen in de buurt van dezelfde vervoerder die de ANDERE kant op rijden (volledig onafhankelijk van het geselecteerde traject)
   let candidates = allParsed.filter(t => {
     if (currentTrain && t.id === currentTrain.id) return false;
     const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
@@ -4690,14 +4701,22 @@ window.switchMyTrainDirection = () => {
   candidates.sort((a, b) => distanceKm(userLat, userLon, a.lat, a.lon) - distanceKm(userLat, userLon, b.lat, b.lon));
 
   if (candidates.length > 0) {
-    const otherTrain = candidates[0];
-    appState.myTrain = otherTrain;
-    const newDest = otherTrain.exactDestination || (otherTrain.service && otherTrain.service.destination) || 'het andere eindpunt';
-    appState.userPreferredDirection = newDest;
+    window.selectMyTrain(candidates[0].id);
+  }
+};
+
+window.selectMyTrain = (trainId) => {
+  const allParsed = getActiveParsedTrains();
+  const target = allParsed.find(t => t.id === trainId);
+  if (target) {
+    appState.userLockedTrainId = target.id;
+    appState.myTrain = target;
+    const dest = target.exactDestination || (target.service && target.service.destination) || '';
+    if (dest) appState.userPreferredDirection = dest;
 
     playAuthenticNSChime();
 
-    // Ververs direct de weergave met de nieuwe trein
+    // Ververs direct de weergave met de nieuw geselecteerde trein
     if (appState.lastGpsFix) {
       onLiveLocationFix({
         coords: {
@@ -4791,11 +4810,29 @@ function onLiveLocationFix(pos) {
     if (d > 12.0) return; // Te ver weg om de trein van de gebruiker te zijn
     let score = d;
 
+    // 0. Handmatig door gebruiker gekozen/vergrendelde trein op dit station
+    if (appState.userLockedTrainId && t.id === appState.userLockedTrainId) {
+      score *= 0.04; // Absolute voorkeur voor de specifiek gekozen trein
+    }
+
+    // 0b. Prioriteit voor het geselecteerde traject (bv. Arriva Apeldoorn ➔ Zutphen via De Maten)
+    if (appState.activeCorridorKey && appState.activeCorridorKey !== 'all' && appState.activeCorridorKey !== 'freight-all') {
+      const activeCorridor = CORRIDORS[appState.activeCorridorKey];
+      if (activeCorridor) {
+        const isCorridorMatch = matchTrainToCorridor(t, activeCorridor);
+        if (isCorridorMatch) {
+          score *= 0.25; // Sterke voorkeur voor treinen op het gekozen traject!
+        }
+      }
+    }
+
     // 1. Voorkeursbestemming van de gebruiker (indien handmatig gewisseld via de wisselknop)
     if (appState.userPreferredDirection) {
       const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
-      if (tDest.includes(appState.userPreferredDirection.toLowerCase())) {
-        score *= 0.25; // Sterke voorkeur voor de gewenste reisrichting
+      const tVia = (t.service && t.service.via ? t.service.via : '').toLowerCase();
+      const pref = appState.userPreferredDirection.toLowerCase();
+      if (tDest.includes(pref) || tVia.includes(pref)) {
+        score *= 0.25; // Sterke voorkeur voor de gewenste reisrichting of via-station
       } else {
         score += 6.0;  // Tegentrein achterstellen
       }
@@ -5099,6 +5136,45 @@ function onLiveLocationFix(pos) {
     modalSegment.textContent = isHalting
       ? `Halteert op station ${prevStation.name} (Spoor ${prevStation.sporen || 1}) • Eerstvolgende: ${nextStation.name}`
       : `Baanvak tussen ${prevStation.name} en ${nextStation.name} (➔ naar ${myExactDest})`;
+  }
+
+  // Station Multi-Train Selector: toont alle treinen die momenteel op het station/perron staan (< 850m)
+  const nearbyStationTrains = allParsed.filter(t => distanceKm(userLat, userLon, t.lat, t.lon) <= 0.85);
+  const selectorEl = document.getElementById('myTrainStationSelector');
+  const chipsEl = document.getElementById('myTrainStationChips');
+
+  if (selectorEl && chipsEl) {
+    if (nearbyStationTrains.length >= 2) {
+      selectorEl.style.display = 'block';
+      chipsEl.innerHTML = nearbyStationTrains.map(stTrain => {
+        const isCurrent = stTrain.id === bestTrain.id;
+        const stOp = stTrain.operator || { code: 'Trein', badgeClass: 'op-ns' };
+        const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
+        const stVia = (stTrain.service && stTrain.service.via) ? ` (${stTrain.service.via.split(',')[0].replace('via ', '')})` : '';
+        const stPlatform = (stTrain.service && stTrain.service.platform) ? ` &bull; Spoor ${stTrain.service.platform}` : '';
+        return `
+          <button type="button" class="mt-station-chip-btn ${isCurrent ? 'active' : ''}" onclick="window.selectMyTrain('${stTrain.id}')" title="Tik om [${stOp.code}] #${stTrain.trainNum} naar ${stDest} te kiezen">
+            <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
+            <span>#${stTrain.trainNum} ➔ ${stDest}${stVia}${stPlatform}</span>
+            ${isCurrent ? '<span style="color:#38bdf8; font-weight:800;">✓ Gekozen</span>' : ''}
+          </button>
+        `;
+      }).join('');
+    } else {
+      selectorEl.style.display = 'none';
+    }
+  }
+
+  // Pas wisselknop in de hero banner dynamisch aan
+  const btnSwitchDir = document.getElementById('btnSwitchTrainDirection');
+  if (btnSwitchDir) {
+    if (nearbyStationTrains.length >= 2) {
+      btnSwitchDir.innerHTML = `🔄 Wissel van trein op station (${nearbyStationTrains.length} aanwezig)`;
+      btnSwitchDir.title = 'Tik om te wisselen tussen de treinen op dit station';
+    } else {
+      btnSwitchDir.innerHTML = '🔄 Verkeerde richting? Wissel naar andere eindpunt';
+      btnSwitchDir.title = 'Wissel naar tegentrein in de andere richting';
+    }
   }
 
   // Toon optionele knop om het traject van deze trein op de kaart te openen
@@ -6226,8 +6302,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.8.7';
-const APP_BUILD_COMMIT = '4c60f0f';
+const APP_VERSION = '2.8.8';
+const APP_BUILD_COMMIT = 'e73057c';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

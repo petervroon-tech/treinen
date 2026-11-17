@@ -1,12 +1,18 @@
 {
-  "version": "2.8.7",
-  "commit": "4c60f0f",
-  "fullCommit": "4c60f0f4f4c6c0a976c20231f0156b4fbfb10e91",
-  "buildTime": "2026-11-17T13:45:57Z",
+  "version": "2.8.8",
+  "commit": "e73057c",
+  "fullCommit": "e73057c5db4c23a6ebd05573a2e089f37bf03d19",
+  "buildTime": "2026-11-17T14:56:51Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
+    {
+      "tag": "Station Treinkiezer",
+      "title": "Slimme Station Trein-Selectie (Meerdere Treinen op Perrons)",
+      "desc": "Detecteert automatisch alle treinen die gelijktijdig op hetzelfde station of perron aanwezig zijn (zoals Arriva naar De Maten vs. NS naar Deventer op station Apeldoorn). Biedt directe 1-tik wisselchips en prioriteit voor uw geselecteerde traject.",
+      "icon": "🚉"
+    },
     {
       "tag": "HSL-Zuid Amersfoort-Breda",
       "title": "Route Amersfoort Schothorst ➔ Breda v.v. (HSL-Zuid)",

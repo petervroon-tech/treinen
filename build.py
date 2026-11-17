@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.8.7"
+DEFAULT_VERSION = "2.8.8"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -268,6 +268,12 @@ def update_version_json(sha=None, build_num=None):
 
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
+        {
+            "tag": "Station Treinkiezer",
+            "title": "Slimme Station Trein-Selectie (Meerdere Treinen op Perrons)",
+            "desc": "Detecteert automatisch alle treinen die gelijktijdig op hetzelfde station of perron aanwezig zijn (zoals Arriva naar De Maten vs. NS naar Deventer op station Apeldoorn). Biedt directe 1-tik wisselchips en prioriteit voor uw geselecteerde traject.",
+            "icon": "🚉"
+        },
         {
             "tag": "HSL-Zuid Amersfoort-Breda",
             "title": "Route Amersfoort Schothorst ➔ Breda v.v. (HSL-Zuid)",
