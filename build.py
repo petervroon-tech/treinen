@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.8.6"
+DEFAULT_VERSION = "2.8.7"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -268,6 +268,12 @@ def update_version_json(sha=None, build_num=None):
 
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
+        {
+            "tag": "HSL-Zuid Amersfoort-Breda",
+            "title": "Route Amersfoort Schothorst ➔ Breda v.v. (HSL-Zuid)",
+            "desc": "Specifieke 1-klik knop voor het sneltraject Amersfoort Schothorst via Hilversum, Amsterdam Zuid, Schiphol en Rotterdam naar Breda over de HSL-Zuid met live snelheidsweergave (tot 160-200 km/u), haarscherpe satelliettracking en directe vice-versa wisseling.",
+            "icon": "⚡"
+        },
         {
             "tag": "Vaste Sidebar Links",
             "title": "Permanent Vaste Sidebar (Alleen Up & Down)",

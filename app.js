@@ -128,6 +128,50 @@ export const OPERATORS = {
 // =============================================================
 export const CORRIDORS = {
   // --- A. NS Hoofdlijnen ---
+  'amersfoort-breda': {
+    id: 'amersfoort-breda',
+    category: 'ns',
+    isHsl: true,
+    name: 'Amersfoort Schothorst ➔ Hilversum ➔ Amsterdam Zuid ➔ Schiphol ➔ Rotterdam C ➔ Breda (HSL)',
+    shortName: 'Amersfoort Schothorst ➔ Breda (HSL-Zuid)',
+    badge: 'IC Direct / HSL',
+    operator: 'NS Reizigers / HSL-Zuid',
+    primaryOpKey: 'ns',
+    seriesPattern: /^(11|24|92|12|14)\d{2}$/,
+    stations: [
+      { code: 'AMFS', name: 'Amersfoort Schothorst', lat: 52.174875, lon: 5.403838, terminal: true,  sporen: '1-3' },
+      { code: 'AMF',  name: 'Amersfoort Centraal',   lat: 52.15366,  lon: 5.371198, terminal: false, sporen: '1-7' },
+      { code: 'HVS',  name: 'Hilversum',             lat: 52.226347, lon: 5.180195, terminal: false, sporen: '1-5' },
+      { code: 'ASDZ', name: 'Amsterdam Zuid',        lat: 52.338865, lon: 4.871946, terminal: false, sporen: '1-4' },
+      { code: 'SHL',  name: 'Schiphol Airport',      lat: 52.308787, lon: 4.761487, terminal: false, sporen: '1-6' },
+      { code: 'RTD',  name: 'Rotterdam Centraal',    lat: 51.925068, lon: 4.468839, terminal: false, sporen: '1-16' },
+      { code: 'ZLW',  name: 'Lage Zwaluwe (HSL)',    lat: 51.69023,  lon: 4.66345,  terminal: false, sporen: 'HSL' },
+      { code: 'BD',   name: 'Breda',                 lat: 51.594459, lon: 4.7764,   terminal: true,  sporen: '1-7' }
+    ]
+  },
+
+  'breda-amersfoort': {
+    id: 'breda-amersfoort',
+    category: 'ns',
+    isHsl: true,
+    name: 'Breda ➔ Rotterdam C ➔ Schiphol ➔ Amsterdam Zuid ➔ Hilversum ➔ Amersfoort C ➔ Amersfoort Schothorst (HSL)',
+    shortName: 'Breda ➔ Amersfoort Schothorst (HSL-Zuid)',
+    badge: 'IC Direct / HSL',
+    operator: 'NS Reizigers / HSL-Zuid',
+    primaryOpKey: 'ns',
+    seriesPattern: /^(11|24|92|12|14)\d{2}$/,
+    stations: [
+      { code: 'BD',   name: 'Breda',                 lat: 51.594459, lon: 4.7764,   terminal: true,  sporen: '1-7' },
+      { code: 'ZLW',  name: 'Lage Zwaluwe (HSL)',    lat: 51.69023,  lon: 4.66345,  terminal: false, sporen: 'HSL' },
+      { code: 'RTD',  name: 'Rotterdam Centraal',    lat: 51.925068, lon: 4.468839, terminal: false, sporen: '1-16' },
+      { code: 'SHL',  name: 'Schiphol Airport',      lat: 52.308787, lon: 4.761487, terminal: false, sporen: '1-6' },
+      { code: 'ASDZ', name: 'Amsterdam Zuid',        lat: 52.338865, lon: 4.871946, terminal: false, sporen: '1-4' },
+      { code: 'HVS',  name: 'Hilversum',             lat: 52.226347, lon: 5.180195, terminal: false, sporen: '1-5' },
+      { code: 'AMF',  name: 'Amersfoort Centraal',   lat: 52.15366,  lon: 5.371198, terminal: false, sporen: '1-7' },
+      { code: 'AMFS', name: 'Amersfoort Schothorst', lat: 52.174875, lon: 5.403838, terminal: true,  sporen: '1-3' }
+    ]
+  },
+
   'enschede-denhaag': {
     id: 'enschede-denhaag',
     category: 'ns',
@@ -757,7 +801,14 @@ export function detectOperator(train) {
 }
 
 export function getSpeedBadgeInfo(speed) {
-  if (speed >= 120) {
+  if (speed >= 140) {
+    return {
+      cssClass: 'spd-fast spd-hsl',
+      icon: '⚡',
+      label: `${speed} km/u`,
+      text: '⚡ HSL-Zuid (Hoge Snelheid)'
+    };
+  } else if (speed >= 120) {
     return {
       cssClass: 'spd-fast',
       icon: '⚡',
@@ -1502,13 +1553,14 @@ function renderCorridorOnMap(corridor) {
 
   const latlngs = corridor.stations.map(s => [s.lat, s.lon]);
   const isFreightCorridor = corridor.category === 'freight';
-  const lineColor = isFreightCorridor ? '#ea580c' : '#ffc917';
+  const isHslCorridor = !!corridor.isHsl;
+  const lineColor = isFreightCorridor ? '#ea580c' : (isHslCorridor ? '#38bdf8' : '#ffc917');
 
   appState.routePolyline = L.polyline(latlngs, {
     color: lineColor,
-    weight: isFreightCorridor ? 5.0 : 4.5,
+    weight: isHslCorridor ? 5.5 : (isFreightCorridor ? 5.0 : 4.5),
     opacity: 0.95,
-    dashArray: isFreightCorridor ? '10, 5' : '8, 4',
+    dashArray: isFreightCorridor ? '10, 5' : (isHslCorridor ? '12, 4' : '8, 4'),
     lineJoin: 'round'
   }).addTo(map);
 
@@ -1735,13 +1787,18 @@ function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMi
 
     // Eerste waarneming op het vrije spoor of ontbrekende feed-snelheid:
     const colLow = (color || '').toLowerCase();
+    const isHslZone = (lat <= 52.32 && lat >= 51.58 && lon >= 4.40 && lon <= 4.82);
+    const isHslTrain = (colLow.includes('icng') || colLow.includes('direct') || colLow.includes('hsl') || colLow.includes('eurostar') || colLow.includes('thalys') || (trainId && (trainId.startsWith('11') || trainId.startsWith('24') || trainId.startsWith('92'))));
     let cruiseSpeed = 92;
-    if (colLow.includes('arriva') || colLow.includes('gtw') || colLow.includes('flirt') || colLow.includes('spurt')) {
+
+    if (isHslZone && isHslTrain) {
+      cruiseSpeed = 160; // HSL-Zuid topsnelheid voor IC Direct en ICNG
+    } else if (colLow.includes('arriva') || colLow.includes('gtw') || colLow.includes('flirt') || colLow.includes('spurt')) {
       cruiseSpeed = 90; // Arriva regionale lijnsnelheid (bv. Apeldoorn - Zutphen)
     } else if (colLow.includes('blauwnet') || colLow.includes('keolis') || colLow.includes('qbuzz')) {
       cruiseSpeed = 95;
     } else if (colLow.includes('icng') || colLow.includes('virm') || colLow.includes('icm')) {
-      cruiseSpeed = 125;
+      cruiseSpeed = 130;
     } else if (colLow.includes('sprinter') || colLow.includes('sgm') || colLow.includes('slto') || colLow.includes('flirt')) {
       cruiseSpeed = 90;
     }
@@ -2365,10 +2422,11 @@ function matchTrainToCorridor(train, corridor) {
     }
   }
 
-  // 2. Fysieke baanvak projectie via loodrechte spooras met ruime bochttolerantie (2.8 km)
+  // 2. Fysieke baanvak projectie via loodrechte spooras met ruime bochttolerantie (2.8 km, HSL 4.5 km)
   // Dit voorkomt dat treinen in bogen tussen stations plotseling verdwijnen of verspringen!
   let bestMatch = null;
   let bestDist = Infinity;
+  const maxPerpDist = (corridor.isHsl || corridor.id.includes('breda') || corridor.id.includes('eurostar')) ? 4.5 : 2.8;
 
   for (let i = 0; i < corridor.stations.length - 1; i++) {
     const s1 = corridor.stations[i];
@@ -2376,7 +2434,7 @@ function matchTrainToCorridor(train, corridor) {
 
     const proj = projectPointToSegmentKm(train.lat, train.lon, s1.lat, s1.lon, s2.lat, s2.lon);
 
-    if (proj.unclampedT >= -0.08 && proj.unclampedT <= 1.08 && proj.distKm <= 2.8) {
+    if (proj.unclampedT >= -0.08 && proj.unclampedT <= 1.08 && proj.distKm <= maxPerpDist) {
       if (proj.distKm < bestDist) {
         bestDist = proj.distKm;
         bestMatch = {
@@ -2434,7 +2492,8 @@ function matchTrainToCorridor(train, corridor) {
     // Garandeer dat een trein op het open baanvak tussen stations nooit op 0 km/u staat
     if (bestMatch.segmentProgress > 0.05 && bestMatch.segmentProgress < 0.95 && !train.isPech) {
       if (train.speed <= 5) {
-        train.speed = isFreightTrain ? 85 : ((train.operator && train.operator.code.toLowerCase().includes('arriva')) ? 90 : 110);
+        const isHslSeg = corridor.isHsl || (corridor.id.includes('amersfoort') && corridor.id.includes('breda'));
+        train.speed = isHslSeg ? 160 : (isFreightTrain ? 85 : ((train.operator && train.operator.code.toLowerCase().includes('arriva')) ? 90 : 110));
       }
     }
     return bestMatch;
@@ -2729,8 +2788,23 @@ function updateLineOverview() {
 
   if (!corridor) return;
 
-  if (titleEl) titleEl.textContent = `Lijn: ${corridor.name}`;
-  if (metaEl) metaEl.textContent = `Vervoerder: ${corridor.operator} &bull; ${corridor.stations.length} Baanvakstations`;
+  const isHslAmfBd = corridor.id === 'amersfoort-breda' || corridor.id === 'breda-amersfoort';
+  if (titleEl) {
+    if (isHslAmfBd) {
+      const oppKey = corridor.id === 'amersfoort-breda' ? 'breda-amersfoort' : 'amersfoort-breda';
+      const oppShort = corridor.id === 'amersfoort-breda' ? 'Breda ➔ Amersfoort' : 'Amersfoort ➔ Breda';
+      titleEl.innerHTML = `<span>⚡ ${corridor.name}</span> <button class="btn-swap-hsl-dir" onclick="window.switchCorridor('${oppKey}')" type="button" title="Wissel direct van rijrichting">🔄 Wissel Richting (${oppShort})</button>`;
+    } else {
+      titleEl.textContent = `Lijn: ${corridor.name}`;
+    }
+  }
+  if (metaEl) {
+    if (isHslAmfBd) {
+      metaEl.innerHTML = `⚡ <strong>Hogesnelheidslijn (HSL-Zuid)</strong> &bull; Vervoerder: ${corridor.operator} &bull; Snelheden tot 160-200 km/u &bull; ${corridor.stations.length} Stations`;
+    } else {
+      metaEl.textContent = `Vervoerder: ${corridor.operator} &bull; ${corridor.stations.length} Baanvakstations`;
+    }
+  }
   if (statusFooterEl) statusFooterEl.textContent = `Lijn: ${corridor.shortName} &bull; Vervoerder: ${corridor.operator}`;
 
   // Filter treinen die op deze corridor rijden (en eventueel op beweging)
@@ -3568,6 +3642,7 @@ export function stopFollowingTrain() {
 
 window.startFollowingTrain = startFollowingTrain;
 window.stopFollowingTrain = stopFollowingTrain;
+window.switchCorridor = switchCorridor;
 
 window.jumpToFreightTerminal = (lat, lon, zoom, name) => {
   if (!appState.map) return;
@@ -3581,6 +3656,8 @@ window.jumpToFreightTerminal = (lat, lon, zoom, name) => {
 // =============================================================
 
 const EXTRA_STATIONS = [
+  { code: 'APHS', name: 'Amersfoort Schothorst', lat: 52.174875, lon: 5.403838, sporen: '1-3', operator: 'NS Reizigers' },
+  { code: 'AMFS', name: 'Amersfoort Schothorst', lat: 52.174875, lon: 5.403838, sporen: '1-3', operator: 'NS Reizigers' },
   { code: 'BP',   name: 'Buitenpost',            lat: 53.2522, lon: 6.1436, sporen: '1-2', operator: 'Arriva' },
   { code: 'BKL',  name: 'Breukelen',             lat: 52.1719, lon: 4.9903, sporen: '1-4', operator: 'NS Reizigers' },
   { code: 'MAS',  name: 'Maarssen',              lat: 52.1389, lon: 5.0414, sporen: '1-4', operator: 'NS Reizigers' },
@@ -5314,6 +5391,24 @@ function switchCorridor(corridorId) {
     btnFreight.classList.toggle('active', isFreight);
   }
 
+  // Update de actieve status van de Amersfoort - Breda (HSL) knop in de sidebar
+  const btnHsl = document.getElementById('btnRouteAmersfoortBreda');
+  if (btnHsl) {
+    const isHslRoute = corridorId === 'amersfoort-breda' || corridorId === 'breda-amersfoort';
+    btnHsl.classList.toggle('active', isHslRoute);
+    const primaryTxt = btnHsl.querySelector('.tab-primary-text');
+    const secTxt = btnHsl.querySelector('.tab-secondary-text');
+    if (primaryTxt && secTxt) {
+      if (corridorId === 'breda-amersfoort') {
+        primaryTxt.textContent = 'Breda ➔ Amersfoort';
+        secTxt.innerHTML = 'via Schiphol &bull; 🔄 Wissel naar Breda';
+      } else {
+        primaryTxt.textContent = 'Amersfoort ➔ Breda';
+        secTxt.innerHTML = 'via Schiphol &bull; ⚡ HSL-Zuid v.v.';
+      }
+    }
+  }
+
   const btnAllNL = document.getElementById('btnViewAllNL');
 
   if (corridorId === 'all') {
@@ -5502,6 +5597,18 @@ function setupNavigation() {
   // Knoppen: Forceer live verversing (zowel in planner als in bovenbalk)
   document.getElementById('btnForceRefresh')?.addEventListener('click', () => forceRefreshTrains());
   document.getElementById('btnHeaderForceRefresh')?.addEventListener('click', () => forceRefreshTrains());
+
+  // Knop: Amersfoort Schothorst ➔ Breda (HSL) in de vaste linker sidebar & snelle richtingswissel
+  document.getElementById('btnRouteAmersfoortBreda')?.addEventListener('click', () => {
+    if (appState.activeCorridorKey === 'amersfoort-breda') {
+      switchCorridor('breda-amersfoort');
+    } else {
+      switchCorridor('amersfoort-breda');
+    }
+    if (window.innerWidth < 1024 && window.setAppViewMode) {
+      window.setAppViewMode('split');
+    }
+  });
 
   // Knop: Goederenvervoer in de bovenbalk (1-klik toggle)
   document.getElementById('btnHeaderFreight')?.addEventListener('click', () => {
@@ -6119,8 +6226,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.8.6';
-const APP_BUILD_COMMIT = 'd62ad5c';
+const APP_VERSION = '2.8.7';
+const APP_BUILD_COMMIT = '4c60f0f';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

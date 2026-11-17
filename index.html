@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.8.6_d62ad5c">
-  <link rel="manifest" href="./manifest.json?v=2.8.6_d62ad5c">
+  <link rel="stylesheet" href="./style.css?v=2.8.7_4c60f0f">
+  <link rel="manifest" href="./manifest.json?v=2.8.7_4c60f0f">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -74,6 +74,8 @@
               <option value="custom-route">🎯 Kies Eigen Traject (Van ➔ Naar, bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)...</option>
             </optgroup>
             <optgroup label="🚆 NS Reizigers Hoofdlijnen">
+              <option value="amersfoort-breda">⚡ NS &bull; Amersfoort Schothorst ➔ Schiphol ➔ Breda (HSL-Zuid)</option>
+              <option value="breda-amersfoort">⚡ NS &bull; Breda ➔ Schiphol ➔ Amersfoort Schothorst (HSL-Zuid)</option>
               <option value="enschede-denhaag" selected>NS &bull; Enschede ➔ Amersfoort ➔ Utrecht ➔ Den Haag C</option>
               <option value="eindhoven-maastricht">NS &bull; Eindhoven C ➔ Weert ➔ Roermond ➔ Sittard ➔ Maastricht (Rustig)</option>
               <option value="amsterdam-maastricht">NS &bull; Amsterdam C ➔ Utrecht ➔ Eindhoven ➔ Maastricht</option>
@@ -154,6 +156,15 @@
             <span class="tab-secondary-text">GPS cockpit &amp; km/u</span>
           </div>
           <span class="tab-pill tab-pill-gps">Live GPS</span>
+        </button>
+
+        <button id="btnRouteAmersfoortBreda" class="sidebar-tab-btn tab-highlight-hsl" type="button" title="Specifieke route: Amersfoort Schothorst ➔ Schiphol ➔ Breda v.v. (HSL-Zuid)">
+          <span class="tab-icon pulse">⚡</span>
+          <div class="tab-text-box">
+            <span class="tab-primary-text">Amersfoort ➔ Breda</span>
+            <span class="tab-secondary-text">via Schiphol &bull; ⚡ HSL-Zuid v.v.</span>
+          </div>
+          <span class="tab-pill tab-pill-hsl">⚡ HSL</span>
         </button>
 
         <button id="btnToggleRoutePlanner" class="sidebar-tab-btn" type="button" title="Kies specifiek vertrek- en tot-station (Van ➔ Tot)">
@@ -317,6 +328,8 @@
 
       <div class="rp-quick-chips">
         <span class="rp-chips-label">Voorbeelden:</span>
+        <button type="button" class="rp-chip-btn rp-chip-hsl" data-from="AMFS" data-to="BD">⚡ Amersfoort Schothorst ➔ Breda (HSL)</button>
+        <button type="button" class="rp-chip-btn rp-chip-hsl" data-from="BD" data-to="AMFS">⚡ Breda ➔ Amersfoort Schothorst (HSL)</button>
         <button type="button" class="rp-chip-btn" data-from="BP" data-to="LW">Buitenpost ➔ Leeuwarden</button>
         <button type="button" class="rp-chip-btn" data-from="BKL" data-to="UT">Breukelen ➔ Utrecht C</button>
         <button type="button" class="rp-chip-btn" data-from="EHV" data-to="MT">Eindhoven C ➔ Maastricht</button>
@@ -1247,7 +1260,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.8.6_d62ad5c"></script>
-  <script type="module" src="./app.js?v=2.8.6_d62ad5c"></script>
+  <script src="./stations.js?v=2.8.7_4c60f0f"></script>
+  <script type="module" src="./app.js?v=2.8.7_4c60f0f"></script>
 </body>
 </html>
