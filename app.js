@@ -137,7 +137,7 @@ export const CORRIDORS = {
     badge: 'IC Direct / HSL',
     operator: 'NS Reizigers / HSL-Zuid',
     primaryOpKey: 'ns',
-    seriesPattern: /^(11|24|92|12|14)\d{2}$/,
+    seriesPattern: /^(18|11|24|92|12|14)\d{2}$/,
     stations: [
       { code: 'AMFS', name: 'Amersfoort Schothorst', lat: 52.174875, lon: 5.403838, terminal: true,  sporen: '1-3' },
       { code: 'AMF',  name: 'Amersfoort Centraal',   lat: 52.15366,  lon: 5.371198, terminal: false, sporen: '1-7' },
@@ -159,7 +159,7 @@ export const CORRIDORS = {
     badge: 'IC Direct / HSL',
     operator: 'NS Reizigers / HSL-Zuid',
     primaryOpKey: 'ns',
-    seriesPattern: /^(11|24|92|12|14)\d{2}$/,
+    seriesPattern: /^(18|11|24|92|12|14)\d{2}$/,
     stations: [
       { code: 'BD',   name: 'Breda',                 lat: 51.594459, lon: 4.7764,   terminal: true,  sporen: '1-7' },
       { code: 'ZLW',  name: 'Lage Zwaluwe (HSL)',    lat: 51.69023,  lon: 4.66345,  terminal: false, sporen: 'HSL' },
@@ -180,7 +180,7 @@ export const CORRIDORS = {
     badge: 'IC',
     operator: 'NS Reizigers',
     primaryOpKey: 'ns',
-    seriesPattern: /^(17|70|16|14|24)\d{2}$/,
+    seriesPattern: /^(17|16|5|6|70|14|24)\d{2}$/,
     stations: [
       { code: 'ES',   name: 'Enschede',            lat: 52.2225, lon: 6.8897, terminal: true,  sporen: '1-4' },
       { code: 'HGL',  name: 'Hengelo',             lat: 52.2625, lon: 6.7936, terminal: false, sporen: '1-3' },
@@ -263,7 +263,7 @@ export const CORRIDORS = {
     badge: 'IC',
     operator: 'NS Reizigers',
     primaryOpKey: 'ns',
-    seriesPattern: /^(5|7|18)\d{2}$/,
+    seriesPattern: /^(5|6|7|18)\d{2}$/,
     stations: [
       { code: 'GN',  name: 'Groningen',          lat: 53.2106, lon: 6.5647, terminal: true,  sporen: '1-9'  },
       { code: 'ASN', name: 'Assen',              lat: 52.9922, lon: 6.5683, terminal: false, sporen: '1-3'  },
@@ -1025,19 +1025,19 @@ export function getTrainServiceDetails(train, contextStation) {
   // 4. NS Intercity Hoofdlijnen
   else if (num >= 500 && num <= 599) {
     serviceType = 'Intercity';
-    destination = num % 2 !== 0 ? 'Groningen' : 'Rotterdam Centraal';
-    origin = num % 2 !== 0 ? 'Rotterdam Centraal' : 'Groningen';
-    via = 'via Utrecht C, Zwolle, Assen';
-  } else if (num >= 600 && num <= 699) {
-    serviceType = 'Intercity';
-    destination = num % 2 !== 0 ? 'Leeuwarden' : 'Rotterdam Centraal';
-    origin = num % 2 !== 0 ? 'Rotterdam Centraal' : 'Leeuwarden';
-    via = 'via Utrecht C, Zwolle';
-  } else if (num >= 700 && num <= 799) {
-    serviceType = 'Intercity';
     destination = num % 2 !== 0 ? 'Groningen' : 'Den Haag Centraal';
     origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Groningen';
-    via = 'via Schiphol, Zwolle, Assen';
+    via = num % 2 !== 0 ? 'via Amersfoort C, Zwolle, Assen' : 'via Amersfoort C, Utrecht C, Gouda';
+  } else if (num >= 600 && num <= 699) {
+    serviceType = 'Intercity';
+    destination = num % 2 !== 0 ? 'Leeuwarden' : 'Den Haag Centraal';
+    origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Leeuwarden';
+    via = num % 2 !== 0 ? 'via Amersfoort C, Zwolle, Meppel' : 'via Amersfoort C, Utrecht C, Gouda';
+  } else if (num >= 700 && num <= 799) {
+    serviceType = 'Intercity';
+    destination = num % 2 !== 0 ? 'Groningen' : 'Schiphol Airport';
+    origin = num % 2 !== 0 ? 'Schiphol Airport' : 'Groningen';
+    via = num % 2 !== 0 ? 'via Almere C, Lelystad C, Zwolle, Assen' : 'via Zwolle, Lelystad C, Almere C, Amsterdam Zuid';
   } else if (num >= 800 && num <= 899) {
     serviceType = 'Intercity';
     destination = num % 2 !== 0 ? 'Maastricht' : 'Alkmaar / Schagen';
@@ -1067,14 +1067,14 @@ export function getTrainServiceDetails(train, contextStation) {
     via = num % 2 !== 0 ? 'via Deventer, Almelo, Hengelo' : 'via Amersfoort C, Utrecht C, Gouda';
     platform = (stCode === 'APD') ? '3' : '1';
   } else if (num >= 1800 && num <= 1899) {
-    serviceType = 'Intercity';
-    destination = num % 2 !== 0 ? 'Leeuwarden' : 'Den Haag Centraal';
-    origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Leeuwarden';
-    via = 'via Schiphol, Zwolle, Heerenveen';
+    serviceType = 'Intercity Direct';
+    destination = num % 2 !== 0 ? 'Amersfoort Schothorst' : 'Breda';
+    origin = num % 2 !== 0 ? 'Breda' : 'Amersfoort Schothorst';
+    via = 'via Schiphol Airport, Rotterdam C, HSL';
   } else if (num >= 2000 && num <= 2099) {
     serviceType = 'Intercity';
-    destination = num % 2 !== 0 ? 'Utrecht Centraal' : 'Den Haag Centraal';
-    origin = num % 2 !== 0 ? 'Den Haag Centraal' : 'Utrecht Centraal';
+    destination = num % 2 !== 0 ? 'Utrecht Centraal' : 'Rotterdam Centraal';
+    origin = num % 2 !== 0 ? 'Rotterdam Centraal' : 'Utrecht Centraal';
     via = 'via Gouda';
   } else if (num >= 2100 && num <= 2299) {
     serviceType = 'Intercity';
@@ -1904,9 +1904,28 @@ export function parseTrain(raw) {
     gpsdata: props.gpsdata || 'Zojuist'
   };
 
+  // Live feed bestemming detectie (indien aanwezig in treinposities.nl properties of info)
+  let feedDest = '';
+  if (props.bestemming && typeof props.bestemming === 'string') feedDest = props.bestemming.trim();
+  else if (props.destination && typeof props.destination === 'string') feedDest = props.destination.trim();
+  else if (props.eindbestemming && typeof props.eindbestemming === 'string') feedDest = props.eindbestemming.trim();
+  else if (props.dest && typeof props.dest === 'string') feedDest = props.dest.trim();
+  else {
+    const destMatch = allText.match(/(?:➔|->|\bnaar\b)\s*([A-Z][a-zA-Z\s\-]+?)(?:\s*(?:via|spoor|@|\+|\(|$))/i);
+    if (destMatch && destMatch[1]) {
+      const cand = destMatch[1].trim();
+      if (cand.length > 2 && !/^(trein|rit|rijdt|uur|min|station|stel|stellen|spoor|ontime|pech|vertraging)/i.test(cand)) {
+        feedDest = cand;
+      }
+    }
+  }
+
   train.operator = detectOperator(train);
   train.service = getTrainServiceDetails(train);
-  train.exactDestination = (train.service && train.service.destination && train.service.destination !== 'Eindbestemming') ? train.service.destination : '';
+  train.exactDestination = feedDest || ((train.service && train.service.destination && train.service.destination !== 'Eindbestemming') ? train.service.destination : '');
+  if (feedDest && train.service) {
+    train.service.destination = feedDest;
+  }
   train.unitsCount = 1;
   return train;
 }
@@ -4802,16 +4821,17 @@ function stopLiveTrainTracking() {
   if (bannerBtnText) bannerBtnText.textContent = '⚡ Toon Mijn Trein';
 }
 
-// 1-Tap wisselknop: wisselt direct tussen treinen op hetzelfde station, of naar de andere richting
+// 1-Tap wisselknop: wisselt direct tussen treinen op hetzelfde station, of wisselt reisrichting/bestemming van de huidige trein
 window.switchMyTrainDirection = () => {
   const currentTrain = appState.myTrain;
   const allParsed = getActiveParsedTrains();
   const userLat = appState.lastGpsFix ? appState.lastGpsFix.lat : (currentTrain ? currentTrain.lat : 52.2);
   const userLon = appState.lastGpsFix ? appState.lastGpsFix.lon : (currentTrain ? currentTrain.lon : 6.0);
+  const userSpeed = (appState.lastGpsFix && typeof appState.lastGpsFix.speed === 'number') ? appState.lastGpsFix.speed : (currentTrain?.speed || 0);
 
-  // 1. Controleer of de gebruiker zich op een station bevindt met meerdere treinen aanwezig (< 850m)
+  // 1. Controleer of de gebruiker zich op een station bevindt met meerdere treinen aanwezig (< 850m) en stilstaat
   const stationTrains = allParsed.filter(t => distanceKm(userLat, userLon, t.lat, t.lon) <= 0.85);
-  if (stationTrains.length >= 2) {
+  if (stationTrains.length >= 2 && userSpeed <= 15) {
     const curIdx = currentTrain ? stationTrains.findIndex(t => t.id === currentTrain.id) : -1;
     const nextIdx = (curIdx + 1) % stationTrains.length;
     const nextTrain = stationTrains[nextIdx];
@@ -4819,7 +4839,41 @@ window.switchMyTrainDirection = () => {
     return;
   }
 
-  // 2. Geen ander perron / stationstrein: zoek treinen in de buurt die de ANDERE kant op rijden
+  // 2. Als de gebruiker in een rijdende trein zit of op het open baanvak:
+  // Wissel de bestemming en reisrichting van de HUIDIGE trein (nooit springen naar een trein 20km verderop!)
+  if (currentTrain) {
+    const origin = (currentTrain.service && currentTrain.service.origin && currentTrain.service.origin !== 'Vertrekstation') ? currentTrain.service.origin : '';
+    const dest = (currentTrain.service && currentTrain.service.destination && currentTrain.service.destination !== 'Eindbestemming') ? currentTrain.service.destination : '';
+    const curDest = appState.userPreferredDirection || currentTrain.exactDestination || dest;
+
+    const num = parseInt(currentTrain.trainNum, 10) || 0;
+    // Bepaal slimme wisselkeuzes op het baanvak (bv. Den Haag C ⇄ Rotterdam C ⇄ Leeuwarden/Groningen)
+    let nextDest = '';
+    const isRandstadSplit = (num >= 500 && num <= 699) || (num >= 1600 && num <= 1799) || (num >= 11600 && num <= 11799) || (num >= 1400 && num <= 1499) || (num >= 2000 && num <= 2099) || (num >= 2800 && num <= 2899);
+
+    if (isRandstadSplit) {
+      if (/rotterdam/i.test(curDest)) {
+        nextDest = 'Den Haag Centraal';
+      } else if (/den haag/i.test(curDest)) {
+        nextDest = origin || (dest.includes('Den Haag') ? 'Leeuwarden' : dest);
+      } else {
+        nextDest = 'Den Haag Centraal';
+      }
+    } else {
+      if (curDest && origin && curDest.toLowerCase().includes(origin.toLowerCase())) {
+        nextDest = dest;
+      } else {
+        nextDest = origin || dest;
+      }
+    }
+
+    if (nextDest) {
+      window.setMyTrainDestination(nextDest);
+      return;
+    }
+  }
+
+  // 3. Fallback: zoek tegentrein in de buurt
   const currentDest = (currentTrain ? (currentTrain.exactDestination || (currentTrain.service && currentTrain.service.destination) || '') : '').toLowerCase();
   const currentOpCode = (currentTrain && currentTrain.operator && currentTrain.operator.code) ? currentTrain.operator.code.toLowerCase() : '';
 
@@ -4844,6 +4898,32 @@ window.switchMyTrainDirection = () => {
 
   if (candidates.length > 0) {
     window.selectMyTrain(candidates[0].id);
+  }
+};
+
+window.setMyTrainDestination = (dest) => {
+  if (!dest) return;
+  appState.userPreferredDirection = dest;
+  if (appState.myTrain) {
+    appState.myTrain.exactDestination = dest;
+    if (appState.myTrain.service) {
+      appState.myTrain.service.destination = dest;
+    }
+  }
+
+  playAuthenticNSChime();
+
+  if (appState.lastGpsFix) {
+    onLiveLocationFix({
+      coords: {
+        latitude: appState.lastGpsFix.lat,
+        longitude: appState.lastGpsFix.lon,
+        accuracy: appState.lastGpsFix.acc || 15,
+        speed: (appState.lastGpsFix.speed ? appState.lastGpsFix.speed / 3.6 : 0)
+      }
+    });
+  } else {
+    updateLineOverview();
   }
 };
 
@@ -5084,7 +5164,11 @@ function onLiveLocationFix(pos) {
   let distToNextKm = 0;
   let distFromPrevKm = 0;
   let isHalting = false;
-  let myExactDest = bestTrain.exactDestination || (bestTrain.service && bestTrain.service.destination && bestTrain.service.destination !== 'Eindbestemming' ? bestTrain.service.destination : '');
+  let myExactDest = appState.userPreferredDirection || bestTrain.exactDestination || (bestTrain.service && bestTrain.service.destination && bestTrain.service.destination !== 'Eindbestemming' ? bestTrain.service.destination : '');
+  if (appState.userPreferredDirection) {
+    bestTrain.exactDestination = appState.userPreferredDirection;
+    if (bestTrain.service) bestTrain.service.destination = appState.userPreferredDirection;
+  }
 
   if (matchedCorridor && corridorMatch) {
     const stations = matchedCorridor.stations;
@@ -5356,8 +5440,42 @@ function onLiveLocationFix(pos) {
       btnSwitchDir.innerHTML = `🔄 Wissel van trein op station (${nearbyStationTrains.length} aanwezig)`;
       btnSwitchDir.title = 'Tik om te wisselen tussen de treinen op dit station';
     } else {
-      btnSwitchDir.innerHTML = '🔄 Verkeerde richting? Wissel naar andere eindpunt';
-      btnSwitchDir.title = 'Wissel naar tegentrein in de andere richting';
+      btnSwitchDir.innerHTML = '🔄 Wissel bestemming of richting';
+      btnSwitchDir.title = 'Wissel direct van richting of bestemming voor deze trein';
+    }
+  }
+
+  // Directe Bestemming Keuze Chips (1-tap wisselen tussen Den Haag Centraal, Rotterdam Centraal, Leeuwarden/Groningen)
+  const destChipsContainer = document.getElementById('myTrainDestChips');
+  if (destChipsContainer) {
+    const origin = (bestTrain.service && bestTrain.service.origin && bestTrain.service.origin !== 'Vertrekstation') ? bestTrain.service.origin : '';
+    const defaultDest = (bestTrain.service && bestTrain.service.destination && bestTrain.service.destination !== 'Eindbestemming') ? bestTrain.service.destination : '';
+    const options = new Set();
+    if (defaultDest) options.add(defaultDest);
+    if (origin) options.add(origin);
+
+    const num = parseInt(bestTrain.trainNum, 10) || 0;
+    if ((num >= 500 && num <= 699) || (num >= 1600 && num <= 1799) || (num >= 11600 && num <= 11799) || (num >= 1400 && num <= 1499) || (num >= 2000 && num <= 2099) || (num >= 2800 && num <= 2899)) {
+      options.add('Den Haag Centraal');
+      options.add('Rotterdam Centraal');
+    }
+
+    const optList = Array.from(options).filter(Boolean);
+    if (optList.length >= 2) {
+      destChipsContainer.style.display = 'flex';
+      destChipsContainer.innerHTML = `
+        <span style="font-size:0.68rem; color:#94a3b8; display:inline-flex; align-items:center; margin-right:4px;">🎯 Bestemming:</span>
+        ${optList.map(opt => {
+          const isActive = myExactDest && (myExactDest.toLowerCase().includes(opt.toLowerCase()) || opt.toLowerCase().includes(myExactDest.toLowerCase()));
+          return `
+            <button type="button" class="mt-dest-chip-btn ${isActive ? 'active' : ''}" onclick="window.setMyTrainDestination('${opt.replace(/'/g, "\\'")}')" style="background:${isActive ? 'rgba(56, 189, 248, 0.35)' : 'rgba(56, 189, 248, 0.12)'}; border:1px solid ${isActive ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)'}; color:${isActive ? '#ffffff' : '#38bdf8'}; border-radius:999px; padding:3px 10px; font-size:0.70rem; font-weight:${isActive ? '700' : '600'}; cursor:pointer; transition:all 0.15s ease;">
+              ${isActive ? '✓ ' : ''}➔ ${opt}
+            </button>
+          `;
+        }).join('')}
+      `;
+    } else {
+      destChipsContainer.style.display = 'none';
     }
   }
 
@@ -6486,8 +6604,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.8.9';
-const APP_BUILD_COMMIT = '6a55c47';
+const APP_VERSION = '2.9.0';
+const APP_BUILD_COMMIT = '828d67b';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

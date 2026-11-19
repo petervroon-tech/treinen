@@ -1,12 +1,18 @@
 {
-  "version": "2.8.9",
-  "commit": "6a55c47",
-  "fullCommit": "6a55c4748957b78efb2d94f0f9f84ef47c9f6aad",
-  "buildTime": "2026-11-17T15:07:24Z",
+  "version": "2.9.0",
+  "commit": "828d67b",
+  "fullCommit": "828d67bf0b7baa5292597e2e029253d771bb7352",
+  "buildTime": "2026-11-19T14:04:47Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
+    {
+      "tag": "Eindbestemming & Randstad",
+      "title": "Actuele NS Dienstregeling (Den Haag C / Rotterdam C)",
+      "desc": "Correcte automatische herkenning van de NS hoofdlijnen (zoals Intercity serie 600 Leeuwarden ➔ Den Haag Centraal en serie 500 Groningen ➔ Den Haag Centraal via Amersfoort en Utrecht i.p.v. Rotterdam C). Inclusief 1-tik bestemmingchips en live feed-uitlezing.",
+      "icon": "🎯"
+    },
     {
       "tag": "Regionaal & De Maten",
       "title": "Baanvak & Station Exclusiviteit (Apeldoorn De Maten)",

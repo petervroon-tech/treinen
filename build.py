@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.8.9"
+DEFAULT_VERSION = "2.9.0"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -268,6 +268,12 @@ def update_version_json(sha=None, build_num=None):
 
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
+        {
+            "tag": "Eindbestemming & Randstad",
+            "title": "Actuele NS Dienstregeling (Den Haag C / Rotterdam C)",
+            "desc": "Correcte automatische herkenning van de NS hoofdlijnen (zoals Intercity serie 600 Leeuwarden ➔ Den Haag Centraal en serie 500 Groningen ➔ Den Haag Centraal via Amersfoort en Utrecht i.p.v. Rotterdam C). Inclusief 1-tik bestemmingchips en live feed-uitlezing.",
+            "icon": "🎯"
+        },
         {
             "tag": "Regionaal & De Maten",
             "title": "Baanvak & Station Exclusiviteit (Apeldoorn De Maten)",
