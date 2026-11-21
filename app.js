@@ -2716,6 +2716,79 @@ function matchTrainToCorridor(train, corridor) {
   return false;
 }
 
+// Bepaal de genormaliseerde bewegingsvector van een trein (richting waarin de trein rijdt)
+export function getTrainMotionVector(t, corridor) {
+  if (!t) return null;
+
+  // 1. Uit actieve corridor-projectie (indien beschikbaar)
+  if (corridor && corridor.stations && corridor.stations.length >= 2) {
+    const m = matchTrainToCorridor(t, corridor);
+    if (m && m.fromStation && m.toStation) {
+      const dLat = m.toStation.lat - m.fromStation.lat;
+      const dLon = m.toStation.lon - m.fromStation.lon;
+      const len = Math.hypot(dLat, dLon) || 1;
+      return {
+        dLat: dLat / len,
+        dLon: dLon / len,
+        isReverse: !!m.isReverse
+      };
+    }
+  }
+
+  // 2. Uit live animatiestatus van eerdere en huidige telemetry-coördinaten
+  const state = appState.trainMotionStates.get(t.id);
+  if (state) {
+    if (state.dirVector && (Math.abs(state.dirVector.dLat) > 1e-6 || Math.abs(state.dirVector.dLon) > 1e-6)) {
+      const len = Math.hypot(state.dirVector.dLat, state.dirVector.dLon) || 1;
+      return {
+        dLat: state.dirVector.dLat / len,
+        dLon: state.dirVector.dLon / len,
+        isReverse: !!state.isReverse
+      };
+    }
+    if (typeof state.heading === 'number') {
+      const rad = state.heading * Math.PI / 180;
+      return {
+        dLat: Math.cos(rad),
+        dLon: Math.sin(rad),
+        isReverse: !!state.isReverse
+      };
+    }
+  }
+
+  // 3. Uit herkomst en bestemming van de treindienst (origin ➔ destination)
+  if (t.service && t.service.origin && t.service.destination) {
+    const allSt = getAllStations();
+    const origSt = allSt.find(s => s.name.toLowerCase().includes(t.service.origin.toLowerCase()));
+    const destSt = allSt.find(s => s.name.toLowerCase().includes(t.service.destination.toLowerCase()));
+    if (origSt && destSt && (origSt.lat !== destSt.lat || origSt.lon !== destSt.lon)) {
+      const dLat = destSt.lat - origSt.lat;
+      const dLon = destSt.lon - origSt.lon;
+      const len = Math.hypot(dLat, dLon) || 1;
+      return {
+        dLat: dLat / len,
+        dLon: dLon / len,
+        isReverse: false
+      };
+    }
+  }
+
+  // 4. Uit ProRail treinnummer pariteit op de Nederlandse hoofdlijnen
+  const num = parseInt(t.trainNum, 10);
+  if (!isNaN(num) && num > 0) {
+    const isOdd = (num % 2 !== 0);
+    // In Nederland: even = westwaarts/zuidwaarts naar Randstad (Amersfoort/Utrecht/Amsterdam/Den Haag)
+    // Oneven = oostwaarts/noordwaarts naar Twente/Noorden (Apeldoorn/Deventer/Enschede/Groningen)
+    return {
+      dLat: isOdd ? 0.15 : -0.15,
+      dLon: isOdd ? 0.98 : -0.98,
+      isReverse: isOdd
+    };
+  }
+
+  return null;
+}
+
 function findNearestSegment(train, corridor) {
   let bestIdx = 0;
   let bestDist = Infinity;
@@ -4067,9 +4140,27 @@ function applyCustomRoute(fromCode, toCode) {
   document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('btnFilterAll')?.classList.add('active');
 
+  // Reset eventueel vergrendelde trein zodat GPS direct de trein in de nieuwe reisrichting matcht
+  appState.userLockedTrainId = null;
+  appState.userPreferredDirection = null;
+  appState.myTrain = null;
+
   renderCorridorOnMap(customCorridor);
   updateLineOverview();
   playAuthenticNSChime();
+
+  // Re-evalueer direct de treinmatch op basis van het nieuwe traject
+  if (appState.lastGpsFix) {
+    onLiveLocationFix({
+      coords: {
+        latitude: appState.lastGpsFix.lat,
+        longitude: appState.lastGpsFix.lon,
+        accuracy: appState.lastGpsFix.acc || 15,
+        speed: (appState.lastGpsFix.speed ? appState.lastGpsFix.speed / 3.6 : 0),
+        heading: appState.lastGpsFix.heading
+      }
+    });
+  }
 }
 
 function populateRoutePlannerDropdowns() {
@@ -4828,6 +4919,9 @@ window.switchMyTrainDirection = () => {
   const userLat = appState.lastGpsFix ? appState.lastGpsFix.lat : (currentTrain ? currentTrain.lat : 52.2);
   const userLon = appState.lastGpsFix ? appState.lastGpsFix.lon : (currentTrain ? currentTrain.lon : 6.0);
   const userSpeed = (appState.lastGpsFix && typeof appState.lastGpsFix.speed === 'number') ? appState.lastGpsFix.speed : (currentTrain?.speed || 0);
+  const activeCorridor = (appState.activeCorridorKey && appState.activeCorridorKey !== 'all' && appState.activeCorridorKey !== 'freight-all')
+    ? CORRIDORS[appState.activeCorridorKey]
+    : null;
 
   // 1. Controleer of de gebruiker zich op een station bevindt met meerdere treinen aanwezig (< 850m) en stilstaat
   const stationTrains = allParsed.filter(t => distanceKm(userLat, userLon, t.lat, t.lon) <= 0.85);
@@ -4839,9 +4933,45 @@ window.switchMyTrainDirection = () => {
     return;
   }
 
-  // 2. Als de gebruiker in een rijdende trein zit of op het open baanvak:
-  // Wissel de bestemming en reisrichting van de HUIDIGE trein (nooit springen naar een trein 20km verderop!)
+  // 2. Als de reiziger in een rijdende trein zit of de verkeerde richting ervaart:
+  // Zoek direct naar treinen op hetzelfde baanvak (< 10 km) die in de ANDERE richting rijden!
   if (currentTrain) {
+    const curMotion = getTrainMotionVector(currentTrain, activeCorridor);
+    const curNum = parseInt(currentTrain.trainNum, 10);
+    const curOpCode = (currentTrain.operator && currentTrain.operator.code) ? currentTrain.operator.code.toLowerCase() : '';
+
+    const candidatesOpposite = allParsed.filter(t => {
+      if (t.id === currentTrain.id) return false;
+      const d = distanceKm(userLat, userLon, t.lat, t.lon);
+      if (d > 10.0) return false;
+
+      const tOpCode = (t.operator && t.operator.code) ? t.operator.code.toLowerCase() : '';
+      if (curOpCode && tOpCode && !tOpCode.includes(curOpCode) && !curOpCode.includes(tOpCode)) {
+        return false;
+      }
+
+      const tMotion = getTrainMotionVector(t, activeCorridor);
+      if (curMotion && tMotion) {
+        const dot = (curMotion.dLat * tMotion.dLat) + (curMotion.dLon * tMotion.dLon);
+        if (dot < -0.05) return true; // Duidelijke tegentrein in tegengestelde richting!
+      }
+
+      const tNum = parseInt(t.trainNum, 10);
+      if (!isNaN(curNum) && !isNaN(tNum) && (curNum % 2 !== tNum % 2)) {
+        return true; // Tegenovergestelde pariteit op dezelfde lijn
+      }
+
+      return false;
+    });
+
+    if (candidatesOpposite.length > 0) {
+      candidatesOpposite.sort((a, b) => distanceKm(userLat, userLon, a.lat, a.lon) - distanceKm(userLat, userLon, b.lat, b.lon));
+      const chosen = candidatesOpposite[0];
+      window.selectMyTrain(chosen.id);
+      return;
+    }
+
+    // Geen fysieke tegentrein binnen 10 km: wissel de bestemming van de huidige trein
     const origin = (currentTrain.service && currentTrain.service.origin && currentTrain.service.origin !== 'Vertrekstation') ? currentTrain.service.origin : '';
     const dest = (currentTrain.service && currentTrain.service.destination && currentTrain.service.destination !== 'Eindbestemming') ? currentTrain.service.destination : '';
     const curDest = appState.userPreferredDirection || currentTrain.exactDestination || dest;
@@ -4991,7 +5121,16 @@ function onLiveLocationFix(pos) {
     }
   }
 
-  appState.lastGpsFix = { lat: userLat, lon: userLon, time: now, speed: userSpeedKmh, acc: userAcc };
+  // Bewaar de vorige GPS-fix VÓÓR het overschrijven, zodat koersvectoren en snelheden exact kloppen
+  const prevGpsFix = appState.lastGpsFix;
+  appState.lastGpsFix = {
+    lat: userLat,
+    lon: userLon,
+    time: now,
+    speed: userSpeedKmh,
+    acc: userAcc,
+    heading: (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) ? pos.coords.heading : null
+  };
 
   // Update of maak "U bevindt zich hier" marker op de kaart
   if (!appState.userLocationMarker) {
@@ -5012,13 +5151,30 @@ function onLiveLocationFix(pos) {
     smoothMoveMarker(appState.userLocationMarker, userLat, userLon, 1200);
   }
 
-  // Bepaal of de gebruiker zich in een duidelijke bewegingsrichting verplaatst
+  // Bepaal de fysieke bewegingsrichting van de smartphone van de reiziger
   let userHeadingVector = null;
-  if (appState.lastGpsFix && appState.lastGpsFix.time) {
-    const dLat = userLat - appState.lastGpsFix.lat;
-    const dLon = userLon - appState.lastGpsFix.lon;
-    if (Math.hypot(dLat, dLon) > 0.00015) { // Meer dan ~15m verplaatst
-      userHeadingVector = { dLat, dLon };
+  let userHeadingDegrees = null;
+
+  if (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading) && pos.coords.heading >= 0) {
+    userHeadingDegrees = pos.coords.heading;
+    const rad = userHeadingDegrees * Math.PI / 180;
+    // 0° = Noord (dLat > 0), 90° = Oost (dLon > 0), 180° = Zuid, 270° = West
+    userHeadingVector = {
+      dLat: Math.cos(rad),
+      dLon: Math.sin(rad)
+    };
+  } else if (prevGpsFix && prevGpsFix.time) {
+    const dLat = userLat - prevGpsFix.lat;
+    const dLon = userLon - prevGpsFix.lon;
+    const dDist = Math.hypot(dLat, dLon);
+    if (dDist > 0.00010) { // Meer dan ~10m verplaatst
+      userHeadingVector = {
+        dLat: dLat / dDist,
+        dLon: dLon / dDist
+      };
+      let h = Math.atan2(dLon * Math.cos(userLat * Math.PI / 180), dLat) * 180 / Math.PI;
+      if (h < 0) h += 360;
+      userHeadingDegrees = h;
     }
   }
 
@@ -5036,6 +5192,10 @@ function onLiveLocationFix(pos) {
 
   // Plausibiliteitsgrens: een reiziger kan NOOIT in een trein zitten die 1.9 km verderop staat!
   const maxPlausibleDistKm = (userSpeedKmh && userSpeedKmh > 15) ? 1.2 : 0.65;
+
+  const activeCorridor = (appState.activeCorridorKey && appState.activeCorridorKey !== 'all' && appState.activeCorridorKey !== 'freight-all')
+    ? CORRIDORS[appState.activeCorridorKey]
+    : null;
 
   allParsed.forEach(t => {
     const d = distanceKm(userLat, userLon, t.lat, t.lon);
@@ -5059,13 +5219,16 @@ function onLiveLocationFix(pos) {
       }
     }
 
-    // 0c. Prioriteit voor het geselecteerde traject (bv. Arriva Apeldoorn ➔ Zutphen via De Maten)
-    if (appState.activeCorridorKey && appState.activeCorridorKey !== 'all' && appState.activeCorridorKey !== 'freight-all') {
-      const activeCorridor = CORRIDORS[appState.activeCorridorKey];
-      if (activeCorridor) {
-        const isCorridorMatch = matchTrainToCorridor(t, activeCorridor);
-        if (isCorridorMatch) {
-          score *= 0.25; // Sterke voorkeur voor treinen op het gekozen traject!
+    // 0c. Prioriteit voor het geselecteerde traject (bv. Apeldoorn ➔ Amsterdam Centraal):
+    if (activeCorridor) {
+      const isCorridorMatch = matchTrainToCorridor(t, activeCorridor);
+      if (isCorridorMatch) {
+        if (!isCorridorMatch.isReverse) {
+          // Trein rijdt in de voorwaartse richting van het actieve traject!
+          score *= 0.20;
+        } else {
+          // Trein rijdt in de tegengestelde richting (tegentrein op het traject)!
+          score += 25.0; // Zware straf voor tegentreinen die de verkeerde kant op rijden
         }
       }
     }
@@ -5078,19 +5241,19 @@ function onLiveLocationFix(pos) {
       if (tDest.includes(pref) || tVia.includes(pref)) {
         score *= 0.25; // Sterke voorkeur voor de gewenste reisrichting of via-station
       } else {
-        score += 6.0;  // Tegentrein achterstellen
+        score += 15.0; // Tegentrein achterstellen
       }
     }
 
     // 2. Bewegingsrichting vergelijken: telefoon beweegt fysiek mee in dezelfde richting als de trein
-    if (userHeadingVector && t.toStation && t.fromStation) {
-      const tLatDiff = t.toStation.lat - t.fromStation.lat;
-      const tLonDiff = t.toStation.lon - t.fromStation.lon;
-      const dot = (userHeadingVector.dLat * tLatDiff) + (userHeadingVector.dLon * tLonDiff);
-      if (dot > 0) {
-        score *= 0.45; // Trein beweegt in exact dezelfde richting als de smartphone!
-      } else if (dot < 0) {
-        score += 8.0;  // Trein beweegt in tegengestelde richting (tegentrein passeert ons)!
+    const tMotion = getTrainMotionVector(t, activeCorridor);
+    if (userHeadingVector && tMotion) {
+      const dot = (userHeadingVector.dLat * tMotion.dLat) + (userHeadingVector.dLon * tMotion.dLon);
+      if (dot > 0.05) {
+        score *= 0.35; // Trein beweegt in exact dezelfde richting als de smartphone!
+      } else if (dot < -0.05) {
+        // Trein beweegt in tegengestelde richting (tegentrein passeert ons op het andere spoor)!
+        score += (userSpeedKmh && userSpeedKmh > 15) ? 60.0 : 20.0;
       }
     }
 
@@ -6604,8 +6767,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.0';
-const APP_BUILD_COMMIT = '828d67b';
+const APP_VERSION = '2.9.1';
+const APP_BUILD_COMMIT = 'eb10a4b';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

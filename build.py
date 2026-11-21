@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.9.0"
+DEFAULT_VERSION = "2.9.1"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -268,6 +268,12 @@ def update_version_json(sha=None, build_num=None):
 
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
+        {
+            "tag": "Rijrichting & Tegentreinen",
+            "title": "Strikte Fysieke Rijrichting & Tegentrein Uitsluiting",
+            "desc": "Detecteert realtime uw fysieke GPS-bewegingsrichting en de actieve trajectrichting (bv. Apeldoorn ➔ Amersfoort). Sluit tegemoetkomende tegentreinen (zoals #1739 naar Enschede) automatisch uit. Inclusief 1-tik tegentrein-wisselknop.",
+            "icon": "🧭"
+        },
         {
             "tag": "Eindbestemming & Randstad",
             "title": "Actuele NS Dienstregeling (Den Haag C / Rotterdam C)",

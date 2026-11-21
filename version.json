@@ -1,12 +1,18 @@
 {
-  "version": "2.9.0",
-  "commit": "828d67b",
-  "fullCommit": "828d67bf0b7baa5292597e2e029253d771bb7352",
-  "buildTime": "2026-11-19T14:04:47Z",
+  "version": "2.9.1",
+  "commit": "eb10a4b",
+  "fullCommit": "eb10a4bb71fcc23e9ad7b4a9da6028fd5b2beb9d",
+  "buildTime": "2026-11-21T11:44:08Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
+    {
+      "tag": "Rijrichting & Tegentreinen",
+      "title": "Strikte Fysieke Rijrichting & Tegentrein Uitsluiting",
+      "desc": "Detecteert realtime uw fysieke GPS-bewegingsrichting en de actieve trajectrichting (bv. Apeldoorn ➔ Amersfoort). Sluit tegemoetkomende tegentreinen (zoals #1739 naar Enschede) automatisch uit. Inclusief 1-tik tegentrein-wisselknop.",
+      "icon": "🧭"
+    },
     {
       "tag": "Eindbestemming & Randstad",
       "title": "Actuele NS Dienstregeling (Den Haag C / Rotterdam C)",
