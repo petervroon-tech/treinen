@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.9.1"
+DEFAULT_VERSION = "2.9.2"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -268,6 +268,12 @@ def update_version_json(sha=None, build_num=None):
 
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
+        {
+            "tag": "ICE & Hoge Snelheid",
+            "title": "ICE International Hysteresis & Snelheidsdiscriminatie",
+            "desc": "Intelligente hysteresis en dead-reckoning voor ICE- en hogesnelheidstreinen (o.a. Utrecht-Amsterdam). Voorkomt dat het scherm overspringt naar langzamere sprinters (#4047) of tegentreinen bij telemetrie-jitter. Toont altijd uw werkelijke GPS-snelheid tot 160-250 km/u.",
+            "icon": "🚄"
+        },
         {
             "tag": "Rijrichting & Tegentreinen",
             "title": "Strikte Fysieke Rijrichting & Tegentrein Uitsluiting",

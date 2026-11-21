@@ -738,9 +738,14 @@ export function detectOperator(train) {
     return OPERATORS.eurostar;
   }
 
-  // 2. ICE International
-  if (rawMat.includes('ice') || rawCol.includes('ice') || rawStr.includes('ice ') ||
-      (num >= 100 && num <= 129) || (num >= 220 && num <= 229)) {
+  // 2. ICE International (DB Fernverkehr / NS International)
+  if (rawMat.includes('ice') || rawCol.includes('ice') || rawStr.includes('ice') ||
+      rawCat.includes('ice') || rawMat.includes('velaro') || rawMat.includes('br406') ||
+      rawMat.includes('br407') || rawMat.includes('br408') || rawMat.includes('406') ||
+      rawMat.includes('408') || (num >= 100 && num <= 159) || (num >= 220 && num <= 259) ||
+      rawDest.includes('frankfurt') || rawDest.includes('basel') || rawDest.includes('köln') ||
+      rawDest.includes('koln') || rawDest.includes('munchen') || rawDest.includes('münchen') ||
+      (train.operator && train.operator.code && train.operator.code.toLowerCase() === 'ice')) {
     return OPERATORS.ice;
   }
 
@@ -5198,13 +5203,31 @@ function onLiveLocationFix(pos) {
     : null;
 
   allParsed.forEach(t => {
-    const d = distanceKm(userLat, userLon, t.lat, t.lon);
+    // Gebruik de continu geïnterpoleerde/geëxtrapoleerde positie (dead-reckoning) indien beschikbaar,
+    // zodat een rijdende trein (zoals ICE) met vertraagde feed-update niet kunstmatig 1-2 km achterop lijkt te liggen!
+    const mState = appState.trainMotionStates && appState.trainMotionStates.get(t.id);
+    const tCurLat = (mState && typeof mState.curLat === 'number') ? mState.curLat : t.lat;
+    const tCurLon = (mState && typeof mState.curLon === 'number') ? mState.curLon : t.lon;
+    const d = distanceKm(userLat, userLon, tCurLat, tCurLon);
     if (d > 12.0) return; // Te ver weg om de trein van de gebruiker te zijn
     let score = d;
 
     // 0. Handmatig door gebruiker gekozen/vergrendelde trein op dit station
     if (appState.userLockedTrainId && t.id === appState.userLockedTrainId) {
       score *= 0.04; // Absolute voorkeur voor de specifiek gekozen trein
+    }
+
+    // 0a. Hysteresis / Stickiness voor de reeds actieve trein (appState.myTrain):
+    // Voorkom dat de app bij een rijdende trein (bv. ICE) continu flikkert/overschakelt naar passerende sprinters!
+    const isCurrentMyTrain = appState.myTrain && (t.id === appState.myTrain.id || (t.trainNum && appState.myTrain.trainNum && t.trainNum === appState.myTrain.trainNum));
+    if (isCurrentMyTrain) {
+      score *= 0.10; // Enorme stickiness bonus om dezelfde trein vast te houden
+    }
+
+    // Als de reiziger op open baanvak rijdt (> 30 km/u) en niet op een station staat,
+    // sluit treinen uit die verder dan 1.4 km van de geëxtrapoleerde positie liggen (tenzij het onze huidige trein is)
+    if (!isAtStation && userSpeedKmh && userSpeedKmh > 30 && d > 1.4 && !isCurrentMyTrain) {
+      return;
     }
 
     // 0b. Baanvak / Station exclusiviteit:
@@ -5257,13 +5280,20 @@ function onLiveLocationFix(pos) {
       }
     }
 
-    // 3. Als gebruiker in een rijdende trein zit (>15 km/u), geef sterke voorkeur aan rijdende treinen!
-    if (userSpeedKmh && userSpeedKmh > 15) {
-      if (t.speed && t.speed > 15 && d < 4.0) {
-        const speedDiff = Math.abs(t.speed - userSpeedKmh);
-        score = score * 0.4 + (speedDiff * 0.01);
+    // 3. Als gebruiker in een rijdende trein zit (>25 km/u), vergelijk rijsnelheid zeer scherp!
+    if (userSpeedKmh && userSpeedKmh > 25) {
+      const trainSpeed = (typeof t.speed === 'number' && t.speed > 0) ? t.speed : ((mState && mState.speed) || 0);
+      if (trainSpeed > 15) {
+        const speedDiff = Math.abs(trainSpeed - userSpeedKmh);
+        if (speedDiff > 35) {
+          // Reiziger raast met bv. 142 km/u; een trein die 41 km/u rijdt is een stoptrein/afremmende trein op een lokaal spoor
+          score += 35.0 + speedDiff * 0.4;
+        } else {
+          score = score * 0.30 + (speedDiff * 0.04);
+        }
       } else {
-        score = score + 5.0;
+        // Trein staat stil of heeft 0 km/u terwijl telefoon 100+ km/u beweegt
+        score += 40.0;
       }
     }
 
@@ -5272,6 +5302,27 @@ function onLiveLocationFix(pos) {
       bestTrain = t;
     }
   });
+
+  // Hysteresis lock: voorkom overspringen naar een andere trein als we al in een rijdende trein zitten
+  if (appState.myTrain && bestTrain && bestTrain.id !== appState.myTrain.id) {
+    const currentTrainStillExists = allParsed.find(t => t.id === appState.myTrain.id || (t.trainNum && appState.myTrain.trainNum && t.trainNum === appState.myTrain.trainNum));
+    if (currentTrainStillExists) {
+      const curMState = appState.trainMotionStates && appState.trainMotionStates.get(currentTrainStillExists.id);
+      const curLat = (curMState && typeof curMState.curLat === 'number') ? curMState.curLat : currentTrainStillExists.lat;
+      const curLon = (curMState && typeof curMState.curLon === 'number') ? curMState.curLon : currentTrainStillExists.lon;
+      const curDist = distanceKm(userLat, userLon, curLat, curLon);
+
+      // Als we met >30 km/u rijden en onze huidige trein is nog binnen 3.5 km:
+      // Wissel ALLEEN over als de nieuwe trein overtuigend dichtbij is (< 350m) én een bijna identieke snelheid heeft (< 25 km/u verschil)
+      if (userSpeedKmh && userSpeedKmh > 30) {
+        const newDist = distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon);
+        const newSpeedDiff = Math.abs((bestTrain.speed || 0) - userSpeedKmh);
+        if (curDist < 3.5 && (newDist > 0.35 || newSpeedDiff > 25)) {
+          bestTrain = currentTrainStillExists;
+        }
+      }
+    }
+  }
 
   // Plausibiliteitscontrole: als de gevonden trein verder weg is dan de plausibele afstand (bv. 1923 meter),
   // en de reiziger bevindt zich op een specifiek station zoals Apeldoorn De Maten:
@@ -5431,25 +5482,31 @@ function onLiveLocationFix(pos) {
   }
 
   // Bepaal de veilige, realistische rijsnelheid van de trein (nooit 400+ km/u)
-  let maxPermissibleSpeed = 140; // Standaard maximum op Nederlands spoor (ATB)
+  let maxPermissibleSpeed = 160; // Standaard maximum op Nederlands hoofdspoor (Utrecht - Amsterdam viersporig / Hanzelijn)
   const opCode = (bestTrain && bestTrain.operator && bestTrain.operator.code) ? bestTrain.operator.code.toLowerCase() : '';
   if (opCode.includes('arriva') || opCode.includes('blauwnet') || opCode.includes('qbuzz') || opCode.includes('keolis')) {
-    maxPermissibleSpeed = 130; // Regionale lijnen (bv. Apeldoorn - Zutphen)
-  } else if (bestTrain && bestTrain.operator && bestTrain.operator.category === 'hsl') {
-    maxPermissibleSpeed = 200;
+    maxPermissibleSpeed = 140; // Regionale lijnen
+  } else if (opCode.includes('ice') || opCode.includes('eurostar') || (bestTrain && bestTrain.operator && (bestTrain.operator.category === 'hsl' || bestTrain.operator.category === 'international'))) {
+    maxPermissibleSpeed = 250; // HSL & ICE International (tot 200-250 km/u)
   }
 
   let effectiveSpeed = 0;
   if (userSpeedKmh !== null && userSpeedKmh >= 3 && userSpeedKmh <= maxPermissibleSpeed) {
     if (bestTrain && typeof bestTrain.speed === 'number' && bestTrain.speed > 5 && bestTrain.speed <= maxPermissibleSpeed) {
-      effectiveSpeed = Math.round(0.7 * userSpeedKmh + 0.3 * bestTrain.speed);
+      // Als telemetrie van trein en GPS beide snel zijn: controleer op consistentie
+      const diff = Math.abs(userSpeedKmh - bestTrain.speed);
+      if (diff < 20) {
+        effectiveSpeed = Math.round(0.75 * userSpeedKmh + 0.25 * bestTrain.speed);
+      } else {
+        effectiveSpeed = userSpeedKmh; // Bij afwijking is GPS van de reiziger in de trein leidend!
+      }
     } else {
       effectiveSpeed = userSpeedKmh;
     }
   } else if (bestTrain && typeof bestTrain.speed === 'number' && bestTrain.speed > 0) {
     effectiveSpeed = Math.min(maxPermissibleSpeed, bestTrain.speed);
   } else {
-    effectiveSpeed = opCode.includes('arriva') ? 90 : 110;
+    effectiveSpeed = opCode.includes('arriva') ? 90 : 130;
   }
 
   if (effectiveSpeed > maxPermissibleSpeed) {
@@ -6767,8 +6824,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.1';
-const APP_BUILD_COMMIT = 'eb10a4b';
+const APP_VERSION = '2.9.2';
+const APP_BUILD_COMMIT = 'a94dded';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

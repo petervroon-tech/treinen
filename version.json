@@ -1,12 +1,18 @@
 {
-  "version": "2.9.1",
-  "commit": "eb10a4b",
-  "fullCommit": "eb10a4bb71fcc23e9ad7b4a9da6028fd5b2beb9d",
-  "buildTime": "2026-11-21T11:44:08Z",
+  "version": "2.9.2",
+  "commit": "a94dded",
+  "fullCommit": "a94dded62254002a4f35ac6333c8464b4b9598a4",
+  "buildTime": "2026-11-21T12:46:12Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
+    {
+      "tag": "ICE & Hoge Snelheid",
+      "title": "ICE International Hysteresis & Snelheidsdiscriminatie",
+      "desc": "Intelligente hysteresis en dead-reckoning voor ICE- en hogesnelheidstreinen (o.a. Utrecht-Amsterdam). Voorkomt dat het scherm overspringt naar langzamere sprinters (#4047) of tegentreinen bij telemetrie-jitter. Toont altijd uw werkelijke GPS-snelheid tot 160-250 km/u.",
+      "icon": "🚄"
+    },
     {
       "tag": "Rijrichting & Tegentreinen",
       "title": "Strikte Fysieke Rijrichting & Tegentrein Uitsluiting",
