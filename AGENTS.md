@@ -43,6 +43,25 @@ Deze richtlijnen gelden voor alle huidige en toekomstige aanpassingen en applica
   - Modals schakelen automatisch over naar touch-vriendelijke bottom sheets met veilige marges (`env(safe-area-inset-bottom)`).
   - Geen enkele horizontale overflow of afgekipte popups; knoppen en lettergroottes schalen strak mee (`0.65rem - 0.78rem`).
 
+## 6. Mobile & Tablet Conventies: Single-Focus Intent ("Keep It Simple & Sweet - KISS")
+- **Mobile-friendly single-focus intent i.p.v. desktop-metaforen:**
+  - Structureer schermen rondom één duidelijke primaire focus per view. Voorkom overvolle schermen met tientallen gelijktijdige controls.
+  - Houd het simpel, doelgericht en intuïtief: "Keep it Simple and Sweet (KISS)".
+- **Directe Feedback op Knoppen & Acties (Click/Tick & Status):**
+  - Laat de gebruiker bij elke actie of knopklik direct zien wat het resultaat is via een subtiele badge, tick of status-indicator:
+    - *Gelukt:* "✓ 8 treinen gevonden" of "✓ Traject geactiveerd".
+    - *Fout:* Duidelijke, behulpzame toelichting waarom iets niet lukt.
+    - *Aantal:* Toon altijd het aantal verkregen resultaten na een zoek- of filteractie.
+- **Volledige Leesbaarheid & Touch Scroll:**
+  - Knoppen en teksten zijn altijd helder, contrastrijk en geheel leesbaar zonder afkapping van essentiële gegevens.
+  - Makkelijk en natuurlijk verticaal scrollen in containers (`-webkit-overflow-scrolling: touch; overscroll-behavior: contain`).
+- **Datavalidatie & Bronvermelding in de UI:**
+  - Toon altijd transparant waar gegevens vandaan komen (bv. "📍 GPS Satelliet (±4m)", "🚆 Live NDOV Loket telemetrie", "🎙️ Web Speech API / TTS", "⛽ Actuele brandstofprijzen").
+  - Dit valideert de getoonde data en versterkt het gebruikersvertrouwen.
+- **Postcode & Plaatsnaam Combinatie (Brandstof & Locatie):**
+  - Toon bij postcodes altijd direct de bijbehorende plaatsnaam (bijv. "3511 Utrecht" i.p.v. alleen een kale postcode). Zowel bij invoer, zoekherkenning als stationskaarten.
+
+
 
 
 
