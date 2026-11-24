@@ -5485,8 +5485,11 @@ function onLiveLocationFix(pos) {
     const d = distanceKm(userLat, userLon, tCurLat, tCurLon);
     
     // Een reiziger kan NOOIT in een trein zitten die kilometers ver weg rijdt!
-    // Maximaal 2.5 km (of 3.5 km bij hoge snelheid > 100 km/u met geëxtrapoleerde positie)
-    const maxSearchDist = (userSpeedKmh && userSpeedKmh > 100) ? 3.5 : 2.5;
+    // Maximaal 2.5 km (of 3.5 km bij hoge snelheid > 100 km/u; tot 4.5 km bij grove zendmastpeiling ±2000m)
+    const isCoarseCell = userAcc > 400;
+    const maxSearchDist = isCoarseCell
+      ? Math.min(4.5, (userAcc / 1000) + 1.5)
+      : ((userSpeedKmh && userSpeedKmh > 100) ? 3.5 : 2.5);
     if (d > maxSearchDist) return;
     let score = d;
 
@@ -5639,15 +5642,17 @@ function onLiveLocationFix(pos) {
       bestTrain = null;
     } else {
       const bDist = distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon);
-      if (bDist > 2.5) {
+      const isCoarseCell = userAcc > 400;
+      const maxAllowedDist = isCoarseCell ? Math.min(4.5, (userAcc / 1000) + 1.5) : 2.5;
+      if (bDist > maxAllowedDist) {
         bestTrain = null;
-      } else if (userSpeedKmh && userSpeedKmh > 25) {
+      } else if (!isCoarseCell && userSpeedKmh && userSpeedKmh > 25) {
         const bSpeed = (typeof bestTrain.speed === 'number' && bestTrain.speed > 0) ? bestTrain.speed : 0;
         const bSpeedDiff = bSpeed > 10 ? Math.abs(bSpeed - userSpeedKmh) : 0;
         if (bDist > 1.6 || (bSpeed > 10 && bSpeedDiff > 45)) {
           bestTrain = null; // Geen valse match met een stoptrein of tegentrein die kilometers verderop rijdt!
         }
-      } else if (isAtStation && bDist > 0.85) {
+      } else if (isAtStation && !isCoarseCell && bDist > 0.85) {
         bestTrain = null;
       }
     }
@@ -5655,7 +5660,7 @@ function onLiveLocationFix(pos) {
 
   if (!bestTrain && appState.myTrain) {
     const curDist = distanceKm(userLat, userLon, appState.myTrain.lat, appState.myTrain.lon);
-    if (curDist <= 2.5) {
+    if (curDist <= 3.5) {
       bestTrain = appState.myTrain;
     } else {
       appState.myTrain = null;
@@ -5663,10 +5668,11 @@ function onLiveLocationFix(pos) {
     }
   }
   if (!bestTrain) {
-    // We hebben wél een werkende GPS-fix van de smartphone, maar (nog) geen gekoppelde treinrit in de feed.
-    // Werk direct de snelheid, GPS-coördinaten en het dichtstbijzijnde station bij zodat de interface direct leeft!
+    // We hebben wél een werkende GPS/zendmast-fix van de smartphone, maar (nog) geen zekere treinrit-match.
+    // Toon direct de GPS/zendmast-status EN de nabije treinen (inclusief HSL) zodat de reiziger direct met 1 tik kan kiezen!
     const effectiveSpeed = (userSpeedKmh !== null) ? userSpeedKmh : 0;
     const spdInfo = getSpeedBadgeInfo(effectiveSpeed);
+    const isCoarseCell = userAcc > 400;
 
     const modalSpeedEl = document.getElementById('myTrainSpeed');
     if (modalSpeedEl) modalSpeedEl.textContent = effectiveSpeed;
@@ -5674,7 +5680,9 @@ function onLiveLocationFix(pos) {
     const modalStatusEl = document.getElementById('myTrainSpeedStatus');
     if (modalStatusEl) {
       modalStatusEl.className = `speed-status-pill ${spdInfo.cssClass}`;
-      modalStatusEl.textContent = (effectiveSpeed > 15) ? `⚡ ${effectiveSpeed} km/u (Live Smartphone GPS)` : '🛰️ GPS Verbonden (Zoekt treinrit...)';
+      modalStatusEl.textContent = isCoarseCell
+        ? `📶 Zendmast-peiling (±${userAcc}m) • Kies evt. uw trein ↓`
+        : ((effectiveSpeed > 15) ? `⚡ ${effectiveSpeed} km/u (Live Smartphone GPS)` : '🛰️ GPS Verbonden (Zoekt treinrit...)');
     }
 
     const modalTitle = document.getElementById('myTrainTitle');
@@ -5693,15 +5701,58 @@ function onLiveLocationFix(pos) {
 
     const modalSegment = document.getElementById('myTrainSegment');
     if (modalSegment) {
-      modalSegment.textContent = `📍 Live GPS peiling actief (±${userAcc}m) • Zoekt actuele treinrit in NDOV Loket...`;
+      modalSegment.textContent = isCoarseCell
+        ? `📶 Grove zendmast-peiling (±${userAcc}m) • Tik hieronder direct op uw HSL/IC trein:`
+        : `📍 Live GPS peiling actief (±${userAcc}m) • Zoekt actuele treinrit in NDOV Loket...`;
     }
 
     const modalMetaEl = document.getElementById('myTrainGpsMeta');
     if (modalMetaEl) {
       modalMetaEl.innerHTML = `
-        📍 <strong>Uw GPS:</strong> ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (±${userAcc}m)${userSpeedKmh !== null ? ` &bull; Snelheid: <strong>${userSpeedKmh} km/u</strong>` : ''}<br>
-        📡 <em>Verbonden met GPS satellieten. Zoekt overeenkomstige trein op dit baanvak...</em>
+        📍 <strong>Uw ${isCoarseCell ? 'Zendmast-peiling' : 'GPS'}:</strong> ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (±${userAcc}m)${userSpeedKmh !== null ? ` &bull; Snelheid: <strong>${userSpeedKmh} km/u</strong>` : ''}<br>
+        📡 <em>${isCoarseCell ? 'Wacht op nauwkeurige satelliet-lock (treinmetaal/tunnel).' : 'Verbonden met GPS satellieten.'} Kies hieronder evt. handmatig uw trein:</em>
       `;
+    }
+
+    // Toon altijd de nabije treinen (< 5 km) + HSL snelknoppen in de modal zodat de reiziger nooit vastzit!
+    const selectorEl = document.getElementById('myTrainStationSelector');
+    const chipsEl = document.getElementById('myTrainStationChips');
+    if (selectorEl && chipsEl) {
+      const nearbyPassengerTrains = allParsed.filter(t => {
+        const isFreight = (t.operator && t.operator.category === 'freight') ||
+                          (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999);
+        if (isFreight) return false;
+        return distanceKm(userLat, userLon, t.lat, t.lon) <= 5.5;
+      }).sort((a, b) => distanceKm(userLat, userLon, a.lat, a.lon) - distanceKm(userLat, userLon, b.lat, b.lon));
+
+      selectorEl.style.display = 'block';
+      const titleLabelEl = selectorEl.querySelector('.mt-station-title');
+      const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
+      if (titleLabelEl) {
+        titleLabelEl.textContent = `🚆 Treinen binnen 5,5 km (${nearbyPassengerTrains.length} gevonden):`;
+      }
+      if (hintLabelEl) {
+        hintLabelEl.textContent = 'Tik direct op uw trein (of kies HSL Rotterdam ⇄ Schiphol):';
+      }
+      const quickBtns = `
+        <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+          <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains && window.filterManualModalTrains('amersfoort-breda')" style="border-color:rgba(250,204,21,0.45); color:#fde047;">⚡ HSL Rotterdam ⇄ Schiphol</button>
+          <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains && window.filterManualModalTrains('rotterdam-amsterdam')" style="border-color:rgba(56,189,248,0.4); color:#7dd3fc;">🚆 Oude Lijn Rtd ⇄ Asd</button>
+        </div>
+      `;
+      const chipsHtml = nearbyPassengerTrains.slice(0, 6).map(stTrain => {
+        const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
+        const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
+        const stDistKm = distanceKm(userLat, userLon, stTrain.lat, stTrain.lon).toFixed(1);
+        const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
+        return `
+          <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')">
+            <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
+            <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd} • ${stDistKm} km)</span>
+          </button>
+        `;
+      }).join('');
+      chipsEl.innerHTML = quickBtns + (chipsHtml || '<span style="font-size:0.75rem; color:#94a3b8;">Tik op ⚡ HSL Rotterdam ⇄ Schiphol hierboven om alle HSL-treinen te tonen.</span>');
     }
 
     const modalNextStation = document.getElementById('myTrainNextStation');
@@ -7271,8 +7322,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.10';
-const APP_BUILD_COMMIT = 'd0e75ef';
+const APP_VERSION = '2.9.11';
+const APP_BUILD_COMMIT = '3483900';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
