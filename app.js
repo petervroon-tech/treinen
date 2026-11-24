@@ -459,7 +459,7 @@ export const CORRIDORS = {
     badge: 'ICE',
     operator: 'DB Fernverkehr / NS Int.',
     primaryOpKey: 'ice',
-    seriesPattern: /^(10|12|22)\d{1}$/,
+    seriesPattern: /^(1[0-5]|2[2-5])\d{1}$/,
     stations: [
       { code: 'ASD',  name: 'Amsterdam Centraal',   lat: 52.3792, lon: 4.9003, terminal: true,  sporen: '1-15' },
       { code: 'UT',   name: 'Utrecht Centraal',     lat: 52.0894, lon: 5.1103, terminal: false, sporen: '1-21' },
@@ -4920,7 +4920,7 @@ function stopLiveTrainTracking() {
   if (bannerBtnText) bannerBtnText.textContent = '⚡ Toon Mijn Trein';
 }
 
-// 1-Tap wisselknop: wisselt direct tussen treinen op hetzelfde station, of wisselt reisrichting/bestemming van de huidige trein
+// 1-Tap wisselknop: wisselt direct tussen treinen op hetzelfde station of baanvak, of wisselt reisrichting/bestemming
 window.switchMyTrainDirection = () => {
   const currentTrain = appState.myTrain;
   const allParsed = getActiveParsedTrains();
@@ -4931,12 +4931,13 @@ window.switchMyTrainDirection = () => {
     ? CORRIDORS[appState.activeCorridorKey]
     : null;
 
-  // 1. Controleer of de gebruiker zich op een station bevindt met meerdere treinen aanwezig (< 850m) en stilstaat
-  const stationTrains = allParsed.filter(t => distanceKm(userLat, userLon, t.lat, t.lon) <= 0.85);
-  if (stationTrains.length >= 2 && userSpeed <= 15) {
-    const curIdx = currentTrain ? stationTrains.findIndex(t => t.id === currentTrain.id) : -1;
-    const nextIdx = (curIdx + 1) % stationTrains.length;
-    const nextTrain = stationTrains[nextIdx];
+  // 1. Controleer of er meerdere treinen in de directe fysieke nabijheid zijn (< 2.5 km op baanvak, < 850m op station)
+  const maxSearchDist = (userSpeed > 15) ? 2.5 : 0.85;
+  const nearbyTrains = allParsed.filter(t => distanceKm(userLat, userLon, t.lat, t.lon) <= maxSearchDist);
+  if (nearbyTrains.length >= 2) {
+    const curIdx = currentTrain ? nearbyTrains.findIndex(t => t.id === currentTrain.id) : -1;
+    const nextIdx = (curIdx + 1) % nearbyTrains.length;
+    const nextTrain = nearbyTrains[nextIdx];
     window.selectMyTrain(nextTrain.id);
     return;
   }
@@ -4985,15 +4986,17 @@ window.switchMyTrainDirection = () => {
     const curDest = appState.userPreferredDirection || currentTrain.exactDestination || dest;
 
     const num = parseInt(currentTrain.trainNum, 10) || 0;
-    // Bepaal slimme wisselkeuzes op het baanvak (bv. Den Haag C ⇄ Rotterdam C ⇄ Leeuwarden/Groningen)
+    // Bepaal slimme wisselkeuzes op het baanvak (bv. Den Haag C ⇄ Rotterdam C ⇄ Breda ⇄ Leeuwarden/Groningen)
     let nextDest = '';
-    const isRandstadSplit = (num >= 500 && num <= 699) || (num >= 1600 && num <= 1799) || (num >= 11600 && num <= 11799) || (num >= 1400 && num <= 1499) || (num >= 2000 && num <= 2099) || (num >= 2800 && num <= 2899);
+    const isRandstadSplit = (num >= 500 && num <= 799) || (num >= 1100 && num <= 1199) || (num >= 1600 && num <= 1799) || (num >= 11600 && num <= 11799) || (num >= 1400 && num <= 1499) || (num >= 1800 && num <= 1899) || (num >= 2000 && num <= 2099) || (num >= 2400 && num <= 2499) || (num >= 2800 && num <= 2899) || (num >= 9200 && num <= 9299);
 
     if (isRandstadSplit) {
       if (/rotterdam/i.test(curDest)) {
         nextDest = 'Den Haag Centraal';
       } else if (/den haag/i.test(curDest)) {
-        nextDest = origin || (dest.includes('Den Haag') ? 'Leeuwarden' : dest);
+        nextDest = (/breda/i.test(origin) || /breda/i.test(dest)) ? 'Breda' : (origin || 'Rotterdam Centraal');
+      } else if (/breda/i.test(curDest)) {
+        nextDest = 'Rotterdam Centraal';
       } else {
         nextDest = 'Den Haag Centraal';
       }
@@ -5042,7 +5045,24 @@ window.switchMyTrainDirection = () => {
 window.setMyTrainDestination = (dest) => {
   if (!dest) return;
   appState.userPreferredDirection = dest;
-  if (appState.myTrain) {
+
+  // Zoek direct of er binnen 4.0 km een daadwerkelijke trein in allParsed zit die naar deze bestemming rijdt!
+  const allParsed = getActiveParsedTrains();
+  const userLat = appState.lastGpsFix ? appState.lastGpsFix.lat : (appState.myTrain ? appState.myTrain.lat : 52.2);
+  const userLon = appState.lastGpsFix ? appState.lastGpsFix.lon : (appState.myTrain ? appState.myTrain.lon : 6.0);
+  const matchingTrain = allParsed.find(t => {
+    const d = distanceKm(userLat, userLon, t.lat, t.lon);
+    if (d > 4.0) return false;
+    const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
+    const tVia = (t.service && t.service.via ? t.service.via : '').toLowerCase();
+    const target = dest.toLowerCase();
+    return tDest.includes(target) || tVia.includes(target);
+  });
+
+  if (matchingTrain) {
+    appState.userLockedTrainId = matchingTrain.id;
+    appState.myTrain = matchingTrain;
+  } else if (appState.myTrain) {
     appState.myTrain.exactDestination = dest;
     if (appState.myTrain.service) {
       appState.myTrain.service.destination = dest;
@@ -5057,7 +5077,14 @@ window.setMyTrainDestination = (dest) => {
         latitude: appState.lastGpsFix.lat,
         longitude: appState.lastGpsFix.lon,
         accuracy: appState.lastGpsFix.acc || 15,
-        speed: (appState.lastGpsFix.speed ? appState.lastGpsFix.speed / 3.6 : 0)
+        speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : null),
+        heading: appState.lastGpsFix.heading
+      }
+    });
+  } else {
+    updateLineOverview();
+  }
+};
       }
     });
   } else {
@@ -5204,6 +5231,15 @@ function onLiveLocationFix(pos) {
   const stationAllowedOps = new Set(stationCorridors.map(c => c.primaryOpKey));
   const isStationSingleOperator = isAtStation && stationAllowedOps.size === 1; // bv. Apeldoorn De Maten: uitsluitend Arriva!
 
+  // Voorkom dat een oude sessie van een trein uit een andere provincie (zoals Apeldoorn) blijft spoken
+  if (appState.myTrain) {
+    const curDistToMyTrain = distanceKm(userLat, userLon, appState.myTrain.lat, appState.myTrain.lon);
+    if (curDistToMyTrain > 6.0) {
+      appState.myTrain = null;
+      appState.userLockedTrainId = null;
+    }
+  }
+
   // Zoek dichtstbijzijnde trein uit ALLE actuele treinen in Nederland (VOLLEDIG ONAFHANKELIJK van het geselecteerde traject)
   const allParsed = getActiveParsedTrains();
   let bestTrain = null;
@@ -5226,21 +5262,22 @@ function onLiveLocationFix(pos) {
     if (d > 12.0) return; // Te ver weg om de trein van de gebruiker te zijn
     let score = d;
 
-    // 0. Handmatig door gebruiker gekozen/vergrendelde trein op dit station
+    // 0. Handmatig door gebruiker gekozen/vergrendelde trein op dit station of baanvak
     if (appState.userLockedTrainId && t.id === appState.userLockedTrainId) {
       score *= 0.04; // Absolute voorkeur voor de specifiek gekozen trein
     }
 
     // 0a. Hysteresis / Stickiness voor de reeds actieve trein (appState.myTrain):
-    // Voorkom dat de app bij een rijdende trein (bv. ICE) continu flikkert/overschakelt naar passerende sprinters!
+    // Voorkom dat de app bij een rijdende trein continu flikkert naar passerende treinen,
+    // MAAR uitsluitend zolang deze trein daadwerkelijk nog fysiek dichtbij is (< 2.5 km)!
     const isCurrentMyTrain = appState.myTrain && (t.id === appState.myTrain.id || (t.trainNum && appState.myTrain.trainNum && t.trainNum === appState.myTrain.trainNum));
-    if (isCurrentMyTrain) {
-      score *= 0.10; // Enorme stickiness bonus om dezelfde trein vast te houden
+    if (isCurrentMyTrain && d <= 2.5) {
+      score *= 0.15; // Stickiness bonus om dezelfde trein vast te houden
     }
 
     // Als de reiziger op open baanvak rijdt (> 30 km/u) en niet op een station staat,
-    // sluit treinen uit die verder dan 4.0 km van de geëxtrapoleerde positie liggen (om NDOV-feed latency op te vangen)
-    if (!isAtStation && userSpeedKmh && userSpeedKmh > 30 && d > 4.0 && !isCurrentMyTrain) {
+    // sluit treinen uit die verder dan 3.0 km van de geëxtrapoleerde positie liggen (om NDOV-feed latency op te vangen)
+    if (!isAtStation && userSpeedKmh && userSpeedKmh > 30 && d > 3.0 && !isCurrentMyTrain) {
       return;
     }
     if (d > 1.0) {
@@ -5273,15 +5310,15 @@ function onLiveLocationFix(pos) {
       }
     }
 
-    // 1. Voorkeursbestemming van de gebruiker (indien handmatig gewisseld via de wisselknop)
+    // 1. Voorkeursbestemming van de gebruiker (indien gekozen via de wisselknop of bestemming-chips)
     if (appState.userPreferredDirection) {
       const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
       const tVia = (t.service && t.service.via ? t.service.via : '').toLowerCase();
       const pref = appState.userPreferredDirection.toLowerCase();
       if (tDest.includes(pref) || tVia.includes(pref)) {
-        score *= 0.25; // Sterke voorkeur voor de gewenste reisrichting of via-station
+        score *= 0.20; // Zeer sterke voorkeur voor de gewenste reisrichting of via-station
       } else {
-        score += 15.0; // Tegentrein achterstellen
+        score += 25.0; // Andere bestemmingen achterstellen
       }
     }
 
@@ -5302,15 +5339,15 @@ function onLiveLocationFix(pos) {
       const trainSpeed = (typeof t.speed === 'number' && t.speed > 0) ? t.speed : ((mState && mState.speed) || 0);
       if (trainSpeed > 15) {
         const speedDiff = Math.abs(trainSpeed - userSpeedKmh);
-        if (speedDiff > 35) {
-          // Reiziger raast met bv. 142 km/u; een trein die 41 km/u rijdt is een stoptrein/afremmende trein op een lokaal spoor
-          score += 35.0 + speedDiff * 0.4;
+        if (speedDiff > 45) {
+          // Reiziger raast met bijv. 142 km/u; een trein die 41 km/u rijdt is een stoptrein of afremmende trein op een lokaal spoor!
+          score += 60.0 + speedDiff * 0.5;
         } else {
           score = score * 0.30 + (speedDiff * 0.04);
         }
       } else {
         // Trein staat stil of heeft 0 km/u terwijl telefoon 100+ km/u beweegt
-        score += 40.0;
+        score += 50.0;
       }
     }
 
@@ -5320,7 +5357,7 @@ function onLiveLocationFix(pos) {
     }
   });
 
-  // Hysteresis lock: voorkom overspringen naar een andere trein als we al in een rijdende trein zitten
+  // Hysteresis lock & overstap-controle: voorkom overspringen tenzij de nieuwe trein overtuigend beter past
   if (appState.myTrain && bestTrain && bestTrain.id !== appState.myTrain.id) {
     const currentTrainStillExists = allParsed.find(t => t.id === appState.myTrain.id || (t.trainNum && appState.myTrain.trainNum && t.trainNum === appState.myTrain.trainNum));
     if (currentTrainStillExists) {
@@ -5328,33 +5365,65 @@ function onLiveLocationFix(pos) {
       const curLat = (curMState && typeof curMState.curLat === 'number') ? curMState.curLat : currentTrainStillExists.lat;
       const curLon = (curMState && typeof curMState.curLon === 'number') ? curMState.curLon : currentTrainStillExists.lon;
       const curDist = distanceKm(userLat, userLon, curLat, curLon);
+      const curSpeed = (typeof currentTrainStillExists.speed === 'number' && currentTrainStillExists.speed > 0) ? currentTrainStillExists.speed : 0;
 
-      // Als we met >30 km/u rijden en onze huidige trein is nog binnen 3.5 km:
-      // Wissel ALLEEN over als de nieuwe trein overtuigend dichtbij is (< 350m) én een bijna identieke snelheid heeft (< 25 km/u verschil)
-      if (userSpeedKmh && userSpeedKmh > 30) {
+      // Als de huidige trein ver achterblijft (> 2.0 km) of een groot snelheidsverschil heeft (> 40 km/u verschil met reiziger):
+      // LAAT DE OUDE TREIN LOS en stap direct over naar de nieuwe trein!
+      const curSpeedDiff = (userSpeedKmh && curSpeed > 10) ? Math.abs(curSpeed - userSpeedKmh) : 0;
+      if (curDist > 2.0 || curSpeedDiff > 40) {
+        appState.myTrain = null;
+      } else if (userSpeedKmh && userSpeedKmh > 30) {
         const newDist = distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon);
         const newSpeedDiff = Math.abs((bestTrain.speed || 0) - userSpeedKmh);
-        if (curDist < 3.5 && (newDist > 0.35 || newSpeedDiff > 25)) {
+        if (curDist < 2.0 && (newDist > 0.40 || newSpeedDiff > 30)) {
           bestTrain = currentTrainStillExists;
         }
       }
     }
   }
 
-  // Plausibiliteitscontrole: als de gevonden trein verder weg is dan de plausibele afstand (bv. 1923 meter),
-  // en de reiziger bevindt zich op een specifiek station zoals Apeldoorn De Maten:
+  // Plausibiliteitscontrole voor stations: als de reiziger stilstaat op een station (< 600m):
+  // Zoek uitsluitend treinen die ZICH OP DIT SPECIFIEKE STATION BEVINDEN (< 850m)!
+  // Voorkomt dat een reiziger in Rotterdam gekoppeld wordt aan Arriva in Apeldoorn!
   if (isAtStation && (!bestTrain || distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) > maxPlausibleDistKm)) {
+    const isApdm = nearestStInfo && nearestStInfo.station && nearestStInfo.station.code === 'APDM';
     const candidateStationTrain = allParsed.find(t => {
+      const tDist = distanceKm(userLat, userLon, t.lat, t.lon);
+      if (tDist > 0.85) return false; // Trein MOET fysiek op DIT station aanwezig zijn (< 850m)!
       const tOp = (t.operator && t.operator.code) ? t.operator.code.toLowerCase() : '';
-      return stationAllowedOps.has(tOp) || (t.corridorId && t.corridorId === 'arriva-achterhoek');
+      if (isApdm) {
+        return tOp.includes('arriva') || t.corridorId === 'arriva-achterhoek';
+      }
+      return stationAllowedOps.has(tOp);
     });
     if (candidateStationTrain) {
       bestTrain = candidateStationTrain;
     }
   }
 
+  // Fysieke plausibiliteitsvalidatie: als de reiziger rijdt (>25 km/u),
+  // sluit treinen uit die te ver weg zijn (> 1.6 km) of een onmogelijk snelheidsverschil hebben (> 45 km/u)!
+  if (bestTrain) {
+    const bDist = distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon);
+    if (userSpeedKmh && userSpeedKmh > 25) {
+      const bSpeed = (typeof bestTrain.speed === 'number' && bestTrain.speed > 0) ? bestTrain.speed : 0;
+      const bSpeedDiff = bSpeed > 10 ? Math.abs(bSpeed - userSpeedKmh) : 0;
+      if (bDist > 1.6 || (bSpeed > 10 && bSpeedDiff > 45)) {
+        bestTrain = null; // Geen valse match met een stoptrein of tegentrein die kilometers verderop rijdt!
+      }
+    } else if (isAtStation && bDist > 0.85) {
+      bestTrain = null;
+    }
+  }
+
   if (!bestTrain && appState.myTrain) {
-    bestTrain = appState.myTrain;
+    const curDist = distanceKm(userLat, userLon, appState.myTrain.lat, appState.myTrain.lon);
+    if (curDist <= 2.5) {
+      bestTrain = appState.myTrain;
+    } else {
+      appState.myTrain = null;
+      appState.userLockedTrainId = null;
+    }
   }
   if (!bestTrain) {
     // We hebben wél een werkende GPS-fix van de smartphone, maar (nog) geen gekoppelde treinrit in de feed.
@@ -5713,24 +5782,50 @@ function onLiveLocationFix(pos) {
       : `Baanvak tussen ${prevStation.name} en ${nextStation.name} (➔ naar ${myExactDest})`;
   }
 
-  // Station Multi-Train Selector: toont alle treinen die momenteel op het station/perron staan (< 850m)
-  const nearbyStationTrains = allParsed.filter(t => distanceKm(userLat, userLon, t.lat, t.lon) <= 0.85);
+  // Station & Baanvak Multi-Train Selector: toont treinen in de directe fysieke nabijheid (< 2.5 km op spoor, < 850m op station)
+  const maxNearbyDist = (effectiveSpeed > 15) ? 2.5 : 0.85;
+  const nearbyCandidateTrains = allParsed.filter(t => {
+    const d = distanceKm(userLat, userLon, t.lat, t.lon);
+    if (d > maxNearbyDist) return false;
+    // Als de reiziger rijdt op snelheid, sluit dan tegentreinen die ons passeren uit van de keuzelijst
+    if (effectiveSpeed > 25 && userHeadingVector) {
+      const tMotion = getTrainMotionVector(t, activeCorridor);
+      if (tMotion) {
+        const dot = (userHeadingVector.dLat * tMotion.dLat) + (userHeadingVector.dLon * tMotion.dLon);
+        if (dot < -0.15) return false; // Tegentrein
+      }
+    }
+    return true;
+  }).sort((a, b) => distanceKm(userLat, userLon, a.lat, a.lon) - distanceKm(userLat, userLon, b.lat, b.lon));
+
   const selectorEl = document.getElementById('myTrainStationSelector');
   const chipsEl = document.getElementById('myTrainStationChips');
 
   if (selectorEl && chipsEl) {
-    if (nearbyStationTrains.length >= 2) {
+    if (nearbyCandidateTrains.length >= 2) {
       selectorEl.style.display = 'block';
-      chipsEl.innerHTML = nearbyStationTrains.map(stTrain => {
-        const isCurrent = stTrain.id === bestTrain.id;
+      const titleLabelEl = selectorEl.querySelector('.mt-station-title');
+      const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
+      if (titleLabelEl) {
+        titleLabelEl.textContent = isAtStation
+          ? `🚉 Treinen op dit station (${nearbyCandidateTrains.length} aanwezig):`
+          : `🚆 Treinen op dit baanvak (${nearbyCandidateTrains.length} in de buurt):`;
+      }
+      if (hintLabelEl) {
+        hintLabelEl.textContent = isAtStation
+          ? 'Zit u in een andere trein op het perron? Tik direct om te kiezen:'
+          : 'Zit u in een andere trein op dit spoor? Tik direct om te wisselen:';
+      }
+      chipsEl.innerHTML = nearbyCandidateTrains.slice(0, 4).map(stTrain => {
+        const isCurrent = bestTrain && (stTrain.id === bestTrain.id || (stTrain.trainNum && bestTrain.trainNum && stTrain.trainNum === bestTrain.trainNum));
         const stOp = stTrain.operator || { code: 'Trein', badgeClass: 'op-ns' };
         const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
         const stVia = (stTrain.service && stTrain.service.via) ? ` (${stTrain.service.via.split(',')[0].replace('via ', '')})` : '';
-        const stPlatform = (stTrain.service && stTrain.service.platform) ? ` &bull; Spoor ${stTrain.service.platform}` : '';
+        const stDistM = Math.round(distanceKm(userLat, userLon, stTrain.lat, stTrain.lon) * 1000);
         return `
           <button type="button" class="mt-station-chip-btn ${isCurrent ? 'active' : ''}" onclick="window.selectMyTrain('${stTrain.id}')" title="Tik om [${stOp.code}] #${stTrain.trainNum} naar ${stDest} te kiezen">
             <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
-            <span>#${stTrain.trainNum} ➔ ${stDest}${stVia}${stPlatform}</span>
+            <span>#${stTrain.trainNum} ➔ ${stDest}${stVia} (${stDistM}m)</span>
             ${isCurrent ? '<span style="color:#38bdf8; font-weight:800;">✓ Gekozen</span>' : ''}
           </button>
         `;
@@ -5743,16 +5838,16 @@ function onLiveLocationFix(pos) {
   // Pas wisselknop in de hero banner dynamisch aan
   const btnSwitchDir = document.getElementById('btnSwitchTrainDirection');
   if (btnSwitchDir) {
-    if (nearbyStationTrains.length >= 2) {
-      btnSwitchDir.innerHTML = `🔄 Wissel van trein op station (${nearbyStationTrains.length} aanwezig)`;
-      btnSwitchDir.title = 'Tik om te wisselen tussen de treinen op dit station';
+    if (nearbyCandidateTrains.length >= 2) {
+      btnSwitchDir.innerHTML = `🔄 Wissel naar andere trein (${nearbyCandidateTrains.length} in de buurt)`;
+      btnSwitchDir.title = 'Tik om te wisselen tussen de treinen in uw nabijheid';
     } else {
       btnSwitchDir.innerHTML = '🔄 Wissel bestemming of richting';
       btnSwitchDir.title = 'Wissel direct van richting of bestemming voor deze trein';
     }
   }
 
-  // Directe Bestemming Keuze Chips (1-tap wisselen tussen Den Haag Centraal, Rotterdam Centraal, Leeuwarden/Groningen)
+  // Directe Bestemming Keuze Chips (1-tap wisselen tussen Den Haag Centraal, Rotterdam Centraal, Breda, Leeuwarden/Groningen, etc.)
   const destChipsContainer = document.getElementById('myTrainDestChips');
   if (destChipsContainer) {
     const origin = (bestTrain.service && bestTrain.service.origin && bestTrain.service.origin !== 'Vertrekstation') ? bestTrain.service.origin : '';
@@ -5762,9 +5857,25 @@ function onLiveLocationFix(pos) {
     if (origin) options.add(origin);
 
     const num = parseInt(bestTrain.trainNum, 10) || 0;
-    if ((num >= 500 && num <= 699) || (num >= 1600 && num <= 1799) || (num >= 11600 && num <= 11799) || (num >= 1400 && num <= 1499) || (num >= 2000 && num <= 2099) || (num >= 2800 && num <= 2899)) {
+    const opCode = (bestTrain.operator && bestTrain.operator.code) ? bestTrain.operator.code.toLowerCase() : '';
+
+    if ((num >= 500 && num <= 799) || (num >= 1600 && num <= 1799) || (num >= 11600 && num <= 11799) || (num >= 1400 && num <= 1499) || (num >= 2000 && num <= 2099) || (num >= 2800 && num <= 2899)) {
       options.add('Den Haag Centraal');
       options.add('Rotterdam Centraal');
+    }
+    if ((num >= 1100 && num <= 1199) || (num >= 1800 && num <= 1899) || (num >= 2400 && num <= 2499) || (num >= 9200 && num <= 9299)) {
+      options.add('Breda');
+      options.add('Rotterdam Centraal');
+      options.add('Den Haag Centraal');
+    }
+    if (opCode.includes('ice') || (num >= 100 && num <= 159) || (num >= 220 && num <= 259)) {
+      options.add('Frankfurt (Main) Hbf');
+      options.add('Amsterdam Centraal');
+      options.add('Basel SBB');
+    }
+    if (opCode.includes('icberlijn') || (num >= 140 && num <= 149) || (num >= 240 && num <= 249)) {
+      options.add('Berlin Hbf');
+      options.add('Amsterdam Centraal');
     }
 
     const optList = Array.from(options).filter(Boolean);
@@ -6911,8 +7022,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.3';
-const APP_BUILD_COMMIT = '690ad5c';
+const APP_VERSION = '2.9.4';
+const APP_BUILD_COMMIT = 'b92988f';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

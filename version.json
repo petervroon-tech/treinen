@@ -1,8 +1,8 @@
 {
-  "version": "2.9.3",
-  "commit": "690ad5c",
-  "fullCommit": "690ad5c89dc845748231019c7e76dad706166fd5",
-  "buildTime": "2026-11-24T11:48:16Z",
+  "version": "2.9.4",
+  "commit": "b92988f",
+  "fullCommit": "b92988f6db917a43dca72ecdac3a09be4676cc45",
+  "buildTime": "2026-11-24T12:08:46Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
@@ -75,8 +75,8 @@
     },
     {
       "tag": "In Trein",
-      "title": "Live Cockpit HUD & Automatische Treindetectie",
-      "desc": "Vind direct uw trein via mobiele GPS inclusief live snelheid, volgend station en resterende reistijd.",
+      "title": "Live Cockpit HUD & Multi-Trein Selector (v2.9.4)",
+      "desc": "Kies direct tussen treinen op hetzelfde spoor of station (Den Haag C / Rotterdam C / Breda); nooit meer valse koppelingen naar andere provincies.",
       "icon": "📱"
     },
     {
