@@ -7324,8 +7324,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.12';
-const APP_BUILD_COMMIT = '31613aa';
+const APP_VERSION = '2.9.13';
+const APP_BUILD_COMMIT = '2d3486a';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -7378,24 +7378,25 @@ async function initVersionManagement() {
         if (isNewCommit || isNewVersion) {
           console.log(`🚀 Nieuwe versie beschikbaar: v${serverVersion} (${serverCommit}) vs lokaal ${APP_VERSION} (${APP_BUILD_COMMIT})`);
 
-          // Cooldown check ter voorkoming van reload-loop
-          const lastReload = parseInt(sessionStorage.getItem('treinen_last_auto_reload') || '0', 10);
-          if (Date.now() - lastReload > 5000) {
-            sessionStorage.setItem('treinen_last_auto_reload', Date.now());
-
-            const banner = document.getElementById('updateBanner');
-            if (banner) {
-              banner.style.display = 'block';
-              const text = document.getElementById('updateBannerText');
-              if (text) {
-                text.innerHTML = `<strong>Nieuwe versie v${serverVersion} (${serverCommit}) gedetecteerd!</strong> Bezig met automatisch verversen...`;
-              }
+          const banner = document.getElementById('updateBanner');
+          if (banner) {
+            banner.style.display = 'block';
+            const text = document.getElementById('updateBannerText');
+            if (text) {
+              text.innerHTML = `<strong>Nieuwe versie v${serverVersion} (${serverCommit}) beschikbaar!</strong>`;
             }
+          }
 
-            // Automatisch verversen naar de nieuwste versie
+          // Voorkom eindeloze reload-loops (max 1x per 2 minuten en nooit tijdens actief meereizen)
+          const lastReload = parseInt(sessionStorage.getItem('treinen_last_auto_reload') || '0', 10);
+          const reloadCount = parseInt(sessionStorage.getItem('treinen_auto_reload_count') || '0', 10);
+          if (!appState.isTrackingUser && reloadCount < 1 && (Date.now() - lastReload > 120000)) {
+            sessionStorage.setItem('treinen_last_auto_reload', String(Date.now()));
+            sessionStorage.setItem('treinen_auto_reload_count', String(reloadCount + 1));
+
             setTimeout(() => {
               forcePurgeAndReload();
-            }, 500);
+            }, 800);
             return;
           }
         }
