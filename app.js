@@ -7054,7 +7054,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.9.5';
-const APP_BUILD_COMMIT = 'ff704f2';
+const APP_BUILD_COMMIT = '6598035';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
