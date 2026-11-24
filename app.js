@@ -4947,8 +4947,8 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
       } catch (e) {}
     }
 
-    // Na 8 seconden zonder GPS: toon direct de actuele treinen op het gekozen traject zodat de gebruiker nooit vastzit!
-    if (elapsedSec >= 8 && !manualFallbackShown) {
+    // Na 5 seconden zonder GPS: toon direct de actuele treinen op het gekozen station / traject zodat de gebruiker nooit vastzit!
+    if (elapsedSec >= 5 && !manualFallbackShown) {
       manualFallbackShown = true;
       const selectorEl = document.getElementById('myTrainStationSelector');
       const chipsEl = document.getElementById('myTrainStationChips');
@@ -4958,27 +4958,46 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
                             (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999);
           return !isFreight;
         });
+
+        const fromCode = document.getElementById('routeFromSelect')?.value;
+        const fromSt = fromCode ? findStationByCode(fromCode) : null;
         const activeCorr = (appState.activeCorridorKey && appState.activeCorridorKey !== 'all' && appState.activeCorridorKey !== 'freight-all')
           ? CORRIDORS[appState.activeCorridorKey]
           : null;
-        const corrTrains = activeCorr
-          ? allParsed.filter(t => matchTrainToCorridor(t, activeCorr)).slice(0, 6)
-          : allParsed.slice(0, 6);
+
+        let candidateTrains = [];
+        if (fromSt) {
+          candidateTrains = allParsed
+            .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 3.0)
+            .sort((a, b) => distanceKm(fromSt.lat, fromSt.lon, a.lat, a.lon) - distanceKm(fromSt.lat, fromSt.lon, b.lat, b.lon));
+        }
+        if (candidateTrains.length === 0 && activeCorr) {
+          candidateTrains = allParsed.filter(t => matchTrainToCorridor(t, activeCorr));
+        }
+        if (candidateTrains.length === 0) {
+          candidateTrains = allParsed;
+        }
+        const corrTrains = candidateTrains.slice(0, 6);
 
         selectorEl.style.display = 'block';
         const titleLabelEl = selectorEl.querySelector('.mt-station-title');
         const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
-        if (titleLabelEl) titleLabelEl.textContent = activeCorr ? `🚆 Treinen op ${activeCorr.shortName || activeCorr.name}:` : '🚆 Actuele reizigerstreinen:';
-        if (hintLabelEl) hintLabelEl.textContent = 'GPS duurt lang door treinmetaal — tik direct op uw trein of peil opnieuw:';
+        if (titleLabelEl) {
+          titleLabelEl.textContent = fromSt
+            ? `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`
+            : (activeCorr ? `🚆 Treinen op ${activeCorr.shortName || activeCorr.name}:` : '🚆 Actuele reizigerstreinen:');
+        }
+        if (hintLabelEl) hintLabelEl.textContent = 'GPS geblokkeerd door overkapping/metaal — tik direct op uw trein voor alle live gegevens:';
 
         const retryBtnHtml = `<button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS peilen</button>`;
         const trainChipsHtml = corrTrains.map(stTrain => {
           const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
           const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
+          const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
           return `
             <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')">
               <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
-              <span>#${stTrain.trainNum} ➔ ${stDest}</span>
+              <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd})</span>
             </button>
           `;
         }).join('');
@@ -5276,18 +5295,26 @@ window.selectMyTrain = (trainId) => {
 
     playAuthenticNSChime();
 
-    // Ververs direct de weergave met de nieuw geselecteerde trein
+    // Ververs direct de weergave met de nieuw geselecteerde trein (ook als telefoon-GPS onder een overkapping ontbreekt!)
     if (appState.lastGpsFix) {
       onLiveLocationFix({
         coords: {
           latitude: appState.lastGpsFix.lat,
           longitude: appState.lastGpsFix.lon,
           accuracy: appState.lastGpsFix.acc || 15,
-          speed: (appState.lastGpsFix.speed ? appState.lastGpsFix.speed / 3.6 : 0)
+          speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : 0)
         }
       });
     } else {
-      updateLineOverview();
+      onLiveLocationFix({
+        isTrainTelemetryFallback: true,
+        coords: {
+          latitude: target.lat,
+          longitude: target.lon,
+          accuracy: 50,
+          speed: (typeof target.speed === 'number' ? target.speed / 3.6 : 0)
+        }
+      });
     }
   }
 };
@@ -5346,14 +5373,16 @@ function onLiveLocationFix(pos) {
     }
   }
 
-  appState.lastGpsFix = {
-    lat: userLat,
-    lon: userLon,
-    time: now,
-    speed: userSpeedKmh,
-    acc: userAcc,
-    heading: (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) ? pos.coords.heading : null
-  };
+  if (!pos.isTrainTelemetryFallback) {
+    appState.lastGpsFix = {
+      lat: userLat,
+      lon: userLon,
+      time: now,
+      speed: userSpeedKmh,
+      acc: userAcc,
+      heading: (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) ? pos.coords.heading : null
+    };
+  }
 
   // Update of maak "U bevindt zich hier" marker op de kaart
   if (!appState.userLocationMarker) {
@@ -5927,10 +5956,17 @@ function onLiveLocationFix(pos) {
   }
   const modalMetaEl = document.getElementById('myTrainGpsMeta');
   if (modalMetaEl) {
-    modalMetaEl.innerHTML = `
-      📍 <strong>Uw GPS:</strong> ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (±${userAcc}m)${userSpeedKmh ? ` &bull; Snelheid: ${userSpeedKmh} km/u` : ''}<br>
-      🚆 <strong>Trein GPS:</strong> ${bestTrain.lat.toFixed(5)}, ${bestTrain.lon.toFixed(5)} &bull; Afstand tot trein: <strong>${distMeters} meter</strong>
-    `;
+    if (pos.isTrainTelemetryFallback) {
+      modalMetaEl.innerHTML = `
+        📡 <strong>Telefoon-GPS:</strong> Geblokkeerd onder station/treindak &bull; <button type="button" onclick="window.retryGpsPeiling()" style="background:none;border:none;color:#38bdf8;text-decoration:underline;cursor:pointer;padding:0;font-size:inherit;font-weight:700;">🔄 Opnieuw peilen</button><br>
+        🚆 <strong>Live Trein-telemetrie (NDOV Loket):</strong> ${bestTrain.lat.toFixed(5)}, ${bestTrain.lon.toFixed(5)} &bull; Snelheid: <strong>${effectiveSpeed} km/u</strong>
+      `;
+    } else {
+      modalMetaEl.innerHTML = `
+        📍 <strong>Uw GPS:</strong> ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (±${userAcc}m)${userSpeedKmh ? ` &bull; Snelheid: ${userSpeedKmh} km/u` : ''}<br>
+        🚆 <strong>Trein GPS:</strong> ${bestTrain.lat.toFixed(5)}, ${bestTrain.lon.toFixed(5)} &bull; Afstand tot trein: <strong>${distMeters} meter</strong>
+      `;
+    }
   }
   const unitsCount = bestTrain.unitsCount || 1;
   const modalTitle = document.getElementById('myTrainTitle');
@@ -7224,8 +7260,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.8';
-const APP_BUILD_COMMIT = 'ac36c0a';
+const APP_VERSION = '2.9.9';
+const APP_BUILD_COMMIT = '5cc1f89';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -7689,6 +7725,19 @@ async function init() {
               heading: appState.lastGpsFix.heading
             }
           });
+        } else if (appState.isTrackingUser && !appState.lastGpsFix && appState.userLockedTrainId) {
+          const lockedTrain = getActiveParsedTrains().find(t => t.id === appState.userLockedTrainId);
+          if (lockedTrain) {
+            onLiveLocationFix({
+              isTrainTelemetryFallback: true,
+              coords: {
+                latitude: lockedTrain.lat,
+                longitude: lockedTrain.lon,
+                accuracy: 50,
+                speed: (typeof lockedTrain.speed === 'number' ? lockedTrain.speed / 3.6 : 0)
+              }
+            });
+          }
         }
       }
     } catch (e) {
