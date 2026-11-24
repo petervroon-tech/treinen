@@ -4933,7 +4933,13 @@ window.switchMyTrainDirection = () => {
 
   // 1. Controleer of er meerdere treinen in de directe fysieke nabijheid zijn (< 2.5 km op baanvak, < 850m op station)
   const maxSearchDist = (userSpeed > 15) ? 2.5 : 0.85;
-  const nearbyTrains = allParsed.filter(t => distanceKm(userLat, userLon, t.lat, t.lon) <= maxSearchDist);
+  const nearbyTrains = allParsed.filter(t => {
+    const isFreight = (t.operator && t.operator.category === 'freight') ||
+                      (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999) ||
+                      /cargo|goederen|dbcargo/i.test((t.operator?.name || '') + ' ' + (t.matnrString || ''));
+    if (isFreight) return false;
+    return distanceKm(userLat, userLon, t.lat, t.lon) <= maxSearchDist;
+  });
   if (nearbyTrains.length >= 2) {
     const curIdx = currentTrain ? nearbyTrains.findIndex(t => t.id === currentTrain.id) : -1;
     const nextIdx = (curIdx + 1) % nearbyTrains.length;
@@ -5253,13 +5259,24 @@ function onLiveLocationFix(pos) {
     : null;
 
   allParsed.forEach(t => {
+    // 0. Reizigers zitten NOOIT in een goederentrein (zoals DB Cargo met ketelwagens of Betuweroute containers)!
+    const isFreight = (t.operator && t.operator.category === 'freight') ||
+                      (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999) ||
+                      (t.corridorId && (t.corridorId.includes('betuweroute') || t.corridorId.includes('goederen') || t.corridorId === 'freight-all')) ||
+                      /cargo|goederen|locon|lte|rtb|lineas|captrain|dbcargo|rfo|db cargo/i.test((t.operator?.name || '') + ' ' + (t.matnrString || '') + ' ' + (t.operator?.code || ''));
+    if (isFreight) return; // Diskwalificeer alle goederentreinen voor Mijn Trein
+
     // Gebruik de continu geïnterpoleerde/geëxtrapoleerde positie (dead-reckoning) indien beschikbaar,
     // zodat een rijdende trein (zoals ICE) met vertraagde feed-update niet kunstmatig 1-2 km achterop lijkt te liggen!
     const mState = appState.trainMotionStates && appState.trainMotionStates.get(t.id);
     const tCurLat = (mState && typeof mState.curLat === 'number') ? mState.curLat : t.lat;
     const tCurLon = (mState && typeof mState.curLon === 'number') ? mState.curLon : t.lon;
     const d = distanceKm(userLat, userLon, tCurLat, tCurLon);
-    if (d > 12.0) return; // Te ver weg om de trein van de gebruiker te zijn
+    
+    // Een reiziger kan NOOIT in een trein zitten die kilometers ver weg rijdt!
+    // Maximaal 2.5 km (of 3.5 km bij hoge snelheid > 100 km/u met geëxtrapoleerde positie)
+    const maxSearchDist = (userSpeedKmh && userSpeedKmh > 100) ? 3.5 : 2.5;
+    if (d > maxSearchDist) return;
     let score = d;
 
     // 0. Handmatig door gebruiker gekozen/vergrendelde trein op dit station of baanvak
@@ -5401,18 +5418,27 @@ function onLiveLocationFix(pos) {
     }
   }
 
-  // Fysieke plausibiliteitsvalidatie: als de reiziger rijdt (>25 km/u),
-  // sluit treinen uit die te ver weg zijn (> 1.6 km) of een onmogelijk snelheidsverschil hebben (> 45 km/u)!
+  // Fysieke plausibiliteitsvalidatie: sluit goederentreinen, treinen te ver weg (> 2.5 km)
+  // en treinen met een onmogelijk snelheidsverschil (> 45 km/u) direct uit!
   if (bestTrain) {
-    const bDist = distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon);
-    if (userSpeedKmh && userSpeedKmh > 25) {
-      const bSpeed = (typeof bestTrain.speed === 'number' && bestTrain.speed > 0) ? bestTrain.speed : 0;
-      const bSpeedDiff = bSpeed > 10 ? Math.abs(bSpeed - userSpeedKmh) : 0;
-      if (bDist > 1.6 || (bSpeed > 10 && bSpeedDiff > 45)) {
-        bestTrain = null; // Geen valse match met een stoptrein of tegentrein die kilometers verderop rijdt!
-      }
-    } else if (isAtStation && bDist > 0.85) {
+    const isFreight = (bestTrain.operator && bestTrain.operator.category === 'freight') ||
+                      (bestTrain.trainNum && parseInt(bestTrain.trainNum, 10) >= 40000 && parseInt(bestTrain.trainNum, 10) <= 69999) ||
+                      /cargo|goederen|locon|lte|rtb|lineas|captrain|dbcargo|rfo/i.test((bestTrain.operator?.name || '') + ' ' + (bestTrain.matnrString || '') + ' ' + (bestTrain.operator?.code || ''));
+    if (isFreight) {
       bestTrain = null;
+    } else {
+      const bDist = distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon);
+      if (bDist > 2.5) {
+        bestTrain = null;
+      } else if (userSpeedKmh && userSpeedKmh > 25) {
+        const bSpeed = (typeof bestTrain.speed === 'number' && bestTrain.speed > 0) ? bestTrain.speed : 0;
+        const bSpeedDiff = bSpeed > 10 ? Math.abs(bSpeed - userSpeedKmh) : 0;
+        if (bDist > 1.6 || (bSpeed > 10 && bSpeedDiff > 45)) {
+          bestTrain = null; // Geen valse match met een stoptrein of tegentrein die kilometers verderop rijdt!
+        }
+      } else if (isAtStation && bDist > 0.85) {
+        bestTrain = null;
+      }
     }
   }
 
@@ -5785,6 +5811,11 @@ function onLiveLocationFix(pos) {
   // Station & Baanvak Multi-Train Selector: toont treinen in de directe fysieke nabijheid (< 2.5 km op spoor, < 850m op station)
   const maxNearbyDist = (effectiveSpeed > 15) ? 2.5 : 0.85;
   const nearbyCandidateTrains = allParsed.filter(t => {
+    const isFreight = (t.operator && t.operator.category === 'freight') ||
+                      (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999) ||
+                      (t.corridorId && (t.corridorId.includes('betuweroute') || t.corridorId.includes('goederen') || t.corridorId === 'freight-all')) ||
+                      /cargo|goederen|locon|lte|rtb|lineas|captrain|dbcargo|rfo/i.test((t.operator?.name || '') + ' ' + (t.matnrString || '') + ' ' + (t.operator?.code || ''));
+    if (isFreight) return false;
     const d = distanceKm(userLat, userLon, t.lat, t.lon);
     if (d > maxNearbyDist) return false;
     // Als de reiziger rijdt op snelheid, sluit dan tegentreinen die ons passeren uit van de keuzelijst
@@ -7022,8 +7053,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.4';
-const APP_BUILD_COMMIT = 'c23b47b';
+const APP_VERSION = '2.9.5';
+const APP_BUILD_COMMIT = 'ff704f2';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

@@ -1,8 +1,8 @@
 {
-  "version": "2.9.4",
-  "commit": "c23b47b",
-  "fullCommit": "c23b47b",
-  "buildTime": "2026-11-24T12:09:48Z",
+  "version": "2.9.5",
+  "commit": "ff704f2",
+  "fullCommit": "ff704f23b2dce2fa1ea93aa7e1d890886350c155",
+  "buildTime": "2026-11-24T12:14:19Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
@@ -75,8 +75,8 @@
     },
     {
       "tag": "In Trein",
-      "title": "Live Cockpit HUD & Multi-Trein Selector (v2.9.4)",
-      "desc": "Kies direct tussen treinen op hetzelfde spoor of station (Den Haag C / Rotterdam C / Breda); nooit meer valse koppelingen naar andere provincies.",
+      "title": "Live Cockpit HUD & Reizigersfilter (v2.9.5)",
+      "desc": "Kies direct tussen treinen op hetzelfde spoor of station; goederentreinen en verre treinen (> 2.5 km) zijn permanent uitgesloten van reizigersdetectie.",
       "icon": "📱"
     },
     {
