@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.9.14"
+DEFAULT_VERSION = "2.9.15"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -399,6 +399,7 @@ def update_version_json(sha=None, build_num=None):
         index_code = re.sub(r"(\.css\?v=)[^\"']+", f"\\g<1>{asset_v}", index_code)
         index_code = re.sub(r"(\.js\?v=)[^\"']+", f"\\g<1>{asset_v}", index_code)
         index_code = re.sub(r"(manifest\.json\?v=)[^\"']+", f"\\g<1>{asset_v}", index_code)
+        index_code = re.sub(r'id="gpsModalVersion"[^>]*>GPS v[^<]+<', f'id="gpsModalVersion" class="modal-version-tag">GPS v{version}<', index_code)
         with open(index_html_path, "w", encoding="utf-8") as f:
             f.write(index_code)
         print(f"📦 index.html asset hash bijgewerkt naar {asset_v}")

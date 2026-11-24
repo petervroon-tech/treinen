@@ -4490,6 +4490,20 @@ body {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
 }
 
+#btnSwitchTrainDirection {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(56, 189, 248, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#btnSwitchTrainDirection:active,
+.mt-station-chip-btn:active,
+.mt-dest-chip-btn:active {
+  transform: scale(0.93) !important;
+  background: rgba(56, 189, 248, 0.38) !important;
+}
+
 .my-train-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
