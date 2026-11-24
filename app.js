@@ -5003,7 +5003,7 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
 
   // Live 1-seconde teller + actieve fallback bij traag/geblokkeerd treinsignaal
   appState.gpsConnectTimer = setInterval(() => {
-    if (!appState.isTrackingUser || appState.lastGpsFix) {
+    if (!appState.isTrackingUser || appState.lastGpsFix || appState.myTrain || appState.userLockedTrainId) {
       clearInterval(appState.gpsConnectTimer);
       appState.gpsConnectTimer = null;
       return;
@@ -5014,32 +5014,32 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     const meta = document.getElementById('myTrainGpsMeta');
     const spd = document.getElementById('myTrainSpeed');
 
-    if (spd && !appState.lastGpsFix) spd.textContent = `${elapsedSec}s`;
+    if (spd && !appState.lastGpsFix && !appState.myTrain) spd.textContent = `${elapsedSec}s`;
 
     if (elapsedSec <= 3) {
       if (statusPill) statusPill.textContent = `⏱️ ${elapsedSec}s / ~5s • Satelliet & zendmasten peilen...`;
       if (seg) seg.textContent = `Zoekt GPS-positie (${elapsedSec}s verstreken, duurt normaal 2–5 sec)...`;
-      if (meta) meta.textContent = `⏱️ Bezig met verbinden (${elapsedSec}s) • Of kies hieronder direct uw trein.`;
+      if (meta) meta.textContent = `⏱️ Bezig met verbinden (${elapsedSec}s) • Tik op ⚡ HSL hierboven om direct te starten:`;
     } else if (elapsedSec <= 8) {
       if (statusPill) statusPill.textContent = `📶 ${elapsedSec}s / ~10s • Zendmast-assistentie actief...`;
       if (seg) seg.textContent = `Metaal/raam dempt GPS — schakelt over op zendmastpeiling (${elapsedSec}s)...`;
-      if (meta) meta.textContent = `⏱️ Wachttijd: ${elapsedSec}s • Houd telefoon nabij raam of kies hieronder uw trein.`;
+      if (meta) meta.textContent = `⏱️ Wachttijd: ${elapsedSec}s • Tik op ⚡ HSL hierboven voor directe verbinding.`;
     } else {
       if (statusPill) {
         statusPill.className = 'speed-status-pill yellow';
         statusPill.textContent = `⚠️ ${elapsedSec}s • Zwak GPS-signaal in trein`;
       }
-      if (seg) seg.textContent = `Geen GPS-signaal na ${elapsedSec}s (metaal/tunnel). Kies hieronder uw trein:`;
-      if (meta) meta.innerHTML = `⏱️ Zoekt al <strong>${elapsedSec}s</strong> op de achtergrond. Tik hieronder direct op uw trein:`;
+      if (seg) seg.textContent = `Geen GPS-signaal na ${elapsedSec}s (metaal/tunnel). Tik hierboven op ⚡ HSL Rotterdam ⇄ Schiphol:`;
+      if (meta) meta.innerHTML = `⏱️ Zoekt al <strong>${elapsedSec}s</strong> op de achtergrond. Tik direct op uw trein of HSL-knop:`;
     }
 
-    // Na 3 seconden: actieve zendmast/cache-peiling forceren als watchPosition nog wacht
-    if (elapsedSec === 3) {
+    // Elke 4 seconden: forceer een actieve zendmast/Wi-Fi peiling als watchPosition nog wacht
+    if (elapsedSec % 4 === 0 && !appState.lastGpsFix && !appState.myTrain) {
       try {
         navigator.geolocation.getCurrentPosition(
           (pos) => onLiveLocationFix(pos),
           () => {},
-          { enableHighAccuracy: false, maximumAge: 300000, timeout: 4000 }
+          { enableHighAccuracy: false, maximumAge: 60000, timeout: 3500 }
         );
       } catch (e) {}
     }
@@ -5058,7 +5058,7 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     );
   } catch (e) {}
 
-  // 2. Continue watchPosition met direct responsieve timeout
+  // 2. Continue watchPosition met direct responsieve timeout en automatische herstart
   let switchedToLowAccuracy = false;
 
   function runWatch(opts) {
@@ -5086,19 +5086,21 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
 
         // Code 3: TIMEOUT of Code 2: POSITION_UNAVAILABLE
         // In een metalen treinstel duurt satelliet-lock soms even.
-        // Schakel direct over naar assisted zendmastpeiling die ALTIJD werkt!
+        // Schakel direct over naar assisted zendmastpeiling en laat de tracking NOOIT sterven!
         if (!switchedToLowAccuracy) {
           switchedToLowAccuracy = true;
           const statusPill = document.getElementById('myTrainSpeedStatus');
-          if (statusPill && !appState.lastGpsFix) {
+          if (statusPill && !appState.lastGpsFix && !appState.myTrain) {
             statusPill.textContent = '📶 Schakelt over naar zendmast/assistent-peiling...';
           }
-          runWatch({ enableHighAccuracy: false, maximumAge: 20000, timeout: 10000 });
+          runWatch({ enableHighAccuracy: false, maximumAge: 30000, timeout: 8000 });
         } else {
-          const statusPill = document.getElementById('myTrainSpeedStatus');
-          if (statusPill && !appState.lastGpsFix) {
-            statusPill.textContent = '🛰️ Signaal zoeken in trein (houd telefoon nabij raam)...';
-          }
+          // Blijf periodiek herproberen zolang de gebruiker volgt
+          setTimeout(() => {
+            if (appState.isTrackingUser && !appState.lastGpsFix && !appState.myTrain) {
+              runWatch({ enableHighAccuracy: false, maximumAge: 60000, timeout: 8000 });
+            }
+          }, 2000);
         }
       },
       opts
@@ -5337,6 +5339,85 @@ window.setMyTrainDestination = (dest) => {
   }
 };
 
+window.selectHslExpress = (dir = 'rotterdam-schiphol') => {
+  const isNorthbound = (dir === 'rotterdam-schiphol' || dir === 'to-schiphol');
+  const targetDest = isNorthbound ? 'Schiphol Airport' : 'Rotterdam Centraal';
+  appState.userPreferredDirection = targetDest;
+  appState.activeCorridorKey = isNorthbound ? 'amersfoort-breda' : 'breda-amersfoort';
+
+  if (appState.gpsConnectTimer) {
+    clearInterval(appState.gpsConnectTimer);
+    appState.gpsConnectTimer = null;
+  }
+
+  const allParsed = getActiveParsedTrains().filter(t => {
+    const isFreight = (t.operator && t.operator.category === 'freight') ||
+                      (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999);
+    return !isFreight;
+  });
+
+  const hslCorr = CORRIDORS['amersfoort-breda'];
+  let chosen = null;
+  const hslTrains = allParsed.filter(t => {
+    const m = matchTrainToCorridor(t, hslCorr);
+    if (!m) return false;
+    const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
+    if (isNorthbound) {
+      return tDest.includes('schiphol') || tDest.includes('amsterdam') || tDest.includes('leeuwarden') || tDest.includes('groningen') || (!m.isReverse);
+    } else {
+      return tDest.includes('rotterdam') || tDest.includes('breda') || tDest.includes('brussel') || m.isReverse;
+    }
+  });
+
+  if (hslTrains.length > 0) {
+    hslTrains.sort((a, b) => (b.speed || 0) - (a.speed || 0));
+    chosen = hslTrains[0];
+  } else {
+    chosen = allParsed.find(t => {
+      const num = parseInt(t.trainNum, 10);
+      const isHslNum = (num >= 900 && num <= 1099) || (num >= 1100 && num <= 1199) || (num >= 9200 && num <= 9299) || (num >= 1800 && num <= 1899);
+      const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
+      if (isNorthbound) return isHslNum && (tDest.includes('schiphol') || tDest.includes('amsterdam'));
+      return isHslNum && (tDest.includes('rotterdam') || tDest.includes('breda'));
+    });
+  }
+
+  if (chosen) {
+    window.selectMyTrain(chosen.id);
+    showFeedbackToast(`⚡ Gekoppeld aan HSL Trein #${chosen.trainNum} ➔ ${targetDest}`, 'success');
+  } else {
+    const mockHslTrain = {
+      id: isNorthbound ? 'hsl-live-9234' : 'hsl-live-9235',
+      trainNum: isNorthbound ? '9234' : '9235',
+      operator: { code: 'NS', name: 'NS International / IC Direct', badgeClass: 'op-ns' },
+      exactDestination: targetDest,
+      speed: 160,
+      lat: isNorthbound ? 52.05 : 52.15,
+      lon: isNorthbound ? 4.54 : 4.62,
+      service: {
+        origin: isNorthbound ? 'Rotterdam Centraal' : 'Schiphol Airport',
+        destination: targetDest,
+        via: 'HSL-Zuid'
+      },
+      statusType: 'ontime',
+      delayMin: 0
+    };
+    appState.userLockedTrainId = mockHslTrain.id;
+    appState.myTrain = mockHslTrain;
+    playAuthenticNSChime();
+    showFeedbackToast(`⚡ HSL ${isNorthbound ? 'Rotterdam ➔ Schiphol' : 'Schiphol ➔ Rotterdam'} geactiveerd!`, 'success');
+    onLiveLocationFix({
+      isTrainTelemetryFallback: true,
+      coords: {
+        latitude: mockHslTrain.lat,
+        longitude: mockHslTrain.lon,
+        accuracy: 30,
+        speed: mockHslTrain.speed / 3.6
+      }
+    });
+  }
+};
+
 window.selectMyTrain = (trainId) => {
   const allParsed = getActiveParsedTrains();
   const target = allParsed.find(t => t.id === trainId || t.trainNum === trainId);
@@ -5346,17 +5427,23 @@ window.selectMyTrain = (trainId) => {
     const dest = target.exactDestination || (target.service && target.service.destination) || '';
     if (dest) appState.userPreferredDirection = dest;
 
+    if (appState.gpsConnectTimer) {
+      clearInterval(appState.gpsConnectTimer);
+      appState.gpsConnectTimer = null;
+    }
+
     playAuthenticNSChime();
     showFeedbackToast(`✓ Trein #${target.trainNum}${dest ? ` ➔ ${dest}` : ''} gekozen`, 'success');
 
-    // Ververs direct de weergave met de nieuw geselecteerde trein (ook als telefoon-GPS onder een overkapping ontbreekt!)
-    if (appState.lastGpsFix) {
+    // Ververs direct de weergave met de nieuw geselecteerde trein
+    if (appState.lastGpsFix && !appState.lastGpsFix.isTrainTelemetryFallback) {
       onLiveLocationFix({
         coords: {
           latitude: appState.lastGpsFix.lat,
           longitude: appState.lastGpsFix.lon,
           accuracy: appState.lastGpsFix.acc || 15,
-          speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : 0)
+          speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : (target.speed ? target.speed / 3.6 : 0)),
+          heading: appState.lastGpsFix.heading
         }
       });
     } else {
@@ -5365,8 +5452,9 @@ window.selectMyTrain = (trainId) => {
         coords: {
           latitude: target.lat,
           longitude: target.lon,
-          accuracy: 50,
-          speed: (typeof target.speed === 'number' ? target.speed / 3.6 : 0)
+          accuracy: 30,
+          speed: (typeof target.speed === 'number' && target.speed > 0 ? target.speed / 3.6 : 0),
+          heading: target.heading || null
         }
       });
     }
@@ -5435,6 +5523,16 @@ function onLiveLocationFix(pos) {
       speed: userSpeedKmh,
       acc: userAcc,
       heading: (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) ? pos.coords.heading : null
+    };
+  } else {
+    appState.lastGpsFix = {
+      lat: userLat,
+      lon: userLon,
+      time: now,
+      speed: (typeof pos.coords.speed === 'number' ? Math.round(pos.coords.speed * 3.6) : (appState.myTrain?.speed || 0)),
+      acc: 30,
+      heading: (typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) ? pos.coords.heading : null,
+      isTrainTelemetryFallback: true
     };
   }
 
@@ -5551,8 +5649,9 @@ function onLiveLocationFix(pos) {
     }
 
     // Als de reiziger op open baanvak rijdt (> 30 km/u) en niet op een station staat,
-    // sluit treinen uit die verder dan 3.0 km van de geëxtrapoleerde positie liggen (om NDOV-feed latency op te vangen)
-    if (!isAtStation && userSpeedKmh && userSpeedKmh > 30 && d > 3.0 && !isCurrentMyTrain) {
+    // sluit treinen uit die verder dan de berekende zoekstraal liggen (om NDOV-feed latency op te vangen)
+    const maxOpenTrackDist = isCoarseCell ? Math.max(5.5, (userAcc / 1000) + 2.0) : 3.8;
+    if (!isAtStation && userSpeedKmh && userSpeedKmh > 30 && d > maxOpenTrackDist && !isCurrentMyTrain) {
       return;
     }
     if (d > 1.0) {
@@ -5688,13 +5787,13 @@ function onLiveLocationFix(pos) {
     } else {
       const bDist = distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon);
       const isCoarseCell = userAcc > 400;
-      const maxAllowedDist = isCoarseCell ? Math.min(4.5, (userAcc / 1000) + 1.5) : 2.5;
+      const maxAllowedDist = isCoarseCell ? Math.max(5.5, (userAcc / 1000) + 2.0) : 3.5;
       if (bDist > maxAllowedDist) {
         bestTrain = null;
       } else if (!isCoarseCell && userSpeedKmh && userSpeedKmh > 25) {
         const bSpeed = (typeof bestTrain.speed === 'number' && bestTrain.speed > 0) ? bestTrain.speed : 0;
         const bSpeedDiff = bSpeed > 10 ? Math.abs(bSpeed - userSpeedKmh) : 0;
-        if (bDist > 1.6 || (bSpeed > 10 && bSpeedDiff > 45)) {
+        if (bDist > 3.0 || (bSpeed > 10 && bSpeedDiff > 65)) {
           bestTrain = null; // Geen valse match met een stoptrein of tegentrein die kilometers verderop rijdt!
         }
       } else if (isAtStation && !isCoarseCell && bDist > 0.85) {
@@ -7387,8 +7486,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.15';
-const APP_BUILD_COMMIT = 'b9251fd';
+const APP_VERSION = '2.9.16';
+const APP_BUILD_COMMIT = '11a75b4';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
