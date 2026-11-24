@@ -4832,21 +4832,35 @@ function findMyTrain() {
 
 function detectAndShowMyTrain(openModal = true) {
   const modal = document.getElementById('myTrainModal');
-  if (appState.isTrackingUser) {
-    if (openModal && modal) modal.style.display = 'flex';
-    // Direct live verversen van alle gegevens in de modal op basis van de laatste fix
-    if (appState.lastGpsFix) {
+
+  // 1. Als we al een gekozen of actieve trein hebben: direct live tonen in de modal!
+  if (appState.myTrain || appState.userLockedTrainId) {
+    const target = appState.myTrain || getActiveParsedTrains().find(t => t.id === appState.userLockedTrainId);
+    if (target) {
+      appState.myTrain = target;
+      if (openModal && modal) modal.style.display = 'flex';
       onLiveLocationFix({
+        isTrainTelemetryFallback: !appState.lastGpsFix,
         coords: {
-          latitude: appState.lastGpsFix.lat,
-          longitude: appState.lastGpsFix.lon,
-          accuracy: appState.lastGpsFix.acc || 15,
-          speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : null),
-          heading: appState.lastGpsFix.heading
+          latitude: appState.lastGpsFix ? appState.lastGpsFix.lat : target.lat,
+          longitude: appState.lastGpsFix ? appState.lastGpsFix.lon : target.lon,
+          accuracy: appState.lastGpsFix ? appState.lastGpsFix.acc : 25,
+          speed: (appState.lastGpsFix && appState.lastGpsFix.speed !== null ? appState.lastGpsFix.speed / 3.6 : (target.speed ? target.speed / 3.6 : 0)),
+          heading: appState.lastGpsFix ? appState.lastGpsFix.heading : (target.heading || null)
         }
       });
+      return;
     }
-    return;
+  }
+
+  // 2. Als er een trein geselecteerd was op het trajectoverzicht: koppel deze direct
+  if (appState.selectedTrainId) {
+    const selected = getActiveParsedTrains().find(t => t.id === appState.selectedTrainId);
+    if (selected) {
+      window.selectMyTrain(selected.id);
+      if (openModal && modal) modal.style.display = 'flex';
+      return;
+    }
   }
 
   const bannerTitle = document.getElementById('inTrainBannerTitle');
@@ -4872,24 +4886,33 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
     return !isFreight;
   });
 
-  const fromCode = !overrideCorridorKey ? document.getElementById('routeFromSelect')?.value : null;
-  const fromSt = fromCode ? findStationByCode(fromCode) : null;
-  const targetCorrKey = overrideCorridorKey || appState.activeCorridorKey;
-  const activeCorr = (targetCorrKey && targetCorrKey !== 'all' && targetCorrKey !== 'freight-all')
-    ? CORRIDORS[targetCorrKey]
-    : CORRIDORS['amersfoort-breda'];
+  const corrKey = overrideCorridorKey || appState.activeCorridorKey;
+  const activeCorr = (corrKey && corrKey !== 'all' && corrKey !== 'freight-all' && CORRIDORS[corrKey])
+    ? CORRIDORS[corrKey]
+    : null;
 
   let candidateTrains = [];
   let filterMode = 'none';
-  if (fromSt && !overrideCorridorKey) {
+
+  // 1. Actieve corridor treinen (zoals Apeldoorn ➔ Zutphen)
+  if (activeCorr) {
+    candidateTrains = allParsed.filter(t => matchTrainToCorridor(t, activeCorr));
+    if (candidateTrains.length > 0) filterMode = 'corridor';
+  }
+
+  // 2. Station uit de trajectkiezer
+  const fromCode = !overrideCorridorKey ? document.getElementById('routeFromSelect')?.value : null;
+  const fromSt = fromCode ? findStationByCode(fromCode) : null;
+  if (candidateTrains.length === 0 && fromSt) {
     candidateTrains = allParsed
-      .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 6.0)
+      .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 7.0)
       .sort((a, b) => distanceKm(fromSt.lat, fromSt.lon, a.lat, a.lon) - distanceKm(fromSt.lat, fromSt.lon, b.lat, b.lon));
     if (candidateTrains.length > 0) filterMode = 'station';
   }
-  if (candidateTrains.length === 0 && activeCorr) {
-    candidateTrains = allParsed.filter(t => matchTrainToCorridor(t, activeCorr));
-    if (candidateTrains.length > 0) filterMode = 'corridor';
+
+  // 3. Fallback: pak de actuele reizigerstreinen
+  if (candidateTrains.length === 0) {
+    candidateTrains = allParsed.slice(0, 8);
   }
 
   // Sorteer treinen met voorkeur voor gekozen richting
@@ -4904,55 +4927,71 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
     });
   }
 
-  const corrTrains = candidateTrains.slice(0, 6);
+  const corrTrains = candidateTrains.slice(0, 8);
 
   selectorEl.style.display = 'block';
   const titleLabelEl = selectorEl.querySelector('.mt-station-title');
   const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
+
   if (titleLabelEl) {
-    if (filterMode === 'station' && fromSt) {
-      titleLabelEl.textContent = `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`;
-    } else if (activeCorr) {
+    if (activeCorr) {
       titleLabelEl.textContent = `🚆 Treinen op ${activeCorr.shortName || activeCorr.name} (${corrTrains.length}):`;
+    } else if (filterMode === 'station' && fromSt) {
+      titleLabelEl.textContent = `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`;
     } else {
-      titleLabelEl.textContent = `🚆 Kies uw traject of trein (${corrTrains.length}):`;
+      titleLabelEl.textContent = `🚆 Kies uw trein (${corrTrains.length} actief):`;
     }
   }
   if (hintLabelEl) {
-    hintLabelEl.textContent = 'Wacht op GPS of tik direct op uw traject / trein voor alle live gegevens:';
+    hintLabelEl.textContent = 'Tik direct op uw trein om live mee te reizen (zonder GPS-wachttijd):';
   }
 
-  const prefDir = appState.userPreferredDirection || '';
-  const isSchipholActive = /schiphol|amsterdam/i.test(prefDir);
-  const isRotterdamActive = /rotterdam|breda/i.test(prefDir);
+  // Richtingknoppen dynamisch op basis van het actieve traject:
+  let directionButtonsHtml = '';
+  if (activeCorr && activeCorr.stations && activeCorr.stations.length >= 2) {
+    const stFirst = activeCorr.stations[0].name;
+    const stLast = activeCorr.stations[activeCorr.stations.length - 1].name;
+    const prefDir = appState.userPreferredDirection || '';
+    const isFirstActive = prefDir.toLowerCase().includes(stFirst.toLowerCase());
+    const isLastActive = prefDir.toLowerCase().includes(stLast.toLowerCase());
 
-  const quickCorridorButtons = `
-    <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-      <button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS</button>
-      <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('amersfoort-breda')" style="border-color:rgba(250,204,21,0.45); color:#fde047;">⚡ HSL Rotterdam ⇄ Schiphol</button>
-      <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('rotterdam-amsterdam')" style="border-color:rgba(56,189,248,0.4); color:#7dd3fc;">🚆 Oude Lijn Rtd ⇄ Asd</button>
-    </div>
-    <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-      <span style="font-size:0.68rem; color:#94a3b8; display:inline-flex; align-items:center;">🎯 Snelle richting:</span>
-      <button type="button" class="mt-station-chip-btn ${isSchipholActive ? 'active' : ''}" onclick="window.setMyTrainDestination('Schiphol Airport')" style="border-color:${isSchipholActive ? '#38bdf8' : 'rgba(56,189,248,0.35)'}; color:${isSchipholActive ? '#ffffff' : '#38bdf8'}; font-weight:600;">➔ Schiphol / Amsterdam</button>
-      <button type="button" class="mt-station-chip-btn ${isRotterdamActive ? 'active' : ''}" onclick="window.setMyTrainDestination('Rotterdam Centraal')" style="border-color:${isRotterdamActive ? '#38bdf8' : 'rgba(56,189,248,0.35)'}; color:${isRotterdamActive ? '#ffffff' : '#38bdf8'}; font-weight:600;">➔ Rotterdam / Breda</button>
-    </div>
-  `;
-  const emptyMsg = (!appState.allLiveFeatures || appState.allLiveFeatures.length === 0)
-    ? '<span style="font-size:0.75rem; color:#94a3b8;">⏳ Live NS/NDOV treindata wordt opgehaald...</span>'
-    : '<span style="font-size:0.75rem; color:#94a3b8;">Geen trein gevonden op dit filter — tik op ⚡ HSL Rotterdam ⇄ Schiphol hierboven.</span>';
+    directionButtonsHtml = `
+      <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+        <span style="font-size:0.68rem; color:#94a3b8; display:inline-flex; align-items:center;">🎯 Richting:</span>
+        <button type="button" class="mt-station-chip-btn ${isLastActive ? 'active' : ''}" onclick="window.setMyTrainDestination('${stLast}')" style="border-color:${isLastActive ? '#38bdf8' : 'rgba(56,189,248,0.35)'}; color:${isLastActive ? '#ffffff' : '#38bdf8'}; font-weight:600;">➔ ${stLast}</button>
+        <button type="button" class="mt-station-chip-btn ${isFirstActive ? 'active' : ''}" onclick="window.setMyTrainDestination('${stFirst}')" style="border-color:${isFirstActive ? '#38bdf8' : 'rgba(56,189,248,0.35)'}; color:${isFirstActive ? '#ffffff' : '#38bdf8'}; font-weight:600;">➔ ${stFirst}</button>
+        <button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS</button>
+      </div>
+    `;
+  } else {
+    directionButtonsHtml = `
+      <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+        <button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS</button>
+      </div>
+    `;
+  }
+
   const trainChipsHtml = corrTrains.length > 0 ? corrTrains.map(stTrain => {
     const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
     const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
     const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
+    const isCurrent = appState.myTrain && appState.myTrain.id === stTrain.id;
     return `
-      <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')">
-        <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
-        <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd})</span>
+      <button type="button" class="mt-station-chip-btn ${isCurrent ? 'active' : ''}" onclick="window.selectMyTrain('${stTrain.id}')" style="display:flex; align-items:center; gap:6px; padding:8px 12px; margin-bottom:5px; font-size:0.78rem; width:100%; justify-content:space-between; ${isCurrent ? 'background:rgba(16,185,129,0.25); border-color:#10b981;' : ''}">
+        <span style="display:flex; align-items:center; gap:6px;">
+          <span class="op-badge ${stOp.badgeClass}" style="font-size:0.68rem; padding:2px 6px;">[${stOp.code}]</span>
+          <strong>Trein #${stTrain.trainNum}</strong>
+          <span>➔ <strong>${stDest}</strong></span>
+        </span>
+        <span style="display:flex; align-items:center; gap:8px;">
+          <span style="color:#38bdf8; font-weight:600;">⚡ ${stSpd}</span>
+          <span style="background:#10b981; color:#fff; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:700;">Volg live</span>
+        </span>
       </button>
     `;
-  }).join('') : emptyMsg;
-  chipsEl.innerHTML = quickCorridorButtons + trainChipsHtml;
+  }).join('') : '<span style="font-size:0.75rem; color:#94a3b8;">Geen treinen gevonden op dit traject.</span>';
+
+  chipsEl.innerHTML = directionButtonsHtml + trainChipsHtml;
 }
 window.filterManualModalTrains = (corrKey) => renderManualTrainFallbackPicker(corrKey);
 
@@ -4985,31 +5024,36 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
 
   if (openModalOnFirstFix && modal) {
     modal.style.display = 'flex';
-    const title = document.getElementById('myTrainTitle');
-    if (title) title.textContent = '📡 GPS Peiling in de Trein...';
-    const spd = document.getElementById('myTrainSpeed');
-    if (spd) spd.textContent = '0s';
-    const statusPill = document.getElementById('myTrainSpeedStatus');
-    if (statusPill) {
-      statusPill.className = 'speed-status-pill';
-      statusPill.textContent = '⏱️ 0s / ~5s • Verbinden met satelliet & masten...';
-    }
-    const route = document.getElementById('myTrainRoute');
-    if (route) route.textContent = 'Locatievoorziening actief in Safari / Chrome';
-    const seg = document.getElementById('myTrainSegment');
-    if (seg) seg.textContent = 'Zoekt GPS-positie (duurt normaal 2–5 sec, in trein tot 10 sec)...';
-    const meta = document.getElementById('myTrainGpsMeta');
-    if (meta) meta.textContent = '⏱️ Wachttijd: 0 seconden • Of kies hieronder direct uw trein:';
-    const nextSt = document.getElementById('myTrainNextStation');
-    if (nextSt) nextSt.textContent = '📡 Peilen...';
-    const nextEta = document.getElementById('myTrainNextEta');
-    if (nextEta) nextEta.textContent = 'Wordt berekend bij GPS fix...';
-    const prevSt = document.getElementById('myTrainPrevStation');
-    if (prevSt) prevSt.textContent = '📡 Peilen...';
-    const prevDist = document.getElementById('myTrainPrevDist');
-    if (prevDist) prevDist.textContent = 'Wordt berekend bij GPS fix...';
+    const corrKey = appState.activeCorridorKey;
+    const activeCorr = (corrKey && corrKey !== 'all' && corrKey !== 'freight-all' && CORRIDORS[corrKey]) ? CORRIDORS[corrKey] : null;
 
-    // Toon direct vanaf 0s de handmatige treinkeuze onderaan, zodat de reiziger nooit hoeft te wachten!
+    if (!appState.myTrain && !appState.userLockedTrainId) {
+      const title = document.getElementById('myTrainTitle');
+      if (title) title.textContent = activeCorr ? `Traject: ${activeCorr.name}` : '📡 GPS Peiling in de Trein...';
+      const spd = document.getElementById('myTrainSpeed');
+      if (spd) spd.textContent = '0';
+      const statusPill = document.getElementById('myTrainSpeedStatus');
+      if (statusPill) {
+        statusPill.className = 'speed-status-pill';
+        statusPill.textContent = '⏱️ Zoeken naar GPS-positie...';
+      }
+      const route = document.getElementById('myTrainRoute');
+      if (route) route.textContent = activeCorr ? `Spoorlijn: ${activeCorr.name}` : 'Locatievoorziening actief in Safari / Chrome';
+      const seg = document.getElementById('myTrainSegment');
+      if (seg) seg.textContent = 'Tik direct hieronder op uw trein om live te volgen:';
+      const meta = document.getElementById('myTrainGpsMeta');
+      if (meta) meta.textContent = 'Wacht op GPS fix of kies uw rijdende trein hieronder:';
+      const nextSt = document.getElementById('myTrainNextStation');
+      if (nextSt) nextSt.textContent = '📡 Peilen...';
+      const nextEta = document.getElementById('myTrainNextEta');
+      if (nextEta) nextEta.textContent = 'Wordt berekend bij GPS fix...';
+      const prevSt = document.getElementById('myTrainPrevStation');
+      if (prevSt) prevSt.textContent = '📡 Peilen...';
+      const prevDist = document.getElementById('myTrainPrevDist');
+      if (prevDist) prevDist.textContent = 'Wordt berekend bij GPS fix...';
+    }
+
+    // Toon direct vanaf 0s de treinkeuze van het actieve traject!
     renderManualTrainFallbackPicker();
   }
 
@@ -5042,18 +5086,18 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     if (elapsedSec <= 3) {
       if (statusPill) statusPill.textContent = `⏱️ ${elapsedSec}s / ~5s • Satelliet & zendmasten peilen...`;
       if (seg) seg.textContent = `Zoekt GPS-positie (${elapsedSec}s verstreken, duurt normaal 2–5 sec)...`;
-      if (meta) meta.textContent = `⏱️ Bezig met verbinden (${elapsedSec}s) • Tik op ⚡ HSL hierboven om direct te starten:`;
+      if (meta) meta.textContent = `⏱️ Bezig met verbinden (${elapsedSec}s) • Kies hieronder direct uw trein:`;
     } else if (elapsedSec <= 8) {
       if (statusPill) statusPill.textContent = `📶 ${elapsedSec}s / ~10s • Zendmast-assistentie actief...`;
       if (seg) seg.textContent = `Metaal/raam dempt GPS — schakelt over op zendmastpeiling (${elapsedSec}s)...`;
-      if (meta) meta.textContent = `⏱️ Wachttijd: ${elapsedSec}s • Tik op ⚡ HSL hierboven voor directe verbinding.`;
+      if (meta) meta.textContent = `⏱️ Wachttijd: ${elapsedSec}s • Kies hieronder direct uw trein om live mee te reizen.`;
     } else {
       if (statusPill) {
         statusPill.className = 'speed-status-pill yellow';
         statusPill.textContent = `⚠️ ${elapsedSec}s • Zwak GPS-signaal in trein`;
       }
-      if (seg) seg.textContent = `Geen GPS-signaal na ${elapsedSec}s (metaal/tunnel). Tik hierboven op ⚡ HSL Rotterdam ⇄ Schiphol:`;
-      if (meta) meta.innerHTML = `⏱️ Zoekt al <strong>${elapsedSec}s</strong> op de achtergrond. Tik direct op uw trein of HSL-knop:`;
+      if (seg) seg.textContent = `Geen GPS-signaal na ${elapsedSec}s (treinmetaal). Kies uw trein hieronder:`;
+      if (meta) meta.innerHTML = `⏱️ Zoekt al <strong>${elapsedSec}s</strong> op de achtergrond. Tik direct op uw trein hieronder:`;
     }
 
     // Elke 4 seconden: forceer een actieve zendmast/Wi-Fi peiling als watchPosition nog wacht
@@ -5214,49 +5258,40 @@ window.switchMyTrainDirection = () => {
     return;
   }
 
-  // 2. Bepaal de huidige bestemming/richting en bereken het omgekeerde
+  // 2. Bepaal de huidige bestemming/richting en wissel dynamisch op basis van het actieve traject
+  const corrKey = appState.activeCorridorKey;
+  const activeCorr = (corrKey && corrKey !== 'all' && corrKey !== 'freight-all' && CORRIDORS[corrKey]) ? CORRIDORS[corrKey] : null;
+
   let curDest = appState.userPreferredDirection || '';
-  let curOrigin = '';
   if (currentTrain) {
     curDest = curDest || currentTrain.exactDestination || (currentTrain.service && currentTrain.service.destination) || '';
-    curOrigin = (currentTrain.service && currentTrain.service.origin && currentTrain.service.origin !== 'Vertrekstation') ? currentTrain.service.origin : '';
   }
 
   let nextDest = '';
-  const isHslRoute = (appState.activeCorridorKey === 'amersfoort-breda' || appState.activeCorridorKey === 'breda-amersfoort') ||
-                     /schiphol|rotterdam|breda/i.test(curDest) || /schiphol|rotterdam|breda/i.test(curOrigin);
-
-  if (isHslRoute) {
-    if (/rotterdam|breda/i.test(curDest)) {
-      nextDest = 'Schiphol Airport';
-      if (appState.activeCorridorKey === 'breda-amersfoort') appState.activeCorridorKey = 'amersfoort-breda';
+  if (activeCorr && activeCorr.stations && activeCorr.stations.length >= 2) {
+    const stFirst = activeCorr.stations[0].name;
+    const stLast = activeCorr.stations[activeCorr.stations.length - 1].name;
+    if (curDest.toLowerCase().includes(stLast.toLowerCase())) {
+      nextDest = stFirst;
     } else {
-      nextDest = 'Rotterdam Centraal';
-      if (appState.activeCorridorKey === 'amersfoort-breda') appState.activeCorridorKey = 'breda-amersfoort';
+      nextDest = stLast;
     }
-  } else if (curOrigin && curDest) {
-    nextDest = curDest.toLowerCase().includes(curOrigin.toLowerCase()) ? (currentTrain?.service?.destination || 'Rotterdam Centraal') : curOrigin;
-  } else if (curDest) {
-    nextDest = /amsterdam|schiphol|utrecht/i.test(curDest) ? 'Rotterdam Centraal' : 'Amsterdam Centraal';
+  } else if (currentTrain && currentTrain.service && currentTrain.service.origin && currentTrain.service.origin !== 'Vertrekstation') {
+    nextDest = currentTrain.service.origin;
   } else {
-    nextDest = 'Rotterdam Centraal';
+    nextDest = curDest.toLowerCase().includes('rotterdam') ? 'Schiphol Airport' : 'Rotterdam Centraal';
   }
 
   appState.userPreferredDirection = nextDest;
 
-  // 3. Zoek direct in allParsed naar een trein die rijdt in de richting van nextDest
+  // 3. Zoek direct naar een trein die rijdt in de richting van nextDest op dit traject
   const targetLower = nextDest.toLowerCase();
   const matchingCandidates = allParsed.filter(t => {
     if (currentTrain && t.id === currentTrain.id) return false;
+    if (activeCorr && !matchTrainToCorridor(t, activeCorr)) return false;
     const tDest = (t.exactDestination || (t.service && t.service.destination) || '').toLowerCase();
     const tVia = (t.service && t.service.via ? t.service.via : '').toLowerCase();
-    const d = distanceKm(userLat, userLon, t.lat, t.lon);
-    if (d > 35.0) return false; // binnen 35 km op hetzelfde baanvak
-
-    if (tDest.includes(targetLower) || tVia.includes(targetLower)) return true;
-    if (targetLower.includes('schiphol') && (tDest.includes('amsterdam') || tDest.includes('leeuwarden') || tDest.includes('groningen'))) return true;
-    if (targetLower.includes('rotterdam') && (tDest.includes('breda') || tDest.includes('rotterdam') || tDest.includes('brussel') || tDest.includes('vlissingen'))) return true;
-    return false;
+    return tDest.includes(targetLower) || tVia.includes(targetLower);
   }).sort((a, b) => distanceKm(userLat, userLon, a.lat, a.lon) - distanceKm(userLat, userLon, b.lat, b.lon));
 
   if (matchingCandidates.length > 0) {
@@ -5274,7 +5309,7 @@ window.switchMyTrainDirection = () => {
     showFeedbackToast(`🔄 Richting gewisseld naar: ➔ ${nextDest}`, 'info');
     const routeEl = document.getElementById('myTrainRoute');
     if (routeEl) routeEl.textContent = `Voorkeursrichting: ➔ ${nextDest}`;
-    renderManualTrainFallbackPicker(appState.activeCorridorKey || 'amersfoort-breda');
+    renderManualTrainFallbackPicker(appState.activeCorridorKey);
   }
 };
 
@@ -5899,7 +5934,7 @@ function onLiveLocationFix(pos) {
         titleLabelEl.textContent = `🚆 Treinen binnen 5,5 km (${nearbyPassengerTrains.length} gevonden):`;
       }
       if (hintLabelEl) {
-        hintLabelEl.textContent = 'Tik direct op uw trein (of kies HSL Rotterdam ⇄ Schiphol):';
+        hintLabelEl.textContent = 'Tik direct op uw trein om live mee te reizen:';
       }
       if (appState.userPreferredDirection) {
         const pref = appState.userPreferredDirection.toLowerCase();
@@ -5912,34 +5947,52 @@ function onLiveLocationFix(pos) {
         });
       }
 
-      const prefDir = appState.userPreferredDirection || '';
-      const isSchipholActive = /schiphol|amsterdam/i.test(prefDir);
-      const isRotterdamActive = /rotterdam|breda/i.test(prefDir);
+      const corrKey = appState.activeCorridorKey;
+      const activeCorr = (corrKey && corrKey !== 'all' && corrKey !== 'freight-all' && CORRIDORS[corrKey]) ? CORRIDORS[corrKey] : null;
 
-      const quickBtns = `
-        <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-          <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains && window.filterManualModalTrains('amersfoort-breda')" style="border-color:rgba(250,204,21,0.45); color:#fde047;">⚡ HSL Rotterdam ⇄ Schiphol</button>
-          <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains && window.filterManualModalTrains('rotterdam-amsterdam')" style="border-color:rgba(56,189,248,0.4); color:#7dd3fc;">🚆 Oude Lijn Rtd ⇄ Asd</button>
-        </div>
-        <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-          <span style="font-size:0.68rem; color:#94a3b8; display:inline-flex; align-items:center;">🎯 Snelle richting:</span>
-          <button type="button" class="mt-station-chip-btn ${isSchipholActive ? 'active' : ''}" onclick="window.setMyTrainDestination('Schiphol Airport')" style="border-color:${isSchipholActive ? '#38bdf8' : 'rgba(56,189,248,0.35)'}; color:${isSchipholActive ? '#ffffff' : '#38bdf8'}; font-weight:600;">➔ Schiphol / Amsterdam</button>
-          <button type="button" class="mt-station-chip-btn ${isRotterdamActive ? 'active' : ''}" onclick="window.setMyTrainDestination('Rotterdam Centraal')" style="border-color:${isRotterdamActive ? '#38bdf8' : 'rgba(56,189,248,0.35)'}; color:${isRotterdamActive ? '#ffffff' : '#38bdf8'}; font-weight:600;">➔ Rotterdam / Breda</button>
-        </div>
-      `;
+      let quickBtns = '';
+      if (activeCorr && activeCorr.stations && activeCorr.stations.length >= 2) {
+        const stFirst = activeCorr.stations[0].name;
+        const stLast = activeCorr.stations[activeCorr.stations.length - 1].name;
+        const prefDir = appState.userPreferredDirection || '';
+        const isFirstActive = prefDir.toLowerCase().includes(stFirst.toLowerCase());
+        const isLastActive = prefDir.toLowerCase().includes(stLast.toLowerCase());
+        quickBtns = `
+          <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+            <span style="font-size:0.68rem; color:#94a3b8; display:inline-flex; align-items:center;">🎯 Richting:</span>
+            <button type="button" class="mt-station-chip-btn ${isLastActive ? 'active' : ''}" onclick="window.setMyTrainDestination('${stLast}')" style="border-color:${isLastActive ? '#38bdf8' : 'rgba(56,189,248,0.35)'}; color:${isLastActive ? '#ffffff' : '#38bdf8'}; font-weight:600;">➔ ${stLast}</button>
+            <button type="button" class="mt-station-chip-btn ${isFirstActive ? 'active' : ''}" onclick="window.setMyTrainDestination('${stFirst}')" style="border-color:${isFirstActive ? '#38bdf8' : 'rgba(56,189,248,0.35)'}; color:${isFirstActive ? '#ffffff' : '#38bdf8'}; font-weight:600;">➔ ${stFirst}</button>
+            <button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS</button>
+          </div>
+        `;
+      } else {
+        quickBtns = `
+          <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+            <button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS</button>
+          </div>
+        `;
+      }
+
       const chipsHtml = nearbyPassengerTrains.slice(0, 6).map(stTrain => {
         const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
         const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
         const stDistKm = distanceKm(userLat, userLon, stTrain.lat, stTrain.lon).toFixed(1);
         const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
         return `
-          <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')">
-            <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
-            <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd} • ${stDistKm} km)</span>
+          <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')" style="display:flex; align-items:center; gap:6px; padding:8px 12px; margin-bottom:5px; font-size:0.78rem; width:100%; justify-content:space-between;">
+            <span style="display:flex; align-items:center; gap:6px;">
+              <span class="op-badge ${stOp.badgeClass}" style="font-size:0.68rem; padding:2px 6px;">[${stOp.code}]</span>
+              <strong>Trein #${stTrain.trainNum}</strong>
+              <span>➔ <strong>${stDest}</strong></span>
+            </span>
+            <span style="display:flex; align-items:center; gap:8px;">
+              <span style="color:#38bdf8; font-weight:600;">⚡ ${stSpd}</span>
+              <span style="background:#10b981; color:#fff; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:700;">Volg live</span>
+            </span>
           </button>
         `;
       }).join('');
-      chipsEl.innerHTML = quickBtns + (chipsHtml || '<span style="font-size:0.75rem; color:#94a3b8;">Tik op ⚡ HSL Rotterdam ⇄ Schiphol hierboven om alle HSL-treinen te tonen.</span>');
+      chipsEl.innerHTML = quickBtns + (chipsHtml || '<span style="font-size:0.75rem; color:#94a3b8;">Geen treinen gevonden nabij uw locatie.</span>');
     }
 
     const modalNextStation = document.getElementById('myTrainNextStation');
@@ -7521,8 +7574,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.17';
-const APP_BUILD_COMMIT = '2bf35ba';
+const APP_VERSION = '2.9.18';
+const APP_BUILD_COMMIT = '3691e9e';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

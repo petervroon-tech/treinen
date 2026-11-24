@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.9.17_2bf35ba">
-  <link rel="manifest" href="./manifest.json?v=2.9.17_2bf35ba">
+  <link rel="stylesheet" href="./style.css?v=2.9.18_3691e9e">
+  <link rel="manifest" href="./manifest.json?v=2.9.18_3691e9e">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -818,7 +818,7 @@
         <div class="my-train-title-group">
           <span id="myTrainOpBadge" class="op-badge op-ns">[NS]</span>
           <h3 id="myTrainTitle" class="my-train-heading">U zit in Trein #1762</h3>
-          <span id="gpsModalVersion" class="modal-version-tag">GPS v2.9.17</span>
+          <span id="gpsModalVersion" class="modal-version-tag">GPS v2.9.18</span>
         </div>
         <button id="btnCloseMyTrain" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
       </div>
@@ -835,13 +835,7 @@
             <div class="hero-line" id="myTrainRoute">📡 Bepalen van uw trein &amp; traject...</div>
             <div class="hero-segment" id="myTrainSegment">Zoekt dichtstbijzijnde rijdende trein op het spoor...</div>
             <div class="hero-gps-meta" id="myTrainGpsMeta">GPS verbinding wordt tot stand gebracht...</div>
-            <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
-              <button id="btnHslRtdShl" onclick="window.selectHslExpress('rotterdam-schiphol')" type="button" style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.22), rgba(234, 88, 12, 0.22)); border: 1px solid rgba(250, 204, 21, 0.6); color: #fef08a; border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 700; cursor: pointer; transition: all 0.18s ease; touch-action: manipulation; -webkit-tap-highlight-color: rgba(250, 204, 21, 0.35);">
-                ⚡ HSL Rotterdam ➔ Schiphol
-              </button>
-              <button id="btnHslShlRtd" onclick="window.selectHslExpress('schiphol-rotterdam')" type="button" style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(37, 99, 235, 0.22)); border: 1px solid rgba(56, 189, 248, 0.6); color: #bae6fd; border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 700; cursor: pointer; transition: all 0.18s ease; touch-action: manipulation; -webkit-tap-highlight-color: rgba(56, 189, 248, 0.35);">
-                ⚡ HSL Schiphol ➔ Rotterdam
-              </button>
+            <div id="myTrainCorridorDirectionBar" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
               <button id="btnSwitchTrainDirection" onclick="window.switchMyTrainDirection()" type="button" style="background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.45); color: #38bdf8; border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 600; cursor: pointer; transition: all 0.18s ease; touch-action: manipulation; -webkit-tap-highlight-color: rgba(56, 189, 248, 0.35); user-select: none;">
                 🔄 Wissel richting
               </button>
@@ -850,11 +844,11 @@
           </div>
         </div>
 
-        <!-- Andere treinen op dit station selector (bij meerdere treinen op de perrons) -->
-        <div id="myTrainStationSelector" class="my-train-station-selector" style="display: none;">
+        <!-- Treinen op dit traject of station selector -->
+        <div id="myTrainStationSelector" class="my-train-station-selector" style="display: block;">
           <div class="mt-station-header">
-            <span class="mt-station-title">🚉 Treinen op dit station:</span>
-            <span class="mt-station-hint">Zit u in een andere trein op het perron? Tik direct om te kiezen:</span>
+            <span class="mt-station-title">🚆 Treinen op uw traject:</span>
+            <span class="mt-station-hint">Tik direct op uw trein om live mee te reizen:</span>
           </div>
           <div id="myTrainStationChips" class="mt-station-chips"></div>
         </div>
@@ -1276,7 +1270,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.9.17_2bf35ba"></script>
-  <script type="module" src="./app.js?v=2.9.17_2bf35ba"></script>
+  <script src="./stations.js?v=2.9.18_3691e9e"></script>
+  <script type="module" src="./app.js?v=2.9.18_3691e9e"></script>
 </body>
 </html>
