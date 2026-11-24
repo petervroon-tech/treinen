@@ -4865,6 +4865,73 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
   const helpBox = document.getElementById('myTrainGpsHelpBox');
   if (helpBox) helpBox.style.display = 'none';
 
+  // Helper: vul direct de handmatige treinkeuze (zodat reiziger bij stilstand of hoge snelheid nooit op GPS hoeft te wachten)
+  function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
+    const selectorEl = document.getElementById('myTrainStationSelector');
+    const chipsEl = document.getElementById('myTrainStationChips');
+    if (!selectorEl || !chipsEl) return;
+
+    const allParsed = getActiveParsedTrains().filter(t => {
+      const isFreight = (t.operator && t.operator.category === 'freight') ||
+                        (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999);
+      return !isFreight;
+    });
+
+    const fromCode = !overrideCorridorKey ? document.getElementById('routeFromSelect')?.value : null;
+    const fromSt = fromCode ? findStationByCode(fromCode) : null;
+    const targetCorrKey = overrideCorridorKey || appState.activeCorridorKey;
+    const activeCorr = (targetCorrKey && targetCorrKey !== 'all' && targetCorrKey !== 'freight-all')
+      ? CORRIDORS[targetCorrKey]
+      : null;
+
+    let candidateTrains = [];
+    if (fromSt && !overrideCorridorKey) {
+      candidateTrains = allParsed
+        .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 4.0)
+        .sort((a, b) => distanceKm(fromSt.lat, fromSt.lon, a.lat, a.lon) - distanceKm(fromSt.lat, fromSt.lon, b.lat, b.lon));
+    }
+    if (candidateTrains.length === 0 && activeCorr) {
+      candidateTrains = allParsed.filter(t => matchTrainToCorridor(t, activeCorr));
+    }
+    if (candidateTrains.length === 0) {
+      candidateTrains = allParsed;
+    }
+    const corrTrains = candidateTrains.slice(0, 6);
+
+    selectorEl.style.display = 'block';
+    const titleLabelEl = selectorEl.querySelector('.mt-station-title');
+    const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
+    if (titleLabelEl) {
+      titleLabelEl.textContent = (fromSt && !overrideCorridorKey)
+        ? `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`
+        : (activeCorr ? `🚆 Treinen op ${activeCorr.shortName || activeCorr.name} (${corrTrains.length}):` : `🚆 Actuele reizigerstreinen (${corrTrains.length}):`);
+    }
+    if (hintLabelEl) {
+      hintLabelEl.textContent = 'Wacht op GPS of tik direct op uw trein voor alle live gegevens:';
+    }
+
+    const quickCorridorButtons = `
+      <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+        <button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS</button>
+        <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('amersfoort-breda')" style="border-color:rgba(250,204,21,0.45); color:#fde047;">⚡ HSL Rotterdam ⇄ Schiphol</button>
+        <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('rotterdam-amsterdam')" style="border-color:rgba(56,189,248,0.4); color:#7dd3fc;">🚆 Oude Lijn Rtd ⇄ Asd</button>
+      </div>
+    `;
+    const trainChipsHtml = corrTrains.map(stTrain => {
+      const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
+      const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
+      const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
+      return `
+        <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')">
+          <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
+          <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd})</span>
+        </button>
+      `;
+    }).join('');
+    chipsEl.innerHTML = quickCorridorButtons + trainChipsHtml;
+  }
+  window.filterManualModalTrains = (corrKey) => renderManualTrainFallbackPicker(corrKey);
+
   if (openModalOnFirstFix && modal) {
     modal.style.display = 'flex';
     const title = document.getElementById('myTrainTitle');
@@ -4881,7 +4948,7 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     const seg = document.getElementById('myTrainSegment');
     if (seg) seg.textContent = 'Zoekt GPS-positie (duurt normaal 2–5 sec, in trein tot 10 sec)...';
     const meta = document.getElementById('myTrainGpsMeta');
-    if (meta) meta.textContent = '⏱️ Wachttijd: 0 seconden • Zoekt dichtstbijzijnde rijdende trein...';
+    if (meta) meta.textContent = '⏱️ Wachttijd: 0 seconden • Of kies hieronder direct uw trein:';
     const nextSt = document.getElementById('myTrainNextStation');
     if (nextSt) nextSt.textContent = '📡 Peilen...';
     const nextEta = document.getElementById('myTrainNextEta');
@@ -4890,6 +4957,9 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     if (prevSt) prevSt.textContent = '📡 Peilen...';
     const prevDist = document.getElementById('myTrainPrevDist');
     if (prevDist) prevDist.textContent = 'Wordt berekend bij GPS fix...';
+
+    // Toon direct vanaf 0s de handmatige treinkeuze onderaan, zodat de reiziger nooit hoeft te wachten!
+    renderManualTrainFallbackPicker();
   }
 
   if (appState.geoWatchId !== null) {
@@ -4902,7 +4972,6 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
   }
 
   appState.gpsConnectStart = Date.now();
-  let manualFallbackShown = false;
 
   // Live 1-seconde teller + actieve fallback bij traag/geblokkeerd treinsignaal
   appState.gpsConnectTimer = setInterval(() => {
@@ -4922,18 +4991,18 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     if (elapsedSec <= 3) {
       if (statusPill) statusPill.textContent = `⏱️ ${elapsedSec}s / ~5s • Satelliet & zendmasten peilen...`;
       if (seg) seg.textContent = `Zoekt GPS-positie (${elapsedSec}s verstreken, duurt normaal 2–5 sec)...`;
-      if (meta) meta.textContent = `⏱️ Bezig met verbinden (${elapsedSec}s) • Druk op "Sta toe" als daarom gevraagd wordt.`;
+      if (meta) meta.textContent = `⏱️ Bezig met verbinden (${elapsedSec}s) • Of kies hieronder direct uw trein.`;
     } else if (elapsedSec <= 8) {
       if (statusPill) statusPill.textContent = `📶 ${elapsedSec}s / ~10s • Zendmast-assistentie actief...`;
       if (seg) seg.textContent = `Metaal/raam dempt GPS — schakelt over op zendmastpeiling (${elapsedSec}s)...`;
-      if (meta) meta.textContent = `⏱️ Wachttijd: ${elapsedSec}s • Houd de telefoon indien mogelijk nabij het raam.`;
+      if (meta) meta.textContent = `⏱️ Wachttijd: ${elapsedSec}s • Houd telefoon nabij raam of kies hieronder uw trein.`;
     } else {
       if (statusPill) {
         statusPill.className = 'speed-status-pill yellow';
         statusPill.textContent = `⚠️ ${elapsedSec}s • Zwak GPS-signaal in trein`;
       }
-      if (seg) seg.textContent = `Geen GPS-signaal na ${elapsedSec}s (metaal/tunnel). Kies hieronder uw trein of peil opnieuw:`;
-      if (meta) meta.innerHTML = `⏱️ Zoekt al <strong>${elapsedSec}s</strong> op de achtergrond. U kunt direct hieronder uw trein kiezen:`;
+      if (seg) seg.textContent = `Geen GPS-signaal na ${elapsedSec}s (metaal/tunnel). Kies hieronder uw trein:`;
+      if (meta) meta.innerHTML = `⏱️ Zoekt al <strong>${elapsedSec}s</strong> op de achtergrond. Tik hieronder direct op uw trein:`;
     }
 
     // Na 3 seconden: actieve zendmast/cache-peiling forceren als watchPosition nog wacht
@@ -4945,64 +5014,6 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
           { enableHighAccuracy: false, maximumAge: 300000, timeout: 4000 }
         );
       } catch (e) {}
-    }
-
-    // Na 5 seconden zonder GPS: toon direct de actuele treinen op het gekozen station / traject zodat de gebruiker nooit vastzit!
-    if (elapsedSec >= 5 && !manualFallbackShown) {
-      manualFallbackShown = true;
-      const selectorEl = document.getElementById('myTrainStationSelector');
-      const chipsEl = document.getElementById('myTrainStationChips');
-      if (selectorEl && chipsEl) {
-        const allParsed = getActiveParsedTrains().filter(t => {
-          const isFreight = (t.operator && t.operator.category === 'freight') ||
-                            (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999);
-          return !isFreight;
-        });
-
-        const fromCode = document.getElementById('routeFromSelect')?.value;
-        const fromSt = fromCode ? findStationByCode(fromCode) : null;
-        const activeCorr = (appState.activeCorridorKey && appState.activeCorridorKey !== 'all' && appState.activeCorridorKey !== 'freight-all')
-          ? CORRIDORS[appState.activeCorridorKey]
-          : null;
-
-        let candidateTrains = [];
-        if (fromSt) {
-          candidateTrains = allParsed
-            .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 3.0)
-            .sort((a, b) => distanceKm(fromSt.lat, fromSt.lon, a.lat, a.lon) - distanceKm(fromSt.lat, fromSt.lon, b.lat, b.lon));
-        }
-        if (candidateTrains.length === 0 && activeCorr) {
-          candidateTrains = allParsed.filter(t => matchTrainToCorridor(t, activeCorr));
-        }
-        if (candidateTrains.length === 0) {
-          candidateTrains = allParsed;
-        }
-        const corrTrains = candidateTrains.slice(0, 6);
-
-        selectorEl.style.display = 'block';
-        const titleLabelEl = selectorEl.querySelector('.mt-station-title');
-        const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
-        if (titleLabelEl) {
-          titleLabelEl.textContent = fromSt
-            ? `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`
-            : (activeCorr ? `🚆 Treinen op ${activeCorr.shortName || activeCorr.name}:` : '🚆 Actuele reizigerstreinen:');
-        }
-        if (hintLabelEl) hintLabelEl.textContent = 'GPS geblokkeerd door overkapping/metaal — tik direct op uw trein voor alle live gegevens:';
-
-        const retryBtnHtml = `<button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS peilen</button>`;
-        const trainChipsHtml = corrTrains.map(stTrain => {
-          const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
-          const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
-          const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
-          return `
-            <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')">
-              <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
-              <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd})</span>
-            </button>
-          `;
-        }).join('');
-        chipsEl.innerHTML = retryBtnHtml + trainChipsHtml;
-      }
     }
   }, 1000);
 
@@ -7260,8 +7271,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.9';
-const APP_BUILD_COMMIT = 'e5153a7';
+const APP_VERSION = '2.9.10';
+const APP_BUILD_COMMIT = 'ef4199e';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
