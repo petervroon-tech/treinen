@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.9.6"
+DEFAULT_VERSION = "2.9.7"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -404,12 +404,26 @@ def update_version_json(sha=None, build_num=None):
         print(f"📦 index.html asset hash bijgewerkt naar {asset_v}")
 
 
+def verify_js_syntax():
+    app_js_path = os.path.join(os.path.dirname(__file__), "app.js")
+    jsc_path = "/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc"
+    if os.path.exists(jsc_path) and os.path.exists(app_js_path):
+        res = subprocess.run([jsc_path, "-m", app_js_path], capture_output=True, text=True)
+        combined = (res.stdout or "") + (res.stderr or "")
+        if "SyntaxError" in combined:
+            print(f"❌ JS SyntaxError gevonden in app.js:\n{combined}")
+            sys.exit(1)
+        print("✅ JS syntax verificatie geslaagd (geen SyntaxError in app.js)")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Treinen WASM Builder")
     parser.add_argument("--ci", action="store_true", help="CI modus")
     parser.add_argument("--sha", type=str, help="Commit SHA")
     parser.add_argument("--build", type=str, help="Build nummer")
     args = parser.parse_args()
+
+    verify_js_syntax()
 
     wasm_bytes = generate_treinen_wasm()
     wasm_path = os.path.join(os.path.dirname(__file__), "treinen.wasm")
