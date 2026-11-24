@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.9.2"
+DEFAULT_VERSION = "2.9.3"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -268,6 +268,12 @@ def update_version_json(sha=None, build_num=None):
 
     # Up-to-date overzicht van actuele mogelijkheden (zoals in vroonphoto help modal)
     data["features"] = [
+        {
+            "tag": "Instant GPS & Snelheid",
+            "title": "Directe GPS-koppeling & Live Snelheid in de Trein",
+            "desc": "Snelle assisted GPS-peiling binnen 1 à 2 seconden zonder wachttijd. Toont uw werkelijke live rijsnelheid (km/u) en dichtstbijzijnde station direct op het snelheidsdisplay, ook bij getint glas of vertraging in de externe treinenfeed.",
+            "icon": "⚡"
+        },
         {
             "tag": "ICE & Hoge Snelheid",
             "title": "ICE International Hysteresis & Snelheidsdiscriminatie",

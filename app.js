@@ -4738,7 +4738,7 @@ function findMyTrain() {
 
 function detectAndShowMyTrain(openModal = true) {
   const modal = document.getElementById('myTrainModal');
-  if (appState.isTrackingUser && appState.myTrain) {
+  if (appState.isTrackingUser) {
     if (openModal && modal) modal.style.display = 'flex';
     // Direct live verversen van alle gegevens in de modal op basis van de laatste fix
     if (appState.lastGpsFix) {
@@ -4747,7 +4747,8 @@ function detectAndShowMyTrain(openModal = true) {
           latitude: appState.lastGpsFix.lat,
           longitude: appState.lastGpsFix.lon,
           accuracy: appState.lastGpsFix.acc || 15,
-          speed: (appState.lastGpsFix.speed ? appState.lastGpsFix.speed / 3.6 : 0)
+          speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : null),
+          heading: appState.lastGpsFix.heading
         }
       });
     }
@@ -4800,9 +4801,9 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     const spd = document.getElementById('myTrainSpeed');
     if (spd) spd.textContent = '...';
     const statusPill = document.getElementById('myTrainSpeedStatus');
-    if (statusPill) statusPill.textContent = '📡 Verbinden met satelliet & masten';
+    if (statusPill) statusPill.textContent = '📡 Verbinden met satelliet & masten...';
     const route = document.getElementById('myTrainRoute');
-    if (route) route.textContent = 'Locatievoorziening wordt geactiveerd in Safari / Chrome';
+    if (route) route.textContent = 'Locatievoorziening actief in Safari / Chrome';
     const seg = document.getElementById('myTrainSegment');
     if (seg) seg.textContent = 'Druk op "Sta toe" als uw browser om toestemming vraagt.';
     const meta = document.getElementById('myTrainGpsMeta');
@@ -4822,7 +4823,7 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     appState.geoWatchId = null;
   }
 
-  // 1. Directe snelle warm-cache peiling (Wi-Fi / zendmasten) binnen 100ms
+  // 1. Directe snelle warm-cache peiling (Wi-Fi / zendmasten) binnen 100-300ms
   try {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -4831,11 +4832,11 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
       (err) => {
         console.warn('Snelle positiebepaling wacht op watchPosition:', err?.code);
       },
-      { enableHighAccuracy: false, maximumAge: 60000, timeout: 6000 }
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 3500 }
     );
   } catch (e) {}
 
-  // 2. Continue watchPosition met automatische omschakeling bij getint glas / afscherming in de trein
+  // 2. Continue watchPosition met direct responsieve timeout
   let switchedToLowAccuracy = false;
 
   function runWatch(opts) {
@@ -4848,7 +4849,7 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
         onLiveLocationFix(pos);
       },
       (err) => {
-        console.warn('GPS tracking waarschuwing:', err.code, err.message);
+        console.warn('GPS tracking status:', err.code, err.message);
 
         // Code 1: PERMISSION_DENIED (gebruiker heeft geweigerd of browser permissie staat uit)
         if (err.code === 1) {
@@ -4862,18 +4863,19 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
         }
 
         // Code 3: TIMEOUT of Code 2: POSITION_UNAVAILABLE
-        // BINNEN DE TREIN: Metaal en getint glas dempen GPS.
-        // Schakel direct over op zendmast-peiling die ALTIJD werkt!
+        // In een metalen treinstel duurt satelliet-lock soms even.
+        // Schakel direct over naar assisted zendmastpeiling die ALTIJD werkt!
         if (!switchedToLowAccuracy) {
           switchedToLowAccuracy = true;
           const statusPill = document.getElementById('myTrainSpeedStatus');
-          if (statusPill) statusPill.textContent = '📶 Schakelt over naar zendmast-peiling...';
-          runWatch({ enableHighAccuracy: false, maximumAge: 30000, timeout: 30000 });
+          if (statusPill && !appState.lastGpsFix) {
+            statusPill.textContent = '📶 Schakelt over naar zendmast/assistent-peiling...';
+          }
+          runWatch({ enableHighAccuracy: false, maximumAge: 20000, timeout: 10000 });
         } else {
-          // Blijf luisteren en toon geruststellende status ipv plotseling te stoppen of een alert te tonen!
           const statusPill = document.getElementById('myTrainSpeedStatus');
           if (statusPill && !appState.lastGpsFix) {
-            statusPill.textContent = '🛰️ Signaal zoeken in trein (blijft actief)...';
+            statusPill.textContent = '🛰️ Signaal zoeken in trein (houd telefoon nabij raam)...';
           }
         }
       },
@@ -4881,7 +4883,8 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
     );
   }
 
-  runWatch({ enableHighAccuracy: true, maximumAge: 20000, timeout: 25000 });
+  // Start direct met 7s timeout i.p.v. 25s wachttijd
+  runWatch({ enableHighAccuracy: true, maximumAge: 10000, timeout: 7000 });
 }
 
 function stopLiveTrainTracking() {
@@ -5105,29 +5108,40 @@ function onLiveLocationFix(pos) {
   const userAcc = Math.round(pos.coords.accuracy || 10);
   const now = Date.now();
 
+  // Bewaar de vorige GPS-fix VÓÓR het overschrijven, zodat koersvectoren en snelheden exact kloppen
+  const prevGpsFix = appState.lastGpsFix;
+
   // Bereken de live rijsnelheid in km/u (hardware GPS van de smartphone)
   let rawGpsSpeed = null;
   if (typeof pos.coords.speed === 'number' && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
-    rawGpsSpeed = Math.round(pos.coords.speed * 3.6);
-  } else if (appState.lastGpsFix && appState.lastGpsFix.time) {
-    const dtSeconds = (now - appState.lastGpsFix.time) / 1000;
-    // Bereken delta uitsluitend als beide metingen betrouwbaar zijn (geen zendmastsprong van 200-500m)
-    if (dtSeconds >= 1.5 && dtSeconds <= 20 && userAcc <= 50 && (appState.lastGpsFix.acc || 10) <= 50) {
-      const dKm = distanceKm(appState.lastGpsFix.lat, appState.lastGpsFix.lon, userLat, userLon);
-      rawGpsSpeed = Math.round((dKm / dtSeconds) * 3600);
+    rawGpsSpeed = (pos.coords.speed < 0.6) ? 0 : Math.round(pos.coords.speed * 3.6);
+  } else if (prevGpsFix && prevGpsFix.time) {
+    const dtSeconds = (now - prevGpsFix.time) / 1000;
+    // Bereken delta uitsluitend als er meettijd verstreken is (1 tot 30 seconden)
+    if (dtSeconds >= 0.8 && dtSeconds <= 30) {
+      const dKm = distanceKm(prevGpsFix.lat, prevGpsFix.lon, userLat, userLon);
+      const dMeters = dKm * 1000;
+      if (dMeters >= 30) {
+        const calcSpeed = Math.round((dKm / dtSeconds) * 3600);
+        if (calcSpeed <= 250) {
+          rawGpsSpeed = calcSpeed;
+        }
+      } else if (dtSeconds >= 3.5 && dMeters < 15) {
+        rawGpsSpeed = 0; // Trein staat stil op station of voor wissel
+      }
     }
   }
 
-  // Filter GPS-sprongen en absurde meetfouten (geen enkele reguliere trein in NL rijdt 400+ km/u)
+  // Filter GPS-sprongen (geen enkele reguliere trein in NL rijdt 250+ km/u)
   let userSpeedKmh = null;
   if (rawGpsSpeed !== null) {
-    if (rawGpsSpeed >= 3 && rawGpsSpeed <= 160) {
+    if (rawGpsSpeed <= 2) {
+      userSpeedKmh = 0;
+    } else if (rawGpsSpeed <= 250) {
       userSpeedKmh = rawGpsSpeed;
     }
   }
 
-  // Bewaar de vorige GPS-fix VÓÓR het overschrijven, zodat koersvectoren en snelheden exact kloppen
-  const prevGpsFix = appState.lastGpsFix;
   appState.lastGpsFix = {
     lat: userLat,
     lon: userLon,
@@ -5225,9 +5239,12 @@ function onLiveLocationFix(pos) {
     }
 
     // Als de reiziger op open baanvak rijdt (> 30 km/u) en niet op een station staat,
-    // sluit treinen uit die verder dan 1.4 km van de geëxtrapoleerde positie liggen (tenzij het onze huidige trein is)
-    if (!isAtStation && userSpeedKmh && userSpeedKmh > 30 && d > 1.4 && !isCurrentMyTrain) {
+    // sluit treinen uit die verder dan 4.0 km van de geëxtrapoleerde positie liggen (om NDOV-feed latency op te vangen)
+    if (!isAtStation && userSpeedKmh && userSpeedKmh > 30 && d > 4.0 && !isCurrentMyTrain) {
       return;
+    }
+    if (d > 1.0) {
+      score += (d - 1.0) * 2.5; // Progressieve afstandsstraf
     }
 
     // 0b. Baanvak / Station exclusiviteit:
@@ -5339,7 +5356,77 @@ function onLiveLocationFix(pos) {
   if (!bestTrain && appState.myTrain) {
     bestTrain = appState.myTrain;
   }
-  if (!bestTrain) return;
+  if (!bestTrain) {
+    // We hebben wél een werkende GPS-fix van de smartphone, maar (nog) geen gekoppelde treinrit in de feed.
+    // Werk direct de snelheid, GPS-coördinaten en het dichtstbijzijnde station bij zodat de interface direct leeft!
+    const effectiveSpeed = (userSpeedKmh !== null) ? userSpeedKmh : 0;
+    const spdInfo = getSpeedBadgeInfo(effectiveSpeed);
+
+    const modalSpeedEl = document.getElementById('myTrainSpeed');
+    if (modalSpeedEl) modalSpeedEl.textContent = effectiveSpeed;
+
+    const modalStatusEl = document.getElementById('myTrainSpeedStatus');
+    if (modalStatusEl) {
+      modalStatusEl.className = `speed-status-pill ${spdInfo.cssClass}`;
+      modalStatusEl.textContent = (effectiveSpeed > 15) ? `⚡ ${effectiveSpeed} km/u (Live Smartphone GPS)` : '🛰️ GPS Verbonden (Zoekt treinrit...)';
+    }
+
+    const modalTitle = document.getElementById('myTrainTitle');
+    if (modalTitle) {
+      modalTitle.textContent = (effectiveSpeed > 15)
+        ? `Rijdend per spoor nabij ${nearestStInfo ? nearestStInfo.station.name : 'Nederland'}`
+        : `GPS Verbonden nabij ${nearestStInfo ? nearestStInfo.station.name : 'het spoor'}`;
+    }
+
+    const modalRoute = document.getElementById('myTrainRoute');
+    if (modalRoute) {
+      modalRoute.textContent = nearestStInfo
+        ? `Baanvak nabij station ${nearestStInfo.station.name} (${nearestStInfo.distKm.toFixed(1)} km)`
+        : 'Spoorwegnet Nederland';
+    }
+
+    const modalSegment = document.getElementById('myTrainSegment');
+    if (modalSegment) {
+      modalSegment.textContent = `📍 Live GPS peiling actief (±${userAcc}m) • Zoekt actuele treinrit in NDOV Loket...`;
+    }
+
+    const modalMetaEl = document.getElementById('myTrainGpsMeta');
+    if (modalMetaEl) {
+      modalMetaEl.innerHTML = `
+        📍 <strong>Uw GPS:</strong> ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (±${userAcc}m)${userSpeedKmh !== null ? ` &bull; Snelheid: <strong>${userSpeedKmh} km/u</strong>` : ''}<br>
+        📡 <em>Verbonden met GPS satellieten. Zoekt overeenkomstige trein op dit baanvak...</em>
+      `;
+    }
+
+    const modalNextStation = document.getElementById('myTrainNextStation');
+    if (modalNextStation && nearestStInfo) {
+      modalNextStation.textContent = `${nearestStInfo.station.name} (${nearestStInfo.station.code})`;
+    }
+    const modalNextEta = document.getElementById('myTrainNextEta');
+    if (modalNextEta && nearestStInfo) {
+      modalNextEta.textContent = `Afstand tot perron: ~${nearestStInfo.distKm.toFixed(1)} km`;
+    }
+
+    // Update ook snelle banner en HUD
+    if (hud) {
+      hud.style.display = 'flex';
+      const spdValEl = document.getElementById('hudSpeedVal');
+      if (spdValEl) spdValEl.textContent = effectiveSpeed;
+      const titleEl = document.getElementById('hudTrainTitle');
+      if (titleEl) titleEl.textContent = 'GPS Treinradar';
+      const nextEl = document.getElementById('hudNextStationText');
+      if (nextEl) nextEl.textContent = nearestStInfo ? `Nabij ${nearestStInfo.station.name} (${nearestStInfo.distKm.toFixed(1)} km)` : 'GPS Peiling actief';
+    }
+
+    const quickBanner = document.getElementById('inTrainQuickBanner');
+    const bannerTitle = document.getElementById('inTrainBannerTitle');
+    const bannerSub = document.getElementById('inTrainBannerSub');
+    if (quickBanner) quickBanner.classList.add('is-active');
+    if (bannerTitle) bannerTitle.innerHTML = `📡 Live GPS: ${effectiveSpeed} km/u`;
+    if (bannerSub) bannerSub.innerHTML = `📍 Nabij <strong>${nearestStInfo ? nearestStInfo.station.name : 'spoorlijn'}</strong> &bull; Zoekt treinnummer...`;
+
+    return;
+  }
 
   appState.myTrain = bestTrain;
   let distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
@@ -6824,8 +6911,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.2';
-const APP_BUILD_COMMIT = '880d71f';
+const APP_VERSION = '2.9.3';
+const APP_BUILD_COMMIT = 'e26b3d5';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -7271,6 +7358,19 @@ async function init() {
         if (rModal && rModal.style.display !== 'none' && appState.activeRailcamId) {
           const activeCam = RAILCAMS.find(c => c.id === appState.activeRailcamId);
           if (activeCam) updateRailcamRadarApproaching(activeCam);
+        }
+
+        // Directe re-evaluatie van Mijn Trein bij binnenkomende telemetrie-updates
+        if (appState.isTrackingUser && appState.lastGpsFix) {
+          onLiveLocationFix({
+            coords: {
+              latitude: appState.lastGpsFix.lat,
+              longitude: appState.lastGpsFix.lon,
+              accuracy: appState.lastGpsFix.acc || 15,
+              speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : null),
+              heading: appState.lastGpsFix.heading
+            }
+          });
         }
       }
     } catch (e) {

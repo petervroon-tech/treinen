@@ -1,12 +1,18 @@
 {
-  "version": "2.9.2",
-  "commit": "880d71f",
-  "fullCommit": "880d71fe817cbbb0b7f15736622ef912116dc22e",
-  "buildTime": "2026-11-21T12:46:54Z",
+  "version": "2.9.3",
+  "commit": "e26b3d5",
+  "fullCommit": "e26b3d5927571d16962d3709e85c6f3ef7500a5e",
+  "buildTime": "2026-11-24T11:46:10Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
   "features": [
+    {
+      "tag": "Instant GPS & Snelheid",
+      "title": "Directe GPS-koppeling & Live Snelheid in de Trein",
+      "desc": "Snelle assisted GPS-peiling binnen 1 à 2 seconden zonder wachttijd. Toont uw werkelijke live rijsnelheid (km/u) en dichtstbijzijnde station direct op het snelheidsdisplay, ook bij getint glas of vertraging in de externe treinenfeed.",
+      "icon": "⚡"
+    },
     {
       "tag": "ICE & Hoge Snelheid",
       "title": "ICE International Hysteresis & Snelheidsdiscriminatie",
