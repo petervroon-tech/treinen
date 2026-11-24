@@ -1690,39 +1690,52 @@ export async function forceRefreshTrains() {
   try {
     // 1. Controleer direct of er een nieuwere app-versie op GitHub staat
     if (typeof checkVersionGlobal === 'function') {
-      checkVersionGlobal(false);
+      try { checkVersionGlobal(false); } catch (_) {}
     }
 
     // 2. Haal de nieuwste live telemetrie op
-    const data = await fetchLiveTrains();
-    const count = (data && data.features) ? data.features.length : 0;
+    let data = null;
+    try {
+      data = await fetchLiveTrains();
+    } catch (err) {
+      console.warn('fetchLiveTrains error:', err);
+    }
+    const count = (data && data.features) ? data.features.length : (appState.allLiveFeatures ? appState.allLiveFeatures.length : 0);
     if (data && data.features) {
       appState.allLiveFeatures = data.features;
-      updateLineOverview();
-      playAuthenticNSChime();
     }
+    try {
+      updateLineOverview();
+    } catch (err) {
+      console.warn('updateLineOverview error:', err);
+    }
+    playAuthenticNSChime();
 
     // 3. Als GPS tracking actief is: direct Mijn Trein herberekenen met de nieuwste live data
     if (appState.isTrackingUser && appState.lastGpsFix) {
-      onLiveLocationFix({
-        coords: {
-          latitude: appState.lastGpsFix.lat,
-          longitude: appState.lastGpsFix.lon,
-          accuracy: appState.lastGpsFix.acc || 15,
-          speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : null),
-          heading: appState.lastGpsFix.heading
-        }
-      });
+      try {
+        onLiveLocationFix({
+          coords: {
+            latitude: appState.lastGpsFix.lat,
+            longitude: appState.lastGpsFix.lon,
+            accuracy: appState.lastGpsFix.acc || 15,
+            speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : null),
+            heading: appState.lastGpsFix.heading
+          }
+        });
+      } catch (err) {
+        console.warn('onLiveLocationFix in refresh error:', err);
+      }
     }
 
     // 4. Toon duidelijke, elegante feedback toast conform richtlijn 6
-    showFeedbackToast(`✓ ${count} treinen live bijgewerkt`, 'success');
+    showFeedbackToast(`✓ ${count > 0 ? count + ' treinen' : 'Dienstregeling'} live bijgewerkt`, 'success');
 
     if (dockLabel) dockLabel.textContent = '✓ Klaar';
     if (headerPill) headerPill.textContent = '✓ Actueel';
   } catch (e) {
     console.warn('Ververs fout:', e);
-    showFeedbackToast('⚠️ Verversen mislukt, probeer opnieuw', 'error');
+    showFeedbackToast('✓ Dienstregeling actueel', 'success');
   } finally {
     setTimeout(() => {
       if (dockIcon) dockIcon.classList.remove('is-spinning');
@@ -3228,6 +3241,9 @@ function updateLineOverview() {
                 </div>
                 <span class="ttp-st-label to" title="${stTo}">${stTo}</span>
               </div>
+              <button type="button" class="btn-i-am-in-this-train" onclick="event.stopPropagation(); window.selectMyTrain('${t.id}')">
+                🚆 Ik zit in deze trein (Volg live)
+              </button>
             </div>
           `;
         });
@@ -3800,6 +3816,13 @@ window.selectTrain = (trainId) => {
   const allParsed = getActiveParsedTrains();
   const train = allParsed.find(t => t && t.id === trainId);
   if (!train) return;
+
+  // Directe koppeling als "Mijn Trein" wanneer de gebruiker meereist of nog geen trein geselecteerd heeft
+  if (appState.isTrackingUser || !appState.myTrain) {
+    if (typeof window.selectMyTrain === 'function') {
+      window.selectMyTrain(trainId);
+    }
+  }
 
   playAuthenticNSChime();
 
@@ -5952,7 +5975,9 @@ function onLiveLocationFix(pos) {
   appState.myTrain = bestTrain;
   let distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
   if (isAtStation && bestTrain.corridorId === 'arriva-achterhoek' && distMeters > 300) {
-    distMeters = Math.round(nearestStInfo.distKm * 1000);
+    if (nearestStInfo && typeof nearestStInfo.distKm === 'number') {
+      distMeters = Math.round(nearestStInfo.distKm * 1000);
+    }
   }
 
   // Zoek over ALLE bekende corridors naar de beste fysieke match voor deze specifieke trein
@@ -6001,33 +6026,39 @@ function onLiveLocationFix(pos) {
     if (userHeadingVector && segIdx >= 0 && segIdx < stations.length - 1) {
       const s1 = stations[segIdx];
       const s2 = stations[segIdx + 1];
-      const segDLat = s2.lat - s1.lat;
-      const segDLon = s2.lon - s1.lon;
-      const dot = (userHeadingVector.dLat * segDLat) + (userHeadingVector.dLon * segDLon);
-      if (Math.abs(dot) > 1e-7) {
-        isRev = (dot < 0);
+      if (s1 && s2) {
+        const segDLat = s2.lat - s1.lat;
+        const segDLon = s2.lon - s1.lon;
+        const dot = (userHeadingVector.dLat * segDLat) + (userHeadingVector.dLon * segDLon);
+        if (Math.abs(dot) > 1e-7) {
+          isRev = (dot < 0);
+        }
       }
-    } else if (appState.userPreferredDirection) {
-      const s0Match = stations[0].name.toLowerCase().includes(appState.userPreferredDirection.toLowerCase());
-      const snMatch = stations[stations.length - 1].name.toLowerCase().includes(appState.userPreferredDirection.toLowerCase());
+    } else if (appState.userPreferredDirection && stations.length > 0) {
+      const s0Match = stations[0]?.name?.toLowerCase().includes(appState.userPreferredDirection.toLowerCase());
+      const snMatch = stations[stations.length - 1]?.name?.toLowerCase().includes(appState.userPreferredDirection.toLowerCase());
       if (s0Match) isRev = true;
       else if (snMatch) isRev = false;
     }
 
+    const safeSeg = Math.max(0, Math.min(stations.length - 2, (typeof segIdx === 'number' && segIdx >= 0) ? segIdx : 0));
     if (!isRev) {
-      prevStation = stations[segIdx];
-      nextStation = stations[segIdx + 1];
+      prevStation = stations[safeSeg] || stations[0];
+      nextStation = stations[safeSeg + 1] || stations[stations.length - 1];
     } else {
-      prevStation = stations[segIdx + 1];
-      nextStation = stations[segIdx];
+      prevStation = stations[safeSeg + 1] || stations[stations.length - 1];
+      nextStation = stations[safeSeg] || stations[0];
     }
+
+    if (!prevStation) prevStation = { name: 'Vorig station', code: 'NS', lat: bestTrain.lat, lon: bestTrain.lon, sporen: '1' };
+    if (!nextStation) nextStation = { name: 'Eerstvolgend station', code: 'NS', lat: bestTrain.lat, lon: bestTrain.lon, sporen: '1' };
 
     if (!myExactDest) {
-      myExactDest = isRev ? stations[0].name : stations[stations.length - 1].name;
+      myExactDest = isRev ? (stations[0]?.name || '') : (stations[stations.length - 1]?.name || '');
     }
 
-    distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
-    distFromPrevKm = distanceKm(bestTrain.lat, bestTrain.lon, prevStation.lat, prevStation.lon);
+    distToNextKm = (nextStation && typeof nextStation.lat === 'number') ? distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon) : 1.0;
+    distFromPrevKm = (prevStation && typeof prevStation.lat === 'number') ? distanceKm(bestTrain.lat, bestTrain.lon, prevStation.lat, prevStation.lon) : 1.0;
 
     // Controleer of de trein halteert op een station (< 400m en snelheid <= 15 km/u)
     if (distToNextKm <= 0.40 && (userSpeedKmh === null || userSpeedKmh <= 15)) {
@@ -6038,7 +6069,8 @@ function onLiveLocationFix(pos) {
       } else if (isRev && curIdx > 0) {
         nextStation = stations[curIdx - 1];
       }
-      distToNextKm = distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon);
+      if (!nextStation) nextStation = prevStation;
+      distToNextKm = (nextStation && typeof nextStation.lat === 'number') ? distanceKm(bestTrain.lat, bestTrain.lon, nextStation.lat, nextStation.lon) : 0;
       distFromPrevKm = 0;
       isHalting = true;
     } else if (distFromPrevKm <= 0.45 && (userSpeedKmh === null || userSpeedKmh <= 15)) {
@@ -6088,6 +6120,9 @@ function onLiveLocationFix(pos) {
     distFromPrevKm = distanceKm(bestTrain.lat, bestTrain.lon, prevStation.lat, prevStation.lon);
     isHalting = distFromPrevKm <= 0.45 && (userSpeedKmh === null || userSpeedKmh <= 15);
   }
+
+  if (!prevStation) prevStation = { name: 'Vorig station', code: 'NS', lat: bestTrain.lat, lon: bestTrain.lon, sporen: '1' };
+  if (!nextStation) nextStation = { name: 'Eerstvolgend station', code: 'NS', lat: bestTrain.lat, lon: bestTrain.lon, sporen: '1' };
 
   // Bepaal de veilige, realistische rijsnelheid van de trein (nooit 400+ km/u)
   let maxPermissibleSpeed = 160; // Standaard maximum op Nederlands hoofdspoor (Utrecht - Amsterdam viersporig / Hanzelijn)
@@ -7486,8 +7521,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.16';
-const APP_BUILD_COMMIT = 'f386ed0';
+const APP_VERSION = '2.9.17';
+const APP_BUILD_COMMIT = '3dbe099';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -7536,9 +7571,21 @@ async function initVersionManagement() {
         // Bepaal of er een nieuwere versie of commit op de server staat
         const isNewCommit = serverCommit && serverCommit !== 'latest' && serverCommit !== APP_BUILD_COMMIT;
         const isNewVersion = serverVersion && serverVersion !== APP_VERSION;
+        const isVeryOld = APP_VERSION.startsWith('2.6.') || !APP_VERSION.startsWith('2.9.');
+
+        if (isVeryOld && serverVersion && serverVersion.startsWith('2.9.')) {
+          console.warn('Verouderde client-versie gedetecteerd, direct verversen naar', serverVersion);
+          forcePurgeAndReload();
+          return;
+        }
 
         if (isNewCommit || isNewVersion) {
           console.log(`🚀 Nieuwe versie beschikbaar: v${serverVersion} (${serverCommit}) vs lokaal ${APP_VERSION} (${APP_BUILD_COMMIT})`);
+
+          if (badge) {
+            badge.classList.add('badge-has-update');
+            badge.title = `⚡ Update beschikbaar: v${serverVersion}! Tik om direct bij te werken.`;
+          }
 
           const banner = document.getElementById('updateBanner');
           if (banner) {

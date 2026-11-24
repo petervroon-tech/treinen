@@ -4490,6 +4490,31 @@ body {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
 }
 
+.btn-i-am-in-this-train {
+  margin-top: 6px;
+  width: 100%;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(6, 95, 70, 0.55));
+  border: 1px solid #10b981;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(16, 185, 129, 0.4);
+  transition: all 0.16s ease;
+}
+
+.btn-i-am-in-this-train:active {
+  transform: scale(0.94);
+  background: rgba(16, 185, 129, 0.6) !important;
+}
+
 #btnSwitchTrainDirection,
 #btnHslRtdShl,
 #btnHslShlRtd {
