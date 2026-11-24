@@ -4857,16 +4857,16 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
     : null;
 
   let candidateTrains = [];
+  let filterMode = 'none';
   if (fromSt && !overrideCorridorKey) {
     candidateTrains = allParsed
-      .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 4.0)
+      .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 6.0)
       .sort((a, b) => distanceKm(fromSt.lat, fromSt.lon, a.lat, a.lon) - distanceKm(fromSt.lat, fromSt.lon, b.lat, b.lon));
+    if (candidateTrains.length > 0) filterMode = 'station';
   }
   if (candidateTrains.length === 0 && activeCorr) {
     candidateTrains = allParsed.filter(t => matchTrainToCorridor(t, activeCorr));
-  }
-  if (candidateTrains.length === 0) {
-    candidateTrains = allParsed;
+    if (candidateTrains.length > 0) filterMode = 'corridor';
   }
   const corrTrains = candidateTrains.slice(0, 6);
 
@@ -4874,12 +4874,16 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
   const titleLabelEl = selectorEl.querySelector('.mt-station-title');
   const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
   if (titleLabelEl) {
-    titleLabelEl.textContent = (fromSt && !overrideCorridorKey)
-      ? `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`
-      : (activeCorr ? `🚆 Treinen op ${activeCorr.shortName || activeCorr.name} (${corrTrains.length}):` : `🚆 Actuele reizigerstreinen (${corrTrains.length}):`);
+    if (filterMode === 'station' && fromSt) {
+      titleLabelEl.textContent = `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`;
+    } else if (activeCorr) {
+      titleLabelEl.textContent = `🚆 Treinen op ${activeCorr.shortName || activeCorr.name} (${corrTrains.length}):`;
+    } else {
+      titleLabelEl.textContent = `🚆 Kies uw traject of trein (${corrTrains.length}):`;
+    }
   }
   if (hintLabelEl) {
-    hintLabelEl.textContent = 'Wacht op GPS of tik direct op uw trein voor alle live gegevens:';
+    hintLabelEl.textContent = 'Wacht op GPS of tik direct op uw traject / trein voor alle live gegevens:';
   }
 
   const quickCorridorButtons = `
@@ -4889,7 +4893,10 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
       <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('rotterdam-amsterdam')" style="border-color:rgba(56,189,248,0.4); color:#7dd3fc;">🚆 Oude Lijn Rtd ⇄ Asd</button>
     </div>
   `;
-  const trainChipsHtml = corrTrains.map(stTrain => {
+  const emptyMsg = (!appState.allLiveFeatures || appState.allLiveFeatures.length === 0)
+    ? '<span style="font-size:0.75rem; color:#94a3b8;">⏳ Live NS/NDOV treindata wordt opgehaald...</span>'
+    : '<span style="font-size:0.75rem; color:#94a3b8;">Geen trein gevonden op dit filter — tik op ⚡ HSL Rotterdam ⇄ Schiphol hierboven.</span>';
+  const trainChipsHtml = corrTrains.length > 0 ? corrTrains.map(stTrain => {
     const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
     const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
     const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
@@ -4899,7 +4906,7 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
         <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd})</span>
       </button>
     `;
-  }).join('');
+  }).join('') : emptyMsg;
   chipsEl.innerHTML = quickCorridorButtons + trainChipsHtml;
 }
 window.filterManualModalTrains = (corrKey) => renderManualTrainFallbackPicker(corrKey);
@@ -7324,8 +7331,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.13';
-const APP_BUILD_COMMIT = '2d3486a';
+const APP_VERSION = '2.9.14';
+const APP_BUILD_COMMIT = '93425fe';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -7771,6 +7778,12 @@ async function init() {
         }
         appState.allLiveFeatures = data.features;
         updateLineOverview();
+
+        // Als de Mijn Trein modal wacht op GPS zonder gekozen trein: ververs de treinkeuze zodra NDOV-data binnen is
+        const mtModal = document.getElementById('myTrainModal');
+        if (mtModal && mtModal.style.display !== 'none' && !appState.lastGpsFix && !appState.userLockedTrainId) {
+          renderManualTrainFallbackPicker();
+        }
 
         // Werk live naderende treinen bij als de railcam speler openstaat
         const rModal = document.getElementById('railcamModal');
