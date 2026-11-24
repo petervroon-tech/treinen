@@ -1,8 +1,8 @@
 {
-  "version": "2.9.5",
-  "commit": "6598035",
-  "fullCommit": "6598035",
-  "buildTime": "2026-11-24T12:14:43Z",
+  "version": "2.9.6",
+  "commit": "c07906a",
+  "fullCommit": "c07906ad381338893a160e8b574d898a513b8653",
+  "buildTime": "2026-11-24T12:18:55Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
@@ -74,10 +74,10 @@
       "icon": "🎯"
     },
     {
-      "tag": "In Trein",
-      "title": "Live Cockpit HUD & Reizigersfilter (v2.9.5)",
-      "desc": "Kies direct tussen treinen op hetzelfde spoor of station; goederentreinen en verre treinen (> 2.5 km) zijn permanent uitgesloten van reizigersdetectie.",
-      "icon": "📱"
+      "tag": "Live Verversen",
+      "title": "Interactieve Verversknoppen & Toast Feedback (v2.9.6)",
+      "desc": "Alle verversknoppen (dock, header en gele versieknop) animeren direct met draai-icoon, live treintellertoast en directe cache-purge.",
+      "icon": "🔄"
     },
     {
       "tag": "Alle Maatschappijen",

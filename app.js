@@ -1646,23 +1646,94 @@ function fetchLiveTrains() {
   });
 }
 
-// Handmatige live verversing van alle treinen en radarstatistieken
-async function forceRefreshTrains() {
-  const btn = document.getElementById('btnForceRefresh');
-  if (btn) btn.innerHTML = '<span>⏳ Laden...</span>';
+// =============================================================
+// Toast Feedback Notificaties (Smooth, donker glassmorphism)
+// =============================================================
+export function showFeedbackToast(msg, type = 'success') {
+  let toastEl = document.getElementById('appToastPill');
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.id = 'appToastPill';
+    toastEl.className = 'app-toast-pill';
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = msg;
+  toastEl.className = `app-toast-pill ${type === 'error' ? 'toast-error' : ''} is-visible`;
+  clearTimeout(toastEl._timer);
+  toastEl._timer = setTimeout(() => {
+    toastEl.classList.remove('is-visible');
+  }, 2600);
+}
+window.showFeedbackToast = showFeedbackToast;
+
+let checkVersionGlobal = null;
+
+// Handmatige live verversing van alle treinen, radarstatistieken en versiecheck
+export async function forceRefreshTrains() {
+  const dockBtn = document.getElementById('btnDockRefresh');
+  const dockIcon = dockBtn?.querySelector('.dock-icon');
+  const dockLabel = dockBtn?.querySelector('.dock-label');
+
+  const headerBtn = document.getElementById('btnHeaderForceRefresh');
+  const headerIcon = headerBtn?.querySelector('.tab-icon');
+  const headerPill = headerBtn?.querySelector('.tab-pill');
+
+  const plannerBtn = document.getElementById('btnForceRefresh');
+
+  // Directe visuele animatie & feedback op alle knoppen
+  if (dockIcon) dockIcon.classList.add('is-spinning');
+  if (dockLabel) dockLabel.textContent = 'Laden...';
+  if (headerIcon) headerIcon.classList.add('is-spinning');
+  if (headerPill) headerPill.textContent = '⏳ Laden';
+  if (plannerBtn) plannerBtn.innerHTML = '<span>⏳ Laden...</span>';
+
   try {
+    // 1. Controleer direct of er een nieuwere app-versie op GitHub staat
+    if (typeof checkVersionGlobal === 'function') {
+      checkVersionGlobal(false);
+    }
+
+    // 2. Haal de nieuwste live telemetrie op
     const data = await fetchLiveTrains();
+    const count = (data && data.features) ? data.features.length : 0;
     if (data && data.features) {
       appState.allLiveFeatures = data.features;
       updateLineOverview();
       playAuthenticNSChime();
     }
+
+    // 3. Als GPS tracking actief is: direct Mijn Trein herberekenen met de nieuwste live data
+    if (appState.isTrackingUser && appState.lastGpsFix) {
+      onLiveLocationFix({
+        coords: {
+          latitude: appState.lastGpsFix.lat,
+          longitude: appState.lastGpsFix.lon,
+          accuracy: appState.lastGpsFix.acc || 15,
+          speed: (appState.lastGpsFix.speed !== null && appState.lastGpsFix.speed !== undefined ? appState.lastGpsFix.speed / 3.6 : null),
+          heading: appState.lastGpsFix.heading
+        }
+      });
+    }
+
+    // 4. Toon duidelijke, elegante feedback toast conform richtlijn 6
+    showFeedbackToast(`✓ ${count} treinen live bijgewerkt`, 'success');
+
+    if (dockLabel) dockLabel.textContent = '✓ Klaar';
+    if (headerPill) headerPill.textContent = '✓ Actueel';
   } catch (e) {
     console.warn('Ververs fout:', e);
+    showFeedbackToast('⚠️ Verversen mislukt, probeer opnieuw', 'error');
   } finally {
-    if (btn) btn.innerHTML = '🔄 Ververs Info';
+    setTimeout(() => {
+      if (dockIcon) dockIcon.classList.remove('is-spinning');
+      if (dockLabel) dockLabel.textContent = 'Ververs';
+      if (headerIcon) headerIcon.classList.remove('is-spinning');
+      if (headerPill) headerPill.textContent = 'Update';
+      if (plannerBtn) plannerBtn.innerHTML = '🔄 Ververs Info';
+    }, 1500);
   }
 }
+window.forceRefreshTrains = forceRefreshTrains;
 
 function distanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -7053,8 +7124,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.5';
-const APP_BUILD_COMMIT = '6598035';
+const APP_VERSION = '2.9.6';
+const APP_BUILD_COMMIT = 'c07906a';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -7076,6 +7147,7 @@ async function initVersionManagement() {
     const cleanUrl = window.location.href.split('?')[0];
     window.location.replace(`${cleanUrl}?v=${Date.now()}`);
   }
+  window.forcePurgeAndReload = forcePurgeAndReload;
 
   async function checkVersion(isAuto = true) {
     try {
@@ -7100,14 +7172,11 @@ async function initVersionManagement() {
         }
 
         // Bepaal of er een nieuwere versie of commit op de server staat
-        const activeCommit = localStorage.getItem('treinen_active_commit') || APP_BUILD_COMMIT;
-        const isNewCommit = serverCommit && activeCommit && serverCommit !== 'latest' && activeCommit !== 'latest' && serverCommit !== activeCommit;
+        const isNewCommit = serverCommit && serverCommit !== 'latest' && serverCommit !== APP_BUILD_COMMIT;
         const isNewVersion = serverVersion && serverVersion !== APP_VERSION;
 
         if (isNewCommit || isNewVersion) {
-          console.log(`🚀 Nieuwe versie beschikbaar: v${serverVersion} (${serverCommit}) vs lokaal ${APP_VERSION} (${activeCommit})`);
-          localStorage.setItem('treinen_active_commit', serverCommit);
-          localStorage.setItem('treinen_active_version', serverVersion);
+          console.log(`🚀 Nieuwe versie beschikbaar: v${serverVersion} (${serverCommit}) vs lokaal ${APP_VERSION} (${APP_BUILD_COMMIT})`);
 
           // Cooldown check ter voorkoming van reload-loop
           const lastReload = parseInt(sessionStorage.getItem('treinen_last_auto_reload') || '0', 10);
@@ -7126,13 +7195,8 @@ async function initVersionManagement() {
             // Automatisch verversen naar de nieuwste versie
             setTimeout(() => {
               forcePurgeAndReload();
-            }, 600);
+            }, 500);
             return;
-          }
-        } else {
-          // Versie is actueel: onthoud actieve commit
-          if (serverCommit) {
-            localStorage.setItem('treinen_active_commit', serverCommit);
           }
         }
       }
@@ -7140,6 +7204,7 @@ async function initVersionManagement() {
       console.warn('Versiecheck niet beschikbaar:', e);
     }
   }
+  checkVersionGlobal = checkVersion;
 
   // Update Reload knoppen
   document.getElementById('btnReloadUpdate')?.addEventListener('click', () => {
@@ -7152,20 +7217,13 @@ async function initVersionManagement() {
     if (banner) banner.style.display = 'none';
   });
 
-  // Klik op de gele versietag geeft optie om direct cache te wissen en pagina te herladen
+  // Klik op de gele versietag wist direct de cache en herlaadt de pagina
   document.getElementById('appVersionBadge')?.addEventListener('click', () => {
-    const verStr = `v${appBuildMeta.version || APP_VERSION}`;
-    const commitStr = appBuildMeta.commit || APP_BUILD_COMMIT;
-    const buildTime = appBuildMeta.buildTime ? new Date(appBuildMeta.buildTime).toLocaleString('nl-NL') : 'Recent';
     playAuthenticNSChime();
-    const shouldReload = confirm(
-      `🚆 Treinen — ProRail Live Satelliet Radar\n\n` +
-      `Versie: ${verStr}\nCommit: ${commitStr}\nLaatste build: ${buildTime}\n\n` +
-      `Wilt u de app nu direct geforceerd vernieuwen en alle tijdelijke cachebestanden wissen?`
-    );
-    if (shouldReload) {
+    showFeedbackToast('🚀 Cache wissen & app direct herladen...', 'info');
+    setTimeout(() => {
       forcePurgeAndReload();
-    }
+    }, 350);
   });
 
   // Controleer direct bij het laden

@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.9.5"
+DEFAULT_VERSION = "2.9.6"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -335,10 +335,10 @@ def update_version_json(sha=None, build_num=None):
             "icon": "🎯"
         },
         {
-            "tag": "In Trein",
-            "title": "Live Cockpit HUD & Reizigersfilter (v2.9.5)",
-            "desc": "Kies direct tussen treinen op hetzelfde spoor of station; goederentreinen en verre treinen (> 2.5 km) zijn permanent uitgesloten van reizigersdetectie.",
-            "icon": "📱"
+            "tag": "Live Verversen",
+            "title": "Interactieve Verversknoppen & Toast Feedback (v2.9.6)",
+            "desc": "Alle verversknoppen (dock, header en gele versieknop) animeren direct met draai-icoon, live treintellertoast en directe cache-purge.",
+            "icon": "🔄"
         },
         {
             "tag": "Alle Maatschappijen",
