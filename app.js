@@ -4838,6 +4838,72 @@ function detectAndShowMyTrain(openModal = true) {
   playAuthenticNSChime();
 }
 
+function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
+  const selectorEl = document.getElementById('myTrainStationSelector');
+  const chipsEl = document.getElementById('myTrainStationChips');
+  if (!selectorEl || !chipsEl) return;
+
+  const allParsed = getActiveParsedTrains().filter(t => {
+    const isFreight = (t.operator && t.operator.category === 'freight') ||
+                      (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999);
+    return !isFreight;
+  });
+
+  const fromCode = !overrideCorridorKey ? document.getElementById('routeFromSelect')?.value : null;
+  const fromSt = fromCode ? findStationByCode(fromCode) : null;
+  const targetCorrKey = overrideCorridorKey || appState.activeCorridorKey;
+  const activeCorr = (targetCorrKey && targetCorrKey !== 'all' && targetCorrKey !== 'freight-all')
+    ? CORRIDORS[targetCorrKey]
+    : null;
+
+  let candidateTrains = [];
+  if (fromSt && !overrideCorridorKey) {
+    candidateTrains = allParsed
+      .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 4.0)
+      .sort((a, b) => distanceKm(fromSt.lat, fromSt.lon, a.lat, a.lon) - distanceKm(fromSt.lat, fromSt.lon, b.lat, b.lon));
+  }
+  if (candidateTrains.length === 0 && activeCorr) {
+    candidateTrains = allParsed.filter(t => matchTrainToCorridor(t, activeCorr));
+  }
+  if (candidateTrains.length === 0) {
+    candidateTrains = allParsed;
+  }
+  const corrTrains = candidateTrains.slice(0, 6);
+
+  selectorEl.style.display = 'block';
+  const titleLabelEl = selectorEl.querySelector('.mt-station-title');
+  const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
+  if (titleLabelEl) {
+    titleLabelEl.textContent = (fromSt && !overrideCorridorKey)
+      ? `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`
+      : (activeCorr ? `🚆 Treinen op ${activeCorr.shortName || activeCorr.name} (${corrTrains.length}):` : `🚆 Actuele reizigerstreinen (${corrTrains.length}):`);
+  }
+  if (hintLabelEl) {
+    hintLabelEl.textContent = 'Wacht op GPS of tik direct op uw trein voor alle live gegevens:';
+  }
+
+  const quickCorridorButtons = `
+    <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+      <button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS</button>
+      <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('amersfoort-breda')" style="border-color:rgba(250,204,21,0.45); color:#fde047;">⚡ HSL Rotterdam ⇄ Schiphol</button>
+      <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('rotterdam-amsterdam')" style="border-color:rgba(56,189,248,0.4); color:#7dd3fc;">🚆 Oude Lijn Rtd ⇄ Asd</button>
+    </div>
+  `;
+  const trainChipsHtml = corrTrains.map(stTrain => {
+    const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
+    const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
+    const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
+    return `
+      <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')">
+        <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
+        <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd})</span>
+      </button>
+    `;
+  }).join('');
+  chipsEl.innerHTML = quickCorridorButtons + trainChipsHtml;
+}
+window.filterManualModalTrains = (corrKey) => renderManualTrainFallbackPicker(corrKey);
+
 function startLiveTrainTracking(openModalOnFirstFix = false) {
   if (!navigator.geolocation) {
     const helpBox = document.getElementById('myTrainGpsHelpBox');
@@ -4864,73 +4930,6 @@ function startLiveTrainTracking(openModalOnFirstFix = false) {
   const modal = document.getElementById('myTrainModal');
   const helpBox = document.getElementById('myTrainGpsHelpBox');
   if (helpBox) helpBox.style.display = 'none';
-
-  // Helper: vul direct de handmatige treinkeuze (zodat reiziger bij stilstand of hoge snelheid nooit op GPS hoeft te wachten)
-  function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
-    const selectorEl = document.getElementById('myTrainStationSelector');
-    const chipsEl = document.getElementById('myTrainStationChips');
-    if (!selectorEl || !chipsEl) return;
-
-    const allParsed = getActiveParsedTrains().filter(t => {
-      const isFreight = (t.operator && t.operator.category === 'freight') ||
-                        (t.trainNum && parseInt(t.trainNum, 10) >= 40000 && parseInt(t.trainNum, 10) <= 69999);
-      return !isFreight;
-    });
-
-    const fromCode = !overrideCorridorKey ? document.getElementById('routeFromSelect')?.value : null;
-    const fromSt = fromCode ? findStationByCode(fromCode) : null;
-    const targetCorrKey = overrideCorridorKey || appState.activeCorridorKey;
-    const activeCorr = (targetCorrKey && targetCorrKey !== 'all' && targetCorrKey !== 'freight-all')
-      ? CORRIDORS[targetCorrKey]
-      : null;
-
-    let candidateTrains = [];
-    if (fromSt && !overrideCorridorKey) {
-      candidateTrains = allParsed
-        .filter(t => distanceKm(fromSt.lat, fromSt.lon, t.lat, t.lon) <= 4.0)
-        .sort((a, b) => distanceKm(fromSt.lat, fromSt.lon, a.lat, a.lon) - distanceKm(fromSt.lat, fromSt.lon, b.lat, b.lon));
-    }
-    if (candidateTrains.length === 0 && activeCorr) {
-      candidateTrains = allParsed.filter(t => matchTrainToCorridor(t, activeCorr));
-    }
-    if (candidateTrains.length === 0) {
-      candidateTrains = allParsed;
-    }
-    const corrTrains = candidateTrains.slice(0, 6);
-
-    selectorEl.style.display = 'block';
-    const titleLabelEl = selectorEl.querySelector('.mt-station-title');
-    const hintLabelEl = selectorEl.querySelector('.mt-station-hint');
-    if (titleLabelEl) {
-      titleLabelEl.textContent = (fromSt && !overrideCorridorKey)
-        ? `🚉 Treinen nabij ${fromSt.name} (${corrTrains.length}):`
-        : (activeCorr ? `🚆 Treinen op ${activeCorr.shortName || activeCorr.name} (${corrTrains.length}):` : `🚆 Actuele reizigerstreinen (${corrTrains.length}):`);
-    }
-    if (hintLabelEl) {
-      hintLabelEl.textContent = 'Wacht op GPS of tik direct op uw trein voor alle live gegevens:';
-    }
-
-    const quickCorridorButtons = `
-      <div style="width:100%; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-        <button type="button" class="mt-station-chip-btn" onclick="window.retryGpsPeiling()" style="border-color:rgba(16,185,129,0.5); color:#34d399;">🔄 Opnieuw GPS</button>
-        <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('amersfoort-breda')" style="border-color:rgba(250,204,21,0.45); color:#fde047;">⚡ HSL Rotterdam ⇄ Schiphol</button>
-        <button type="button" class="mt-station-chip-btn" onclick="window.filterManualModalTrains('rotterdam-amsterdam')" style="border-color:rgba(56,189,248,0.4); color:#7dd3fc;">🚆 Oude Lijn Rtd ⇄ Asd</button>
-      </div>
-    `;
-    const trainChipsHtml = corrTrains.map(stTrain => {
-      const stOp = stTrain.operator || { code: 'NS', badgeClass: 'op-ns' };
-      const stDest = stTrain.exactDestination || (stTrain.service && stTrain.service.destination) || 'Bestemming';
-      const stSpd = (typeof stTrain.speed === 'number' && stTrain.speed > 5) ? `${Math.round(stTrain.speed)} km/u` : 'Halteert';
-      return `
-        <button type="button" class="mt-station-chip-btn" onclick="window.selectMyTrain('${stTrain.id}')">
-          <span class="op-badge ${stOp.badgeClass}" style="font-size:0.64rem; padding:1px 4px;">[${stOp.code}]</span>
-          <span>#${stTrain.trainNum} ➔ ${stDest} (${stSpd})</span>
-        </button>
-      `;
-    }).join('');
-    chipsEl.innerHTML = quickCorridorButtons + trainChipsHtml;
-  }
-  window.filterManualModalTrains = (corrKey) => renderManualTrainFallbackPicker(corrKey);
 
   if (openModalOnFirstFix && modal) {
     modal.style.display = 'flex';
@@ -5297,7 +5296,7 @@ window.setMyTrainDestination = (dest) => {
 
 window.selectMyTrain = (trainId) => {
   const allParsed = getActiveParsedTrains();
-  const target = allParsed.find(t => t.id === trainId);
+  const target = allParsed.find(t => t.id === trainId || t.trainNum === trainId);
   if (target) {
     appState.userLockedTrainId = target.id;
     appState.myTrain = target;
@@ -5305,6 +5304,7 @@ window.selectMyTrain = (trainId) => {
     if (dest) appState.userPreferredDirection = dest;
 
     playAuthenticNSChime();
+    showFeedbackToast(`✓ Trein #${target.trainNum}${dest ? ` ➔ ${dest}` : ''} gekozen`, 'success');
 
     // Ververs direct de weergave met de nieuw geselecteerde trein (ook als telefoon-GPS onder een overkapping ontbreekt!)
     if (appState.lastGpsFix) {
@@ -5449,11 +5449,11 @@ function onLiveLocationFix(pos) {
   const isStationSingleOperator = isAtStation && stationAllowedOps.size === 1; // bv. Apeldoorn De Maten: uitsluitend Arriva!
 
   // Voorkom dat een oude sessie van een trein uit een andere provincie (zoals Apeldoorn) blijft spoken
-  if (appState.myTrain) {
+  // (tenzij de reiziger zojuist handmatig op een specifieke trein heeft geklikt!)
+  if (appState.myTrain && !appState.userLockedTrainId) {
     const curDistToMyTrain = distanceKm(userLat, userLon, appState.myTrain.lat, appState.myTrain.lon);
     if (curDistToMyTrain > 6.0) {
       appState.myTrain = null;
-      appState.userLockedTrainId = null;
     }
   }
 
@@ -5484,13 +5484,14 @@ function onLiveLocationFix(pos) {
     const tCurLon = (mState && typeof mState.curLon === 'number') ? mState.curLon : t.lon;
     const d = distanceKm(userLat, userLon, tCurLat, tCurLon);
     
-    // Een reiziger kan NOOIT in een trein zitten die kilometers ver weg rijdt!
-    // Maximaal 2.5 km (of 3.5 km bij hoge snelheid > 100 km/u; tot 4.5 km bij grove zendmastpeiling ±2000m)
+    // Een reiziger kan NOOIT in een trein zitten die kilometers ver weg rijdt,
+    // tenzij de reiziger handmatig zelf deze specifieke trein heeft gekozen!
+    const isUserLocked = appState.userLockedTrainId && t.id === appState.userLockedTrainId;
     const isCoarseCell = userAcc > 400;
     const maxSearchDist = isCoarseCell
       ? Math.min(4.5, (userAcc / 1000) + 1.5)
       : ((userSpeedKmh && userSpeedKmh > 100) ? 3.5 : 2.5);
-    if (d > maxSearchDist) return;
+    if (!isUserLocked && d > maxSearchDist) return;
     let score = d;
 
     // 0. Handmatig door gebruiker gekozen/vergrendelde trein op dit station of baanvak
@@ -5633,8 +5634,9 @@ function onLiveLocationFix(pos) {
   }
 
   // Fysieke plausibiliteitsvalidatie: sluit goederentreinen, treinen te ver weg (> 2.5 km)
-  // en treinen met een onmogelijk snelheidsverschil (> 45 km/u) direct uit!
-  if (bestTrain) {
+  // en treinen met een onmogelijk snelheidsverschil (> 45 km/u) direct uit
+  // (maar respecteer altijd een handmatig gekozen trein van de gebruiker)!
+  if (bestTrain && bestTrain.id !== appState.userLockedTrainId) {
     const isFreight = (bestTrain.operator && bestTrain.operator.category === 'freight') ||
                       (bestTrain.trainNum && parseInt(bestTrain.trainNum, 10) >= 40000 && parseInt(bestTrain.trainNum, 10) <= 69999) ||
                       /cargo|goederen|locon|lte|rtb|lineas|captrain|dbcargo|rfo/i.test((bestTrain.operator?.name || '') + ' ' + (bestTrain.matnrString || '') + ' ' + (bestTrain.operator?.code || ''));
@@ -7322,8 +7324,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.11';
-const APP_BUILD_COMMIT = 'af44d36';
+const APP_VERSION = '2.9.12';
+const APP_BUILD_COMMIT = '3cb809e';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
