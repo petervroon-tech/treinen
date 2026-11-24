@@ -7272,7 +7272,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.9.10';
-const APP_BUILD_COMMIT = 'ef4199e';
+const APP_BUILD_COMMIT = 'd0e75ef';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
