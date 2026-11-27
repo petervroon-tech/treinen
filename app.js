@@ -1165,9 +1165,10 @@ export function getTrainServiceDetails(train, contextStation) {
     via = 'via Gouda';
   } else if (num >= 2900 && num <= 2999) {
     serviceType = 'Intercity';
-    destination = num % 2 !== 0 ? 'Maastricht' : 'Enkhuizen';
-    origin = num % 2 !== 0 ? 'Enkhuizen' : 'Maastricht';
-    via = 'via Amsterdam C, Utrecht C, Eindhoven C';
+    // Gecontroleerd met de NS-app: IC 2974 rijdt Maastricht ➔ Hoorn (via Amsterdam Sloterdijk)
+    destination = num % 2 !== 0 ? 'Maastricht' : 'Hoorn';
+    origin = num % 2 !== 0 ? 'Hoorn' : 'Maastricht';
+    via = 'via Eindhoven C, Utrecht C, Amsterdam C, Amsterdam Sloterdijk';
   } else if (num >= 3000 && num <= 3099) {
     serviceType = 'Intercity';
     destination = num % 2 !== 0 ? 'Nijmegen' : 'Den Helder';
@@ -5691,6 +5692,9 @@ function onLiveLocationFix(pos) {
       userSpeedKmh = rawGpsSpeed;
     }
   }
+  // Zendmast-peiling (nauwkeurigheid > 400 m): snelheid uit de telefoon is dan onbetrouwbaar
+  // (springende posities geven 0 of onzinwaarden) -> gebruik de snelheid van de trein zelf
+  if (userAcc > 400) userSpeedKmh = null;
 
   if (!pos.isTrainTelemetryFallback) {
     appState.lastGpsFix = {
@@ -5761,7 +5765,7 @@ function onLiveLocationFix(pos) {
 
   // 1. Zoek het dichtstbijzijnde station bij de smartphone van de reiziger
   const nearestStInfo = findNearestStation(userLat, userLon);
-  const isAtStation = nearestStInfo && nearestStInfo.distKm <= 0.60;
+  const isAtStation = nearestStInfo && nearestStInfo.distKm <= 0.60 && userAcc <= 400;
   const stationCorridors = isAtStation ? getCorridorsForStation(nearestStInfo.station.code) : [];
   const stationAllowedOps = new Set(stationCorridors.map(c => c.primaryOpKey));
   const isStationSingleOperator = isAtStation && stationAllowedOps.size === 1; // bv. Apeldoorn De Maten: uitsluitend Arriva!
@@ -7716,8 +7720,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.25';
-const APP_BUILD_COMMIT = 'a766a00';
+const APP_VERSION = '2.9.26';
+const APP_BUILD_COMMIT = 'f82819f';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
