@@ -197,6 +197,26 @@ export const CORRIDORS = {
     ]
   },
 
+  'utrecht-maastricht': {
+    id: 'utrecht-maastricht',
+    category: 'ns',
+    name: "Utrecht Centraal ➔ 's-Hertogenbosch ➔ Eindhoven ➔ Weert ➔ Roermond ➔ Sittard ➔ Maastricht",
+    shortName: 'Utrecht ➔ Maastricht (Limburglijn)',
+    badge: 'IC',
+    operator: 'NS Reizigers',
+    primaryOpKey: 'ns',
+    seriesPattern: /^(8|39|29|35)\d{2}$/,
+    stations: [
+      { code: 'UT',  name: 'Utrecht Centraal',   lat: 52.0894, lon: 5.1103, terminal: true,  sporen: '1-21' },
+      { code: 'HT',  name: "'s-Hertogenbosch",   lat: 51.6906, lon: 5.2936, terminal: false, sporen: '1-7'  },
+      { code: 'EHV', name: 'Eindhoven Centraal', lat: 51.4433, lon: 5.4814, terminal: false, sporen: '1-8'  },
+      { code: 'WT',  name: 'Weert',              lat: 51.2489, lon: 5.7064, terminal: false, sporen: '1-3'  },
+      { code: 'RM',  name: 'Roermond',           lat: 51.1931, lon: 5.9928, terminal: false, sporen: '1-3'  },
+      { code: 'STD', name: 'Sittard',            lat: 50.9986, lon: 5.8589, terminal: false, sporen: '1-3'  },
+      { code: 'MT',  name: 'Maastricht',         lat: 50.8500, lon: 5.7056, terminal: true,  sporen: '1-6'  }
+    ]
+  },
+
   'eindhoven-maastricht': {
     id: 'eindhoven-maastricht',
     category: 'ns',
@@ -5046,15 +5066,21 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
       const midIdx = Math.floor(activeCorr.stations.length / 2);
       const midSt = activeCorr.stations[midIdx] || sEnd;
 
+      const isMaastrichtCorr = activeCorr.id.includes('maastricht') || sEnd.code === 'MT' || sStart.code === 'MT';
+      const fwdTrainNum = activeCorr.primaryOpKey === 'arriva' ? '37320' : (isMaastrichtCorr ? '845' : '2144');
+      const revTrainNum = activeCorr.primaryOpKey === 'arriva' ? '37319' : (isMaastrichtCorr ? '846' : '2145');
+      const fwdMat = activeCorr.primaryOpKey === 'arriva' ? 'Arriva WINK Sneltrein' : (isMaastrichtCorr ? 'NS VIRM Dubbeldekker' : 'NS VIRM-4');
+      const revMat = activeCorr.primaryOpKey === 'arriva' ? 'Arriva WINK Sneltrein' : (isMaastrichtCorr ? 'NS VIRM Dubbeldekker' : 'NS VIRM-4');
+
       const simFwd = {
         id: `${activeCorr.id}_fwd`,
-        trainNum: activeCorr.primaryOpKey === 'arriva' ? '37320' : '2144',
-        matnummer: activeCorr.primaryOpKey === 'arriva' ? 'Arriva WINK Sneltrein' : 'NS VIRM-4',
-        matnrString: `Trein ➔ ${sEnd.name} @ 88 km/u`,
+        trainNum: fwdTrainNum,
+        matnummer: fwdMat,
+        matnrString: `Trein ➔ ${sEnd.name} @ 130 km/u`,
         color: op.bg,
         lat: midSt.lat,
         lon: midSt.lon,
-        speed: 88,
+        speed: isMaastrichtCorr ? 130 : 88,
         delayMin: 0,
         statusType: 'ontime',
         gpsdata: `Actuele dienstregeling (${activeCorr.shortName || activeCorr.name})`,
@@ -5078,13 +5104,13 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
 
       const simRev = {
         id: `${activeCorr.id}_rev`,
-        trainNum: activeCorr.primaryOpKey === 'arriva' ? '37319' : '2145',
-        matnummer: activeCorr.primaryOpKey === 'arriva' ? 'Arriva WINK Sneltrein' : 'NS VIRM-4',
-        matnrString: `Trein ➔ ${sStart.name} @ 85 km/u`,
+        trainNum: revTrainNum,
+        matnummer: revMat,
+        matnrString: `Trein ➔ ${sStart.name} @ 125 km/u`,
         color: op.bg,
         lat: sStart.lat,
         lon: sStart.lon,
-        speed: 85,
+        speed: isMaastrichtCorr ? 125 : 85,
         delayMin: 0,
         statusType: 'ontime',
         gpsdata: `Actuele dienstregeling (${activeCorr.shortName || activeCorr.name})`,
@@ -7803,8 +7829,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.19';
-const APP_BUILD_COMMIT = '5367f35';
+const APP_VERSION = '2.9.20';
+const APP_BUILD_COMMIT = '67750bf';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
