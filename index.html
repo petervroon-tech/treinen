@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.9.24_06d96cf">
-  <link rel="manifest" href="./manifest.json?v=2.9.24_06d96cf">
+  <link rel="stylesheet" href="./style.css?v=2.9.25_7c131cd">
+  <link rel="manifest" href="./manifest.json?v=2.9.25_7c131cd">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -503,6 +503,7 @@
             <span class="hud-speed-unit">km/u</span>
           </div>
           <span class="hud-speed-status-badge spd-cruise" id="hudSpeedBadge">⚡ Snelheid</span>
+          <span class="speed-source-line" id="hudSpeedSource">⏳ Wacht op meting</span>
         </div>
 
         <div class="hud-right-actions">
@@ -758,7 +759,7 @@
         <div class="my-train-title-group">
           <span id="myTrainOpBadge" class="op-badge op-ns">[GPS]</span>
           <h3 id="myTrainTitle" class="my-train-heading">U zit in Trein #1762</h3>
-          <span id="gpsModalVersion" class="modal-version-tag">GPS v2.9.24</span>
+          <span id="gpsModalVersion" class="modal-version-tag">GPS v2.9.25</span>
         </div>
         <button id="btnCloseMyTrain" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
       </div>
@@ -770,6 +771,7 @@
             <span class="speed-value" id="myTrainSpeed">0</span>
             <span class="speed-unit">km/u</span>
             <span class="speed-status-pill" id="myTrainSpeedStatus">📡 GPS Peiling Actief</span>
+            <span class="speed-source-line" id="myTrainSpeedSource">⏳ Wacht op meting</span>
           </div>
           <div class="hero-details">
             <div class="hero-line" id="myTrainRoute">📡 Bepalen van uw trein &amp; traject...</div>
@@ -1149,7 +1151,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.9.24_06d96cf"></script>
-  <script type="module" src="./app.js?v=2.9.24_06d96cf"></script>
+  <script src="./stations.js?v=2.9.25_7c131cd"></script>
+  <script type="module" src="./app.js?v=2.9.25_7c131cd"></script>
 </body>
 </html>

@@ -848,6 +848,26 @@ export function detectOperator(train) {
   return OPERATORS.ns;
 }
 
+// Herkomst van de getoonde snelheid, zodat altijd duidelijk is waar het getal vandaan komt
+const SPEED_SOURCE_LABEL = {
+  gps: '📍 Uw GPS (live)',
+  feed: '🚆 Live trein-feed',
+  berekend: '🧮 Berekend uit posities',
+  schatting: '≈ Geschat (geen meting)',
+  geen: '⏳ Wacht op meting'
+};
+function speedSourceText(src) {
+  const t = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return `${SPEED_SOURCE_LABEL[src] || SPEED_SOURCE_LABEL.feed} • ⏱ ${t}`;
+}
+function paintSpeedSource(src) {
+  const txt = speedSourceText(src);
+  const m = document.getElementById('myTrainSpeedSource');
+  if (m) m.textContent = txt;
+  const h = document.getElementById('hudSpeedSource');
+  if (h) h.textContent = txt;
+}
+
 export function getSpeedBadgeInfo(speed) {
   if (speed >= 140) {
     return {
@@ -1819,6 +1839,7 @@ function getDistanceToNearestStation(lat, lon) {
 
 // Bepaal de actuele, reële telemetrie-snelheid van een trein.
 // Rijdende treinen mogen NOOIT op 0 km/u blijven staan als de externe bron geen expliciete string bevat!
+let lastSpeedSource = 'feed';
 function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMin, isPechText) {
   // 1. Directe telemetrie-uitlezing uit eigenschappen of matnr-string
   let explicitSpeed = null;
@@ -1849,8 +1870,10 @@ function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMi
       lon,
       time: now,
       speed: explicitSpeed,
+      src: 'feed',
       lastMoveTime: now
     });
+    lastSpeedSource = 'feed';
     return explicitSpeed;
   }
 
@@ -1891,8 +1914,10 @@ function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMi
       lon,
       time: now,
       speed: calculatedGpsSpeed,
+      src: 'berekend',
       lastMoveTime: now
     });
+    lastSpeedSource = 'berekend';
     return calculatedGpsSpeed;
   }
 
@@ -1911,8 +1936,10 @@ function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMi
           lon: prev.lon,
           time: now,
           speed: prev.speed,
+          src: prev.src || 'berekend',
           lastMoveTime: prev.lastMoveTime || now
         });
+        lastSpeedSource = prev.src || 'berekend';
         return prev.speed;
       }
     }
@@ -1940,8 +1967,10 @@ function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMi
       lon,
       time: now,
       speed: cruiseSpeed,
+      src: 'schatting',
       lastMoveTime: now
     });
+    lastSpeedSource = 'schatting';
     return cruiseSpeed;
   }
 
@@ -1951,8 +1980,10 @@ function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMi
     lon,
     time: now,
     speed: 0,
+    src: 'berekend',
     lastMoveTime: prev?.lastMoveTime || 0
   });
+  lastSpeedSource = 'berekend';
   return 0;
 }
 
@@ -2013,6 +2044,7 @@ export function parseTrain(raw) {
   // Snelheid detectie via telemetrie, GPS delta of reële baansnelheid
   const trainId = `${matnummer}_${trainNum}`;
   const speed = resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMin, isPechText);
+  const speedSource = lastSpeedSource;
 
   let isPechFlag = isPechText ? 1 : 0;
   if (delayMin >= 10) isPechFlag = 1;
@@ -2033,6 +2065,7 @@ export function parseTrain(raw) {
     lat,
     lon,
     speed,
+    speedSource,
     delayMin,
     statusType, // 'ontime' | 'delayed' | 'pech'
     isPech: statusCode === 2,
@@ -5963,7 +5996,8 @@ function onLiveLocationFix(pos) {
     const isCoarseCell = userAcc > 400;
 
     const modalSpeedEl = document.getElementById('myTrainSpeed');
-    if (modalSpeedEl) modalSpeedEl.textContent = effectiveSpeed;
+    if (modalSpeedEl) modalSpeedEl.textContent = (userSpeedKmh !== null) ? effectiveSpeed : '--';
+    paintSpeedSource(userSpeedKmh !== null ? 'gps' : 'geen');
 
     const modalStatusEl = document.getElementById('myTrainSpeedStatus');
     if (modalStatusEl) {
@@ -6094,7 +6128,7 @@ function onLiveLocationFix(pos) {
     if (hud) {
       hud.style.display = 'flex';
       const spdValEl = document.getElementById('hudSpeedVal');
-      if (spdValEl) spdValEl.textContent = effectiveSpeed;
+      if (spdValEl) spdValEl.textContent = (userSpeedKmh !== null) ? effectiveSpeed : '--';
       const titleEl = document.getElementById('hudTrainTitle');
       if (titleEl) titleEl.textContent = 'GPS Treinradar';
       const nextEl = document.getElementById('hudNextStationText');
@@ -6273,7 +6307,9 @@ function onLiveLocationFix(pos) {
   }
 
   let effectiveSpeed = 0;
+  let speedSource = 'feed';
   if (userSpeedKmh !== null && userSpeedKmh >= 3 && userSpeedKmh <= maxPermissibleSpeed) {
+    speedSource = 'gps';
     if (bestTrain && typeof bestTrain.speed === 'number' && bestTrain.speed > 5 && bestTrain.speed <= maxPermissibleSpeed) {
       // Als telemetrie van trein en GPS beide snel zijn: controleer op consistentie
       const diff = Math.abs(userSpeedKmh - bestTrain.speed);
@@ -6285,10 +6321,12 @@ function onLiveLocationFix(pos) {
     } else {
       effectiveSpeed = userSpeedKmh;
     }
-  } else if (bestTrain && typeof bestTrain.speed === 'number' && bestTrain.speed > 0) {
+  } else if (bestTrain && typeof bestTrain.speed === 'number') {
     effectiveSpeed = Math.min(maxPermissibleSpeed, bestTrain.speed);
+    speedSource = bestTrain.speedSource || 'feed';
   } else {
-    effectiveSpeed = opCode.includes('arriva') ? 90 : 130;
+    effectiveSpeed = 0;
+    speedSource = 'geen';
   }
 
   if (effectiveSpeed > maxPermissibleSpeed) {
@@ -6298,6 +6336,7 @@ function onLiveLocationFix(pos) {
   // Treinen die daadwerkelijk stilstaan op een station (< 450m van het perron) tonen 0 km/u ('Halterend')
   if (isHalting || (userSpeedKmh !== null && userSpeedKmh <= 5) || (isAtStation && (userSpeedKmh === null || userSpeedKmh <= 5))) {
     effectiveSpeed = 0;
+    if (userSpeedKmh !== null) speedSource = 'gps';
   }
   const etaMin = effectiveSpeed > 10 ? Math.max(1, Math.round((distToNextKm / effectiveSpeed) * 60)) : null;
   const op = bestTrain.operator;
@@ -6338,6 +6377,7 @@ function onLiveLocationFix(pos) {
 
     const spdValEl = document.getElementById('hudSpeedVal');
     if (spdValEl) spdValEl.textContent = effectiveSpeed;
+    paintSpeedSource(speedSource);
 
     const spdBadgeEl = document.getElementById('hudSpeedBadge');
     if (spdBadgeEl) {
@@ -6349,6 +6389,7 @@ function onLiveLocationFix(pos) {
   // Update ook modal-elementen
   const modalSpeedEl = document.getElementById('myTrainSpeed');
   if (modalSpeedEl) modalSpeedEl.textContent = effectiveSpeed;
+  paintSpeedSource(speedSource);
   const modalStatusEl = document.getElementById('myTrainSpeedStatus');
   if (modalStatusEl) {
     modalStatusEl.className = `speed-status-pill ${spdInfo.cssClass}`;
@@ -7675,8 +7716,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.24';
-const APP_BUILD_COMMIT = '06d96cf';
+const APP_VERSION = '2.9.25';
+const APP_BUILD_COMMIT = '7c131cd';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
