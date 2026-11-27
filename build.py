@@ -18,7 +18,7 @@ import subprocess
 from datetime import datetime, timezone
 
 APP_NAME = "Treinen"
-DEFAULT_VERSION = "2.9.22"
+DEFAULT_VERSION = "2.9.23"
 
 def leb_u(n: int) -> bytes:
     out = bytearray()
@@ -351,12 +351,6 @@ def update_version_json(sha=None, build_num=None):
             "title": "Haarscherpe Satellietbeelden & Sporenkaart",
             "desc": "Gedetailleerde satelliet-infrastructuur met wissels, perrons en minimalistische donkere stationspillen.",
             "icon": "🛰️"
-        },
-        {
-            "tag": "GSM-R Radio",
-            "title": "Live Vervoersinformatie & Verkeersleiding",
-            "desc": "Real-time spoorwegcommunicatie en storingsberichten rechtstreeks vanuit de ProRail verkeersleiding.",
-            "icon": "📻"
         },
         {
             "tag": "Stationsgong",

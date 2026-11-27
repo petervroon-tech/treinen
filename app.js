@@ -7661,8 +7661,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.22';
-const APP_BUILD_COMMIT = '72eef58';
+const APP_VERSION = '2.9.23';
+const APP_BUILD_COMMIT = 'c8d0591';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -8077,7 +8077,7 @@ async function init() {
   setupNavigation();
   const defaultMode = (window.innerWidth >= 1024) ? 'split' : 'list';
   window.setAppViewMode(defaultMode);
-  initCommunicationEngine();
+  // Geen nep-communicatie: er is geen publieke bron voor GSM-R / verkeersleidingsberichten
   initVersionManagement();
   initHelpModal();
   initNavMenu();

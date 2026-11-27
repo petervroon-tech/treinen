@@ -1,8 +1,8 @@
 {
-  "version": "2.9.22",
-  "commit": "72eef58",
-  "fullCommit": "72eef58",
-  "buildTime": "2026-11-27T16:05:34Z",
+  "version": "2.9.23",
+  "commit": "c8d0591",
+  "fullCommit": "c8d0591ba825f9b00d3be8824c4bd8ff59d77cb0",
+  "buildTime": "2026-11-27T16:08:30Z",
   "branch": "main",
   "environment": "online",
   "title": "Treinen - Live Satelliet Radar Nederland",
@@ -90,12 +90,6 @@
       "title": "Haarscherpe Satellietbeelden & Sporenkaart",
       "desc": "Gedetailleerde satelliet-infrastructuur met wissels, perrons en minimalistische donkere stationspillen.",
       "icon": "🛰️"
-    },
-    {
-      "tag": "GSM-R Radio",
-      "title": "Live Vervoersinformatie & Verkeersleiding",
-      "desc": "Real-time spoorwegcommunicatie en storingsberichten rechtstreeks vanuit de ProRail verkeersleiding.",
-      "icon": "📻"
     },
     {
       "tag": "Stationsgong",
