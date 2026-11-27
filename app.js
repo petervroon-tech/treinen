@@ -2151,120 +2151,8 @@ export function groupCoupledTrains(trainList) {
 // Zorgt dat er te allen tijde actieve goederentreinen rijden
 // over de Betuweroute, Havenspoorlijn en Brabantroute
 // =============================================================
-const FREIGHT_FLEET_SEEDS = [
-  {
-    num: '41738',
-    opKey: 'dbcargo',
-    corridorId: 'betuweroute',
-    loco: 'Siemens Vectron BR 193',
-    cargo: '30x Chemische Ketelwagens (Bertschi/Hoyer)',
-    speed: 90,
-    segIdx: 2,
-    t: 0.35,
-    dir: 1
-  },
-  {
-    num: '42840',
-    opKey: 'rfo',
-    corridorId: 'betuweroute',
-    loco: 'Vectron 193 Shark (Oranje/Zwart)',
-    cargo: '32x Hupac & Samskip Containers',
-    speed: 94,
-    segIdx: 5,
-    t: 0.65,
-    dir: -1
-  },
-  {
-    num: '50123',
-    opKey: 'lineas',
-    corridorId: 'brabant-goederen',
-    loco: 'Bombardier TRAXX BR 186',
-    cargo: '26x Staal- & Automotivewagens',
-    speed: 86,
-    segIdx: 1,
-    t: 0.45,
-    dir: 1
-  },
-  {
-    num: '60814',
-    opKey: 'captrain',
-    corridorId: 'havenlijn-twente',
-    loco: 'TRAXX E 186 (Groen/Paars)',
-    cargo: '24x Gesloten Goederenwagens (Papier & Stukgoed)',
-    speed: 88,
-    segIdx: 4,
-    t: 0.45,
-    dir: 1
-  },
-  {
-    num: '47219',
-    opKey: 'dbcargo',
-    corridorId: 'betuweroute',
-    loco: 'Class 66 Zware Diesel',
-    cargo: '28x Eamnos Kolen- & Ertswagens',
-    speed: 74,
-    segIdx: 0,
-    t: 0.50,
-    dir: -1
-  },
-  {
-    num: '43905',
-    opKey: 'freight',
-    customOp: { code: 'RTB', name: 'RTB Cargo', category: 'freight', badgeClass: 'op-freight', bg: '#d97706', color: '#ffffff', border: '#f59e0b' },
-    corridorId: 'havenlijn-twente',
-    loco: 'Siemens Vectron 193',
-    cargo: '34x Maersk Zeecontainers',
-    speed: 91,
-    segIdx: 5,
-    t: 0.70,
-    dir: -1
-  },
-  {
-    num: '51442',
-    opKey: 'lineas',
-    corridorId: 'brabant-goederen',
-    loco: 'Class 77 Diesel (Donkerblauw)',
-    cargo: '22x Shimmns Coilwagens (Gewalst Staal)',
-    speed: 82,
-    segIdx: 4,
-    t: 0.80,
-    dir: -1
-  },
-  {
-    num: '48102',
-    opKey: 'dbcargo',
-    corridorId: 'betuweroute',
-    loco: 'Vectron Multi-System (DB Rood)',
-    cargo: '36x Dubbeldeks Containertrein',
-    speed: 94,
-    segIdx: 4,
-    t: 0.25,
-    dir: 1
-  },
-  {
-    num: '44520',
-    opKey: 'rfo',
-    corridorId: 'brabant-goederen',
-    loco: 'Loc 186 295 Rail Force One',
-    cargo: '18x ZACNS Brandstoftankwagens',
-    speed: 78,
-    segIdx: 2,
-    t: 0.60,
-    dir: 1
-  },
-  {
-    num: '53108',
-    opKey: 'freight',
-    customOp: { code: 'LTE', name: 'LTE Netherlands Cargo', category: 'freight', badgeClass: 'op-freight', bg: '#0369a1', color: '#ffffff', border: '#38bdf8' },
-    corridorId: 'betuweroute',
-    loco: 'Siemens Smartron',
-    cargo: '30x Graanwagens',
-    speed: 88,
-    segIdx: 6,
-    t: 0.40,
-    dir: -1
-  }
-];
+// Geen simulatie: er bestaat geen open live feed voor goederentreinen, dus er worden geen verzonnen treinen getoond
+const FREIGHT_FLEET_SEEDS = [];
 
 function initFreightFleet() {
   if (appState.simulatedFreightFleet) return;
@@ -7773,8 +7661,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.21';
-const APP_BUILD_COMMIT = 'fe7b723';
+const APP_VERSION = '2.9.22';
+const APP_BUILD_COMMIT = '0274554';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

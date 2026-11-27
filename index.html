@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>treinen - Lijnoverzicht Enschede tot Eindpunt &amp; Echte Satellietbeelden</title>
-  <meta name="description" content="Overzichtelijk live spoorlijnoverzicht van alle maatschappijen, goederenvervoer en internationale treinen met actuele snelheden en echte satellietbeelden.">
+  <meta name="description" content="Overzichtelijk live spoorlijnoverzicht van alle maatschappijen en internationale treinen met actuele snelheden en echte satellietbeelden.">
   <meta name="theme-color" content="#003082">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.9.21_fe7b723">
-  <link rel="manifest" href="./manifest.json?v=2.9.21_fe7b723">
+  <link rel="stylesheet" href="./style.css?v=2.9.22_0274554">
+  <link rel="manifest" href="./manifest.json?v=2.9.22_0274554">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -69,7 +69,6 @@
         <div class="traject-dropdown-container">
           <select id="trajectSelect" class="traject-select-dropdown" aria-label="Kies een specifiek spoortraject of heel Nederland">
             <option value="all">🌐 Heel Nederland — Alle treinen van alle maatschappijen</option>
-            <option value="freight-all">🚂 Landelijk Goederenvervoer — DB Cargo, Lineas, RFO, Captrain</option>
             <optgroup label="🎯 Eigen Traject (Kies Start &amp; Aankomst)">
               <option value="custom-route">🎯 Kies Eigen Traject (Van ➔ Naar, bv. Buitenpost ➔ Leeuwarden of Breukelen ➔ Utrecht)...</option>
             </optgroup>
@@ -97,12 +96,6 @@
               <option value="eurostar-hsl">Eurostar HSL &bull; Amsterdam ➔ Brussel / Parijs</option>
               <option value="ice-international">ICE International &bull; Amsterdam ➔ Frankfurt</option>
               <option value="ic-berlijn">Intercity Berlijn &bull; Amsterdam ➔ Berlijn</option>
-            </optgroup>
-            <optgroup label="🚂 Goederenvervoer (Betuweroute &bull; DB Cargo &bull; Rail Force One &bull; Lineas)">
-              <option value="freight-all">🚂 Alle Goederentreinen in Nederland (Landelijke Vrachtradar)</option>
-              <option value="betuweroute">Betuweroute &bull; Rotterdam Haven ➔ Kijfhoek ➔ Zevenaar</option>
-              <option value="brabant-goederen">Brabantroute Goederen &bull; Kijfhoek ➔ Venlo Grens</option>
-              <option value="havenlijn-twente">Havenspoorlijn &bull; Waalhaven ➔ Bad Bentheim</option>
             </optgroup>
           </select>
         </div>
@@ -192,15 +185,6 @@
           <span>RADAR &amp; LIVE MEDIA</span>
         </div>
 
-        <button id="btnHeaderFreight" class="sidebar-tab-btn" type="button" title="Goederenvervoer: Bekijk en volg live alle goederentreinen in Nederland">
-          <span class="tab-icon">🚂</span>
-          <div class="tab-text-box">
-            <span class="tab-primary-text">Goederenvervoer</span>
-            <span class="tab-secondary-text">DB Cargo, Lineas, Betuwe</span>
-          </div>
-          <span class="tab-pill tab-pill-orange">Vracht</span>
-        </button>
-
         <button id="btnHeaderRailcams" class="sidebar-tab-btn" type="button" title="Live Spoorwebcams: Bekijk live videobeelden langs het spoor">
           <span class="tab-icon">📹</span>
           <div class="tab-text-box">
@@ -281,7 +265,6 @@
           <button class="cat-tab-btn" data-category="ns"></button>
           <button class="cat-tab-btn" data-category="regional"></button>
           <button class="cat-tab-btn" data-category="international"></button>
-          <button class="cat-tab-btn" data-category="freight"></button>
           <button class="cat-tab-btn" data-category="all"></button>
         </div>
       </div>
@@ -703,17 +686,6 @@
             <span>3. Radar, Specials &amp; Live Media</span>
           </div>
           <div class="nav-menu-grid">
-            <button type="button" class="nav-menu-item" data-nav="freight">
-              <div class="menu-item-icon-box icon-freight">🚂</div>
-              <div class="menu-item-content">
-                <div class="menu-item-badge-wrap">
-                  <span class="menu-item-title">Goederenvervoer Live</span>
-                  <span class="menu-pill-orange">Vrachtvervoer</span>
-                </div>
-                <span class="menu-item-desc">Volg direct alle goederentreinen in Nederland (DB Cargo, Lineas, Captrain, Betuweroute, Kijfhoek en havenlijnen).</span>
-              </div>
-              <span class="menu-item-arrow">➔</span>
-            </button>
 
             <button type="button" class="nav-menu-item" data-nav="railcams">
               <div class="menu-item-icon-box icon-cam">📹</div>
@@ -820,7 +792,7 @@
         <div class="my-train-title-group">
           <span id="myTrainOpBadge" class="op-badge op-ns">[GPS]</span>
           <h3 id="myTrainTitle" class="my-train-heading">U zit in Trein #1762</h3>
-          <span id="gpsModalVersion" class="modal-version-tag">GPS v2.9.21</span>
+          <span id="gpsModalVersion" class="modal-version-tag">GPS v2.9.22</span>
         </div>
         <button id="btnCloseMyTrain" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
       </div>
@@ -1187,7 +1159,7 @@
               <div class="help-card-icon-badge">🟢</div>
               <div class="help-card-content">
                 <h4 class="help-card-title">5. 1 Overzicht van Alle Maatschappijen</h4>
-                <p>Alle Nederlandse vervoerders worden ondersteund: NS, Arriva, Blauwnet/Keolis, Qbuzz, Eurostar, ICE en goederentreinen. Via de landelijke statusbalk filtert u in één tik op stipte ritten (<code>🟢 Op tijd</code>), vertraagde treinen (<code>🟡 Vertraagd</code>) of defect materieel (<code>🔴 Pech</code>).</p>
+                <p>Alle personenvervoerders uit het live feed worden ondersteund: NS, Arriva, Blauwnet/Keolis, Qbuzz, Eurostar en ICE. Via de landelijke statusbalk filtert u in één tik op stipte ritten (<code>🟢 Op tijd</code>), vertraagde treinen (<code>🟡 Vertraagd</code>) of defect materieel (<code>🔴 Pech</code>).</p>
               </div>
             </article>
 
@@ -1272,7 +1244,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.9.21_fe7b723"></script>
-  <script type="module" src="./app.js?v=2.9.21_fe7b723"></script>
+  <script src="./stations.js?v=2.9.22_0274554"></script>
+  <script type="module" src="./app.js?v=2.9.22_0274554"></script>
 </body>
 </html>
