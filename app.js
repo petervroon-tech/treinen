@@ -7076,6 +7076,20 @@ function setupNavigation() {
   document.getElementById('btnStopLiveFollow')?.addEventListener('click', () => {
     stopFollowingTrain();
   });
+  // Mijn Trein: zodra een trein gekoppeld is, klapt de keuzelijst in zodat de live gegevens direct onder de snelheid staan
+  setInterval(() => {
+    const m = document.getElementById('myTrainModal');
+    if (!m) return;
+    const has = !!appState.myTrain;
+    m.classList.toggle('has-train', has);
+    if (!has) m.classList.remove('show-chooser');
+  }, 600);
+  document.getElementById('btnChooseOtherTrain')?.addEventListener('click', () => {
+    const m = document.getElementById('myTrainModal');
+    if (m) m.classList.toggle('show-chooser');
+    renderManualTrainFallbackPicker();
+  });
+
   document.getElementById('btnHudClose')?.addEventListener('click', () => {
     stopFollowingTrain();
   });
@@ -7661,8 +7675,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.23';
-const APP_BUILD_COMMIT = '70a20e2';
+const APP_VERSION = '2.9.24';
+const APP_BUILD_COMMIT = '5959256';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

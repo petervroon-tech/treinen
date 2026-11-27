@@ -6821,3 +6821,99 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 16px rgba(239, 68, 68, 0.3);
 }
 
+
+
+/* ==========================================================================
+   RESPONSIVE HARDENING (v2.9.24) — telefoon, iPad & laptop
+   Laatste in de cascade: zorgt voor duidelijke, aanraakvriendelijke bediening
+   ========================================================================== */
+
+/* Aanraakvriendelijk: minimaal 44px tikvlak op touch-apparaten */
+@media (pointer: coarse) {
+  .btn-close-modal {
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+  }
+  .mt-station-chip-btn,
+  .rp-chip-btn,
+  .dock-btn,
+  #btnSwitchTrainDirection,
+  #btnChooseOtherTrain,
+  .my-train-actions button {
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(56, 189, 248, 0.3);
+  }
+}
+
+/* "Andere trein kiezen": alleen zichtbaar zodra er een trein gekoppeld is */
+.my-train-modal:not(.has-train) #btnChooseOtherTrain { display: none !important; }
+
+/* Eén duidelijke focus: gekoppelde trein = keuzelijst ingeklapt, gegevens direct onder de snelheid */
+.my-train-modal.has-train:not(.show-chooser) #myTrainStationSelector { display: none !important; }
+
+/* iPad & laptop: ruimere, goed leesbare dialoog */
+@media (min-width: 681px) {
+  .my-train-dialog { max-width: min(640px, 92vw); }
+}
+@media (min-width: 1024px) {
+  .my-train-dialog { max-width: 680px; }
+  .my-train-body { overscroll-behavior: contain; }
+}
+
+/* Telefoon: bottom sheet met EEN scrollgebied (geen dubbel scrollen, niets afgesneden) */
+@media (max-width: 680px) {
+  .my-train-dialog {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    max-height: 92vh !important;
+    max-height: 92dvh !important;
+    padding-bottom: 0 !important;
+  }
+  .my-train-header {
+    position: relative;
+    z-index: 2;
+    padding: 6px 12px 8px;
+    gap: 8px;
+  }
+  .my-train-title-group {
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+  .my-train-heading {
+    font-size: 1rem;
+    line-height: 1.2;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .my-train-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  }
+  .mt-station-chip-btn {
+    min-height: 46px;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    overflow-wrap: anywhere;
+  }
+  .mt-station-hint { font-size: 0.72rem; }
+  .hero-gps-meta { font-size: 0.74rem; }
+  .card-label { font-size: 0.7rem; }
+  .card-sub { font-size: 0.76rem; }
+  .card-val { font-size: 1rem; overflow-wrap: anywhere; }
+  .app-toast-pill {
+    bottom: max(84px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+    max-width: 92vw;
+    white-space: normal;
+    text-align: center;
+  }
+}

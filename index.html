@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=2.9.23_70a20e2">
-  <link rel="manifest" href="./manifest.json?v=2.9.23_70a20e2">
+  <link rel="stylesheet" href="./style.css?v=2.9.24_5959256">
+  <link rel="manifest" href="./manifest.json?v=2.9.24_5959256">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23003082'/><circle cx='50' cy='50' r='36' fill='%23ffc917'/><polygon points='40,25 75,50 40,75' fill='%23003082'/></svg>">
 </head>
 <body>
@@ -758,7 +758,7 @@
         <div class="my-train-title-group">
           <span id="myTrainOpBadge" class="op-badge op-ns">[GPS]</span>
           <h3 id="myTrainTitle" class="my-train-heading">U zit in Trein #1762</h3>
-          <span id="gpsModalVersion" class="modal-version-tag">GPS v2.9.23</span>
+          <span id="gpsModalVersion" class="modal-version-tag">GPS v2.9.24</span>
         </div>
         <button id="btnCloseMyTrain" class="btn-close-modal" type="button" aria-label="Sluiten">✕</button>
       </div>
@@ -778,6 +778,9 @@
             <div id="myTrainCorridorDirectionBar" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
               <button id="btnSwitchTrainDirection" onclick="window.switchMyTrainDirection()" type="button" style="background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.45); color: #38bdf8; border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 600; cursor: pointer; transition: all 0.18s ease; touch-action: manipulation; -webkit-tap-highlight-color: rgba(56, 189, 248, 0.35); user-select: none;">
                 🔄 Wissel richting
+              </button>
+              <button id="btnChooseOtherTrain" type="button" style="background: rgba(255, 201, 23, 0.14); border: 1px solid rgba(255, 201, 23, 0.5); color: #ffc917; border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 600; cursor: pointer; touch-action: manipulation; user-select: none;">
+                🚆 Andere trein kiezen
               </button>
             </div>
             <div id="myTrainDestChips" style="display: none; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px;"></div>
@@ -1146,7 +1149,7 @@
     </button>
   </nav>
 
-  <script src="./stations.js?v=2.9.23_70a20e2"></script>
-  <script type="module" src="./app.js?v=2.9.23_70a20e2"></script>
+  <script src="./stations.js?v=2.9.24_5959256"></script>
+  <script type="module" src="./app.js?v=2.9.24_5959256"></script>
 </body>
 </html>
