@@ -1840,6 +1840,112 @@ function getDistanceToNearestStation(lat, lon) {
 
 // Bepaal de actuele, reële telemetrie-snelheid van een trein.
 // Rijdende treinen mogen NOOIT op 0 km/u blijven staan als de externe bron geen expliciete string bevat!
+// =============================================================
+// NS Reisinformatie API (optioneel): echte bestemming, route en vertraging per trein
+// De sleutel staat uitsluitend in de localStorage van dit apparaat (nooit in de code/GitHub)
+// =============================================================
+const NS_API_JOURNEY = 'https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/journey';
+const NS_KEY_STORAGE = 'treinen_ns_api_key';
+const NS_CACHE_MS = 45000;
+
+function getNsKey() {
+  try { return (localStorage.getItem(NS_KEY_STORAGE) || '').trim(); } catch (e) { return ''; }
+}
+
+function nsPickTime(x, kind) {
+  if (!x) return null;
+  const v = kind === 'actual'
+    ? (x.actualTime || x.actualDateTime || x.plannedTime || x.plannedDateTime)
+    : (x.plannedTime || x.plannedDateTime);
+  const ms = v ? Date.parse(v) : NaN;
+  return isNaN(ms) ? null : ms;
+}
+
+// Zet het NS-antwoord om naar bestemming, route en actuele vertraging (defensief, het schema is niet gegarandeerd)
+function parseNsJourney(j) {
+  const stops = (j && j.payload && Array.isArray(j.payload.stops)) ? j.payload.stops : [];
+  if (!stops.length) return null;
+  const names = stops.map(st => st && st.stop && st.stop.name).filter(Boolean);
+  if (names.length < 2) return null;
+  const now = Date.now();
+  let delaySec = null;
+  let nextName = null;
+  for (const st of stops) {
+    const ev = (st.departures && st.departures[0]) || (st.arrivals && st.arrivals[0]);
+    if (!ev) continue;
+    const planned = nsPickTime(ev, 'planned');
+    const actual = nsPickTime(ev, 'actual');
+    const d = (typeof ev.delayInSeconds === 'number') ? ev.delayInSeconds
+            : ((planned !== null && actual !== null) ? Math.round((actual - planned) / 1000) : null);
+    if (actual !== null && actual <= now && d !== null) delaySec = d;
+    if (actual !== null && actual > now && !nextName && st.stop) nextName = st.stop.name;
+  }
+  return {
+    origin: names[0],
+    destination: names[names.length - 1],
+    via: names.slice(1, -1),
+    nextStop: nextName,
+    delayMin: delaySec === null ? null : Math.max(0, Math.round(delaySec / 60)),
+    fetchedAt: now
+  };
+}
+
+async function fetchNsJourney(trainNum) {
+  const key = getNsKey();
+  if (!key || !trainNum) return null;
+  if (!appState.nsJourneyCache) appState.nsJourneyCache = new Map();
+  if (!appState.nsJourneyPending) appState.nsJourneyPending = new Set();
+  const cached = appState.nsJourneyCache.get(trainNum);
+  if (cached && Date.now() - cached.fetchedAt < NS_CACHE_MS) return cached;
+  if (appState.nsJourneyPending.has(trainNum)) return cached || null;
+  appState.nsJourneyPending.add(trainNum);
+  try {
+    const res = await fetch(`${NS_API_JOURNEY}?train=${encodeURIComponent(trainNum)}&omitCrowdForecast=true`, {
+      headers: { 'Ocp-Apim-Subscription-Key': key }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const parsed = parseNsJourney(await res.json());
+    if (parsed) appState.nsJourneyCache.set(trainNum, parsed);
+    return parsed;
+  } catch (e) {
+    appState.nsLastError = String(e && e.message || e);
+    return null;
+  } finally {
+    appState.nsJourneyPending.delete(trainNum);
+  }
+}
+window.fetchNsJourney = fetchNsJourney;
+
+// Test de sleutel en geef een duidelijke uitslag in het scherm
+window.testNsApiKey = async (rawKey) => {
+  const key = (rawKey || '').trim();
+  const statusEl = document.getElementById('nsKeyStatus');
+  const say = (msg, ok) => {
+    if (statusEl) { statusEl.textContent = msg; statusEl.style.color = ok === true ? '#34d399' : (ok === false ? '#f87171' : '#94a3b8'); }
+    showFeedbackToast(msg, ok === false ? 'error' : 'success');
+  };
+  if (!key) { say('Plak eerst uw NS-sleutel.', false); return; }
+  say('Sleutel testen…', null);
+  try {
+    const res = await fetch(`${NS_API_JOURNEY}?train=2974&omitCrowdForecast=true`, { headers: { 'Ocp-Apim-Subscription-Key': key } });
+    if (res.status === 401 || res.status === 403) { say('✗ Sleutel ongeldig of niet geactiveerd voor Reisinformatie (HTTP ' + res.status + ').', false); return; }
+    try { localStorage.setItem(NS_KEY_STORAGE, key); } catch (e) {}
+    if (res.ok) { say('✓ NS-sleutel werkt en is opgeslagen op dit apparaat.', true); }
+    else { say('✓ Sleutel geaccepteerd en opgeslagen (HTTP ' + res.status + ': proeftrein rijdt nu niet, dat is normaal).', true); }
+    if (appState.nsJourneyCache) appState.nsJourneyCache.clear();
+  } catch (e) {
+    say('✗ Geen verbinding met de NS-API: ' + (e && e.message || e), false);
+  }
+};
+window.clearNsApiKey = () => {
+  try { localStorage.removeItem(NS_KEY_STORAGE); } catch (e) {}
+  if (appState.nsJourneyCache) appState.nsJourneyCache.clear();
+  const statusEl = document.getElementById('nsKeyStatus');
+  if (statusEl) { statusEl.textContent = 'Sleutel gewist.'; statusEl.style.color = '#94a3b8'; }
+  const inp = document.getElementById('nsKeyInput');
+  if (inp) inp.value = '';
+};
+
 let lastSpeedSource = 'feed';
 function resolveTrainSpeed(trainId, lat, lon, matnrString, props, color, delayMin, isPechText) {
   // 1. Directe telemetrie-uitlezing uit eigenschappen of matnr-string
@@ -2103,6 +2209,22 @@ export function parseTrain(raw) {
     train.service.destination = feedDest;
   }
   train.unitsCount = 1;
+
+  // Echte NS-gegevens (indien sleutel ingesteld en recent opgehaald) gaan voor op de afgeleide bestemming
+  const ns = appState.nsJourneyCache && appState.nsJourneyCache.get(trainNum);
+  if (ns && Date.now() - ns.fetchedAt < 5 * 60 * 1000) {
+    train.exactDestination = ns.destination;
+    train.nsVerified = true;
+    if (train.service) {
+      train.service.destination = ns.destination;
+      train.service.origin = ns.origin;
+      train.service.via = ns.via.length ? `via ${ns.via.slice(0, 6).join(', ')}` : '';
+    }
+    if (ns.delayMin !== null) {
+      train.delayMin = ns.delayMin;
+      if (train.statusType !== 'pech') train.statusType = ns.delayMin >= 3 ? 'delayed' : 'ontime';
+    }
+  }
   return train;
 }
 
@@ -6150,6 +6272,10 @@ function onLiveLocationFix(pos) {
   }
 
   appState.myTrain = bestTrain;
+  if (getNsKey() && bestTrain.trainNum) {
+    const cachedNs = appState.nsJourneyCache && appState.nsJourneyCache.get(bestTrain.trainNum);
+    if (!cachedNs || Date.now() - cachedNs.fetchedAt > NS_CACHE_MS) fetchNsJourney(bestTrain.trainNum);
+  }
   let distMeters = Math.round(distanceKm(userLat, userLon, bestTrain.lat, bestTrain.lon) * 1000);
   if (isAtStation && bestTrain.corridorId === 'arriva-achterhoek' && distMeters > 300) {
     if (nearestStInfo && typeof nearestStInfo.distKm === 'number') {
@@ -6424,7 +6550,7 @@ function onLiveLocationFix(pos) {
   const modalOperator = document.getElementById('myTrainOperator');
   if (modalOperator) modalOperator.textContent = `${op.name} (${unitsCount > 1 ? `${unitsCount}x gekoppeld: ` : ''}${bestTrain.matnummer || 'Standaard materieel'})`;
   const modalMatnr = document.getElementById('myTrainMatnr');
-  if (modalMatnr) modalMatnr.textContent = `Materieelcode: ${bestTrain.matnummer || 'NVT'} • Trein #${bestTrain.trainNum}`;
+  if (modalMatnr) modalMatnr.textContent = `Materieelcode: ${bestTrain.matnummer || 'NVT'} • Trein #${bestTrain.trainNum} • ${bestTrain.nsVerified ? '✓ Bestemming & vertraging: NS-API' : 'Bestemming afgeleid uit treinnummer'}`;
 
   const puncText = bestTrain.statusType === 'ontime' ? '🟢 Volgens schema op tijd' :
                    bestTrain.statusType === 'delayed' ? `🟡 +${bestTrain.delayMin || 2}m Vertraagd` : '🔴 Pech / Storing';
@@ -7547,6 +7673,19 @@ function setupNavigation() {
     }
   });
 
+  // NS-sleutel (optioneel)
+  const nsInput = document.getElementById('nsKeyInput');
+  if (nsInput && getNsKey()) {
+    nsInput.value = '••••••••••••••••';
+    const st = document.getElementById('nsKeyStatus');
+    if (st) { st.textContent = '✓ Sleutel opgeslagen op dit apparaat'; st.style.color = '#34d399'; }
+  }
+  document.getElementById('btnNsKeySave')?.addEventListener('click', () => {
+    const v = nsInput ? nsInput.value : '';
+    if (v.startsWith('••')) { window.testNsApiKey(getNsKey()); } else { window.testNsApiKey(v); }
+  });
+  document.getElementById('btnNsKeyClear')?.addEventListener('click', () => window.clearNsApiKey());
+
   document.getElementById('btnHudOpenDetails')?.addEventListener('click', () => {
     const modal = document.getElementById('myTrainModal');
     if (modal) modal.style.display = 'flex';
@@ -7720,8 +7859,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.26';
-const APP_BUILD_COMMIT = 'bd3f3c5';
+const APP_VERSION = '2.9.27';
+const APP_BUILD_COMMIT = 'f5969e2';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {

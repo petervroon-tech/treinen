@@ -6934,3 +6934,41 @@ body {
   .speed-source-line { font-size: 0.7rem; white-space: normal; }
   .speed-dial-box .speed-value { font-size: 2.4rem; }
 }
+
+
+/* NS-sleutel invoer (v2.9.27) */
+.ns-key-row {
+  margin: 10px 14px 14px;
+  padding: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 14px;
+  background: rgba(9, 14, 26, 0.6);
+}
+.ns-key-title { font-weight: 800; font-size: 0.88rem; color: #f8fafc; }
+.ns-key-opt { font-weight: 600; color: #94a3b8; font-size: 0.74rem; }
+.ns-key-hint { font-size: 0.74rem; color: #94a3b8; margin: 4px 0 8px; line-height: 1.4; }
+.ns-key-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.ns-key-controls input {
+  flex: 1 1 200px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: #0b1329;
+  color: #f8fafc;
+  font-size: 16px;
+}
+.ns-key-controls button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  font-weight: 700;
+  font-size: 0.8rem;
+  touch-action: manipulation;
+}
+.ns-key-controls .ns-key-clear { border-color: rgba(248, 113, 113, 0.5); background: rgba(248, 113, 113, 0.12); color: #f87171; }
+.ns-key-status { margin-top: 8px; font-size: 0.76rem; font-weight: 700; color: #94a3b8; overflow-wrap: anywhere; }
