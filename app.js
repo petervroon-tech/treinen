@@ -7830,7 +7830,7 @@ function setupNavigation() {
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
 const APP_VERSION = '2.9.20';
-const APP_BUILD_COMMIT = '67750bf';
+const APP_BUILD_COMMIT = '970f8cb';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
