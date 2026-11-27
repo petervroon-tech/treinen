@@ -755,6 +755,24 @@ export function detectOperator(train) {
   const rawStr = (train.matnrString || '').toLowerCase();
   const rawCol = (train.color || '').toLowerCase();
   const num = parseInt(train.trainNum, 10) || 0;
+  const rawCat = '';
+  const rawDest = (train.exactDestination || (train.service && train.service.destination) || '').toLowerCase();
+
+  // 0. Vervoerder rechtstreeks uit de feed-naam (bv. 'Arriva_SRT-GTW-D-ARG-2/8_37360_2026-11-27', 'R-net_...', 'Blauwnet A_...')
+  if (rawCol.includes('blauwnet') || /^blauwnet/.test(rawMat) || /^blauwnet/.test(rawStr) || /^syntus/.test(rawMat) || /^syntus/.test(rawStr)) {
+    return OPERATORS.blauwnet;
+  }
+  if (/^(arriva|arr_)/.test(rawMat) || /^arriva/.test(rawStr)) {
+    return OPERATORS.arriva;
+  }
+  if (/^r-net/.test(rawMat) || /^r-net/.test(rawStr) || /^qbuzz/.test(rawMat)) {
+    return OPERATORS.qbuzz;
+  }
+  const foreignMatch = rawMat.match(/^(rrreis|vias|eurobahn|govolta|abellio|keolis)/);
+  if (foreignMatch) {
+    const label = { rrreis: 'RRReis', vias: 'VIAS', eurobahn: 'Eurobahn', govolta: 'GoVolta', abellio: 'Abellio', keolis: 'Keolis' }[foreignMatch[1]];
+    return { code: label, name: label, category: 'regional', badgeClass: 'op-breng', bg: '#475569', color: '#ffffff', border: '#94a3b8' };
+  }
 
   // 1. Eurostar / Thalys
   if (rawMat.includes('eurostar') || rawMat.includes('thalys') || rawMat.includes('pbka') ||
@@ -766,8 +784,8 @@ export function detectOperator(train) {
   // 2. ICE International (DB Fernverkehr / NS International)
   if (rawMat.includes('ice') || rawCol.includes('ice') || rawStr.includes('ice') ||
       rawCat.includes('ice') || rawMat.includes('velaro') || rawMat.includes('br406') ||
-      rawMat.includes('br407') || rawMat.includes('br408') || rawMat.includes('406') ||
-      rawMat.includes('408') || (num >= 100 && num <= 159) || (num >= 220 && num <= 259) ||
+      rawMat.includes('br407') || rawMat.includes('br408') || /^db_/.test(rawMat) ||
+      (num >= 100 && num <= 159) || (num >= 220 && num <= 259) ||
       rawDest.includes('frankfurt') || rawDest.includes('basel') || rawDest.includes('köln') ||
       rawDest.includes('koln') || rawDest.includes('munchen') || rawDest.includes('münchen') ||
       (train.operator && train.operator.code && train.operator.code.toLowerCase() === 'ice')) {
@@ -1953,7 +1971,11 @@ export function parseTrain(raw) {
   // Treinnummer detectie
   let trainNum = '';
   const trExplicit = matnrString.match(/(?:trein|rit|tr)\.?\s*(\d+)/i);
-  if (trExplicit) {
+  const trDated = matnrString.match(/_(\d{2,5})_\d{4}-\d{2}-\d{2}/);
+  if (trDated) {
+    // Feed-formaat: 'Arriva_SRT-GTW-D-ARG-2/8_37360_2026-11-27' -> treinnummer 37360
+    trainNum = trDated[1];
+  } else if (trExplicit) {
     trainNum = trExplicit[1];
   } else {
     // Zoek 5-cijferig dienstregelingnummer (bv. 30418, 17855, 31250) of 4-cijferig (bv. 1450, 1642)
@@ -2036,6 +2058,12 @@ export function parseTrain(raw) {
 
   train.operator = detectOperator(train);
   train.service = getTrainServiceDetails(train);
+  // Voor vervoerders waarvan het nummerplan niet bekend is: geen verzonnen bestemming tonen
+  if (train.service && (train.operator.code === 'Qbuzz' || train.operator.badgeClass === 'op-breng')) {
+    train.service.destination = 'Eindbestemming';
+    train.service.origin = 'Vertrekstation';
+    train.service.via = '';
+  }
   train.exactDestination = feedDest || ((train.service && train.service.destination && train.service.destination !== 'Eindbestemming') ? train.service.destination : '');
   if (feedDest && train.service) {
     train.service.destination = feedDest;
@@ -2584,9 +2612,17 @@ function getCorridorsForStation(stationCode) {
 
 // Centrale selector voor alle actieve, gegroepeerde treinen
 export function getActiveParsedTrains() {
-  const rawList = Array.isArray(appState.allLiveFeatures)
-    ? appState.allLiveFeatures.map(parseTrain).filter(Boolean)
-    : [];
+  const rawList = [];
+  if (Array.isArray(appState.allLiveFeatures)) {
+    for (const f of appState.allLiveFeatures) {
+      try {
+        const pt = parseTrain(f);
+        if (pt) rawList.push(pt);
+      } catch (e) {
+        // Een enkele onleesbare trein mag nooit de hele lijst laten crashen
+      }
+    }
+  }
 
   // Integreer live goederenvloot op de corridors
   const simFreight = getLiveFreightTrains();
@@ -2599,29 +2635,7 @@ export function getActiveParsedTrains() {
     });
   }
 
-  // Controleer of er live Arriva treinen op regionale lijnen actief zijn in de externe feed
-  const hasArrivaAchterhoek = rawList.some(t => {
-    const num = parseInt(t.trainNum, 10);
-    return ((num >= 17800 && num <= 17899) || (num >= 30400 && num <= 30599)) &&
-           distanceKm(t.lat, t.lon, 52.18, 6.08) <= 18;
-  });
-  const hasArrivaNoord = rawList.some(t => {
-    const num = parseInt(t.trainNum, 10);
-    return (num >= 37300 && num <= 37499) &&
-           distanceKm(t.lat, t.lon, 53.22, 6.10) <= 45;
-  });
-
-  if (!hasArrivaAchterhoek || !hasArrivaNoord) {
-    const regTrains = getLiveRegionalTrains();
-    if (Array.isArray(regTrains)) {
-      regTrains.forEach(rt => {
-        if (!existingNums.has(rt.trainNum)) {
-          rawList.push(rt);
-        }
-      });
-    }
-  }
-
+  // Reizigerstreinen komen uitsluitend uit het echte live feed (geen simulatie)
   return groupCoupledTrains(rawList);
 }
 
@@ -5058,87 +5072,17 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
       if (candidateTrains.length > 0) filterMode = 'station';
     }
 
-    // 3. Fallback: als er geen treinen gevonden zijn op een actieve corridor, genereer direct 2 gegarandeerde treinen voor dit specifieke baanvak!
-    if (candidateTrains.length === 0 && activeCorr && activeCorr.stations && activeCorr.stations.length >= 2) {
-      const op = (activeCorr.primaryOpKey && OPERATORS[activeCorr.primaryOpKey]) ? OPERATORS[activeCorr.primaryOpKey] : OPERATORS.ns;
-      const sStart = activeCorr.stations[0];
-      const sEnd = activeCorr.stations[activeCorr.stations.length - 1];
-      const midIdx = Math.floor(activeCorr.stations.length / 2);
-      const midSt = activeCorr.stations[midIdx] || sEnd;
-
-      const isMaastrichtCorr = activeCorr.id.includes('maastricht') || sEnd.code === 'MT' || sStart.code === 'MT';
-      const fwdTrainNum = activeCorr.primaryOpKey === 'arriva' ? '37320' : (isMaastrichtCorr ? '845' : '2144');
-      const revTrainNum = activeCorr.primaryOpKey === 'arriva' ? '37319' : (isMaastrichtCorr ? '846' : '2145');
-      const fwdMat = activeCorr.primaryOpKey === 'arriva' ? 'Arriva WINK Sneltrein' : (isMaastrichtCorr ? 'NS VIRM Dubbeldekker' : 'NS VIRM-4');
-      const revMat = activeCorr.primaryOpKey === 'arriva' ? 'Arriva WINK Sneltrein' : (isMaastrichtCorr ? 'NS VIRM Dubbeldekker' : 'NS VIRM-4');
-
-      const simFwd = {
-        id: `${activeCorr.id}_fwd`,
-        trainNum: fwdTrainNum,
-        matnummer: fwdMat,
-        matnrString: `Trein ➔ ${sEnd.name} @ 130 km/u`,
-        color: op.bg,
-        lat: midSt.lat,
-        lon: midSt.lon,
-        speed: isMaastrichtCorr ? 130 : 88,
-        delayMin: 0,
-        statusType: 'ontime',
-        gpsdata: `Actuele dienstregeling (${activeCorr.shortName || activeCorr.name})`,
-        operator: op,
-        unitsCount: 1,
-        isReverse: false,
-        fromStation: sStart,
-        toStation: sEnd,
-        targetStation: sEnd,
-        exactDestination: sEnd.name,
-        corridorId: activeCorr.id,
-        service: {
-          serviceType: activeCorr.primaryOpKey === 'arriva' ? 'Sneltrein' : 'Intercity',
-          destination: sEnd.name,
-          origin: sStart.name,
-          operator: op,
-          platform: '1',
-          displayTitle: `${op.code} naar ${sEnd.name}`
-        }
-      };
-
-      const simRev = {
-        id: `${activeCorr.id}_rev`,
-        trainNum: revTrainNum,
-        matnummer: revMat,
-        matnrString: `Trein ➔ ${sStart.name} @ 125 km/u`,
-        color: op.bg,
-        lat: sStart.lat,
-        lon: sStart.lon,
-        speed: isMaastrichtCorr ? 125 : 85,
-        delayMin: 0,
-        statusType: 'ontime',
-        gpsdata: `Actuele dienstregeling (${activeCorr.shortName || activeCorr.name})`,
-        operator: op,
-        unitsCount: 1,
-        isReverse: true,
-        fromStation: sEnd,
-        toStation: sStart,
-        targetStation: sStart,
-        exactDestination: sStart.name,
-        corridorId: activeCorr.id,
-        service: {
-          serviceType: activeCorr.primaryOpKey === 'arriva' ? 'Sneltrein' : 'Intercity',
-          destination: sStart.name,
-          origin: sEnd.name,
-          operator: op,
-          platform: '2',
-          displayTitle: `${op.code} naar ${sStart.name}`
-        }
-      };
-
-      candidateTrains = [simFwd, simRev];
-      filterMode = 'corridor';
-    }
-
-    // 4. Algemene fallback: pak de actuele reizigerstreinen
+    // 3. Fallback: de dichtstbijzijnde ECHTE treinen (bij GPS-fix t.o.v. de reiziger, anders t.o.v. het traject)
     if (candidateTrains.length === 0) {
-      candidateTrains = allParsed.slice(0, 8);
+      const ref = appState.lastGpsFix
+        ? { lat: appState.lastGpsFix.lat, lon: appState.lastGpsFix.lon }
+        : (activeCorr && activeCorr.stations && activeCorr.stations.length
+            ? activeCorr.stations[Math.floor(activeCorr.stations.length / 2)]
+            : null);
+      candidateTrains = ref
+        ? allParsed.slice().sort((a, b) => distanceKm(ref.lat, ref.lon, a.lat, a.lon) - distanceKm(ref.lat, ref.lon, b.lat, b.lon)).slice(0, 8)
+        : allParsed.slice(0, 8);
+      if (candidateTrains.length > 0) filterMode = 'nearest';
     }
 
     // Sorteer treinen met voorkeur voor gekozen richting
@@ -5215,7 +5159,7 @@ function renderManualTrainFallbackPicker(overrideCorridorKey = null) {
           </span>
         </button>
       `;
-    }).join('') : '<span style="font-size:0.75rem; color:#94a3b8;">Geen treinen gevonden op dit traject.</span>';
+    }).join('') : '<span style="font-size:0.75rem; color:#94a3b8;">Geen live treinen ontvangen. De live feed wordt elke 4,5 sec ververst — even geduld…</span>';
 
     chipsEl.innerHTML = directionButtonsHtml + trainChipsHtml;
   } catch (err) {
@@ -7829,8 +7773,8 @@ function setupNavigation() {
 // =============================================================
 // 12. Versiebeheer & Automatische Live Updates
 // =============================================================
-const APP_VERSION = '2.9.20';
-const APP_BUILD_COMMIT = '970f8cb';
+const APP_VERSION = '2.9.21';
+const APP_BUILD_COMMIT = 'c986240';
 let appBuildMeta = { version: APP_VERSION, commit: APP_BUILD_COMMIT, buildTime: '' };
 
 async function initVersionManagement() {
@@ -8338,7 +8282,7 @@ async function init() {
 
   // Automatische detectie bij opening als de reiziger dat wil
   const chkAuto = document.getElementById('chkAutoDetectOnOpen');
-  const autoDetect = localStorage.getItem('treinen_auto_detect_in_train') === 'true';
+  const autoDetect = localStorage.getItem('treinen_auto_detect_in_train') !== 'false';
   if (chkAuto) {
     chkAuto.checked = autoDetect;
     chkAuto.addEventListener('change', () => {
